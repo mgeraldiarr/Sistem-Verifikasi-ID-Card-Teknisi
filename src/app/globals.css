@@ -121,6 +121,8 @@ button {
   body {
     background: white;
     color: black;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .no-print {
     display: none !important;
@@ -130,10 +132,7 @@ button {
     position: absolute;
     top: 0;
     left: 0;
-    width: 85.6mm;
-    height: 53.98mm;
-    border: 1px solid #000;
-    box-sizing: border-box;
+    width: 100%;
     page-break-inside: avoid;
   }
 }
