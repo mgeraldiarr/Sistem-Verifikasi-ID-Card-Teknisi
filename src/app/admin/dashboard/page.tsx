@@ -296,44 +296,121 @@ export default function AdminDashboard() {
           Berkat CSS @media print di globals.css
           ========================================= */}
       <div className="print-area" style={{ display: 'none' }}>
-        {printData && (
-          <div style={{ width: '100%', height: '100%', padding: '6mm 4mm', position: 'relative', display: 'flex', flexDirection: 'column', backgroundColor: 'white', fontFamily: 'sans-serif' }}>
-            
-            {/* Header ID Card */}
-            <div style={{ textAlign: 'center', borderBottom: '3px solid #121212', paddingBottom: '3mm', marginBottom: '6mm' }}>
-              <h1 style={{ fontWeight: 800, fontSize: '16pt', margin: 0, letterSpacing: '0.1em', color: '#121212' }}>MODENA</h1>
-              <p style={{ fontSize: '7pt', margin: '2px 0 0 0', fontWeight: 600, letterSpacing: '1px', color: '#666' }}>OFFICIAL IDENTITY CARD</p>
-            </div>
+        {printData && (() => {
+          const CARD_W = '54mm';
+          const CARD_H = '85.6mm';
+          const CREAM = '#ECE8DA';
+          const DARK = '#1C1C1A';
 
-            {/* Layout Kiri (Foto) & Kanan (Teks) */}
-            <div style={{ display: 'flex', gap: '5mm', flex: 1 }}>
-              <div style={{ width: '30mm', height: '36mm', border: '1px solid #E5E5E5', borderRadius: '4px', overflow: 'hidden' }}>
-                {printData.photo_url ? (
-                  <img src={printData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6' }}></div>
-                )}
-              </div>
-              
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5mm', paddingTop: '2mm' }}>
-                <div style={{ fontSize: '11pt', fontWeight: 800, color: '#121212', textTransform: 'uppercase' }}>{printData.full_name}</div>
-                <div style={{ fontSize: '8pt', color: '#DA291C', fontWeight: 700 }}>{printData.position}</div>
-                <div style={{ fontSize: '8pt', marginTop: '3mm', fontWeight: 600, color: '#666' }}>ID: {printData.employee_code}</div>
-                <div style={{ fontSize: '8pt', color: '#666' }}>{printData.branch_name}</div>
-              </div>
+          const Logo = () => (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img src="/logo-modena.png" alt="Modena Logo" style={{ height: '6mm', objectFit: 'contain' }} />
             </div>
+          );
 
-            {/* QR Code di Pojok Kanan Bawah */}
-            <div style={{ position: 'absolute', bottom: '6mm', right: '4mm', border: '1px solid #E5E5E5', padding: '2mm', borderRadius: '4px' }}>
-              <QRCodeSVG 
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.id}`}
-                size={70}
-                level="M"
-              />
+          return (
+            <div style={{ display: 'flex', gap: '10mm', flexWrap: 'wrap', padding: '10mm' }}>
+              {/* ============ KARTU DEPAN ============ */}
+              <div
+                style={{
+                  width: CARD_W,
+                  height: CARD_H,
+                  backgroundColor: CREAM,
+                  borderRadius: '4mm',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  fontFamily: 'var(--font-sans, Arial, sans-serif)',
+                }}
+              >
+                {/* Header logo */}
+                <div style={{ padding: '5mm 5mm 0' }}>
+                  <Logo />
+                </div>
+
+                {/* Foto profil (otomatis grayscale) */}
+                <div
+                  style={{
+                    flex: 1,
+                    margin: '4mm 4mm 0',
+                    borderRadius: '2mm',
+                    overflow: 'hidden',
+                    backgroundColor: '#D6D2C2',
+                  }}
+                >
+                  {printData.photo_url ? (
+                    <img
+                      src={printData.photo_url}
+                      alt={printData.full_name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%' }} />
+                  )}
+                </div>
+
+                {/* Nama & jabatan */}
+                <div style={{ backgroundColor: DARK, color: 'white', padding: '3.5mm 5mm' }}>
+                  <div style={{ fontSize: '11pt', fontWeight: 700, lineHeight: 1.1 }}>{printData.full_name}</div>
+                  <div style={{ fontSize: '6pt', fontWeight: 400, color: '#C9C9C9', marginTop: '1mm' }}>
+                    {printData.position}
+                  </div>
+                </div>
+              </div>
+
+              {/* ============ KARTU BELAKANG ============ */}
+              <div
+                style={{
+                  width: CARD_W,
+                  height: CARD_H,
+                  backgroundColor: CREAM,
+                  borderRadius: '4mm',
+                  position: 'relative',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '5mm',
+                  fontFamily: 'var(--font-sans, Arial, sans-serif)',
+                }}
+              >
+                <Logo />
+
+                {/* QR Code */}
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '6mm 0' }}>
+                  <QRCodeSVG
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.id}`}
+                    size={110}
+                    style={{ width: '24mm', height: '24mm' }}
+                    level="M"
+                  />
+                </div>
+
+                {/* ID */}
+                <div style={{ marginTop: '4mm' }}>
+                  <div style={{ fontSize: '6pt', fontWeight: 700, color: DARK, letterSpacing: '0.5px' }}>ID</div>
+                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
+                    {printData.employee_code}
+                  </div>
+                </div>
+
+                {/* Kontak */}
+                <div style={{ marginTop: '4mm' }}>
+                  <div style={{ fontSize: '6pt', fontWeight: 700, color: DARK, letterSpacing: '0.5px' }}>
+                    CONTACT
+                  </div>
+                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
+                    {printData.branch_name}
+                  </div>
+                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
+                    admin@company.com
+                  </div>
+                </div>
+              </div>
             </div>
-            
-          </div>
-        )}
+          );
+        })()}
       </div>
 
     </div>
