@@ -1,7 +1,7 @@
 // src/app/scan/page.tsx
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { Camera, Loader2 } from 'lucide-react';
@@ -10,10 +10,15 @@ export default function ScanPage() {
   const router = useRouter();
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const scannerInitialized = useRef(false);
 
   useEffect(() => {
     // Hindari inisialisasi ganda jika sudah berhasil scan
     if (scanResult) return;
+    
+    // Mencegah inisialisasi ganda oleh React Strict Mode
+    if (scannerInitialized.current) return;
+    scannerInitialized.current = true;
 
     // Konfigurasi Scanner
     const scanner = new Html5QrcodeScanner(
@@ -32,7 +37,6 @@ export default function ScanPage() {
       // Validasi sederhana: pastikan URL mengarah ke sistem kita (/verify/)
       if (decodedText.includes('/verify/')) {
         setScanResult(decodedText);
-        scanner.clear(); // Hentikan kamera setelah berhasil
         
         // Memberikan efek getaran (Haptic Feedback) jika didukung HP
         if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
@@ -55,8 +59,13 @@ export default function ScanPage() {
     scanner.render(onScanSuccess, onScanFailure);
 
     // Membersihkan kamera (unmount) jika pengguna berpindah halaman
+    let isCleaningUp = false;
     return () => {
-      scanner.clear().catch(e => console.error("Gagal membersihkan scanner", e));
+      if (!isCleaningUp) {
+        isCleaningUp = true;
+        scannerInitialized.current = false;
+        scanner.clear().catch(() => {}); // Tangkap error secara diam-diam
+      }
     };
   }, [scanResult, router]);
 
