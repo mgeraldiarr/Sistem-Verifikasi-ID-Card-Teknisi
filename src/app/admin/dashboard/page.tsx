@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   // State untuk Cetak Kartu
   const [printData, setPrintData] = useState<Employee | null>(null);
 
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       .from('employees')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (data) setEmployees(data);
     setLoading(false);
   };
@@ -89,7 +89,7 @@ export default function AdminDashboard() {
       alert('Gagal mengupload foto: ' + uploadError.message);
       return null;
     }
-    
+
     // Ambil URL Publik
     const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(fileName);
     return publicUrl;
@@ -147,12 +147,12 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
-      
+
       {/* =========================================
           BAGIAN DASHBOARD UTAMA (Disembunyikan saat Print) 
           ========================================= */}
       <div className="no-print">
-        
+
         {/* Navbar Header */}
         <header style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ color: 'white', fontWeight: 800, letterSpacing: '0.1em' }}>MODENA <span style={{ fontWeight: 400, opacity: 0.8, fontSize: '0.875rem' }}>| HR Portal</span></h1>
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
 
         {/* Konten Utama */}
         <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 2rem' }}>
-          
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Manajemen Karyawan</h2>
             <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {employees.map(emp => (
                     <tr key={emp.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }}>
-                      
+
                       <td style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ width: '50px', height: '50px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#E5E5E5' }}>
                           {emp.photo_url ? <img src={emp.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon color="#A3A3A3" style={{ margin: '13px' }} />}
@@ -199,17 +199,17 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{emp.employee_code} • {emp.position}</div>
                         </div>
                       </td>
-                      
+
                       <td style={{ padding: '1.25rem', color: 'var(--text-primary)' }}>{emp.branch_name}</td>
-                      
+
                       <td style={{ padding: '1.25rem' }}>
-                        <button 
+                        <button
                           onClick={() => handleToggleActive(emp.id, emp.is_active)}
-                          style={{ 
-                            padding: '6px 14px', 
-                            borderRadius: '999px', 
-                            fontSize: '0.75rem', 
-                            fontWeight: 700, 
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '999px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
                             backgroundColor: emp.is_active ? 'var(--status-active-glow)' : 'var(--status-inactive-glow)',
                             color: emp.is_active ? 'var(--status-active)' : 'var(--status-inactive)',
                             border: '1px solid transparent',
@@ -220,7 +220,7 @@ export default function AdminDashboard() {
                           {emp.is_active ? 'AKTIF' : 'TIDAK AKTIF'}
                         </button>
                       </td>
-                      
+
                       <td style={{ padding: '1.25rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                           <button onClick={() => triggerPrint(emp)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Cetak Layout ID Card">
@@ -237,11 +237,11 @@ export default function AdminDashboard() {
 
                     </tr>
                   ))}
-                  
+
                   {employees.length === 0 && (
-                     <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Belum ada data karyawan.</td>
-                     </tr>
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Belum ada data karyawan.</td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -256,29 +256,29 @@ export default function AdminDashboard() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--bg-dark)' }}>
                 {formId ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru'}
               </h3>
-              
+
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Lengkap</label>
-                  <input type="text" required value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Budi Santoso" />
+                  <input type="text" required value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Budi Santoso" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Kode Karyawan</label>
-                  <input type="text" required value={formData.employee_code} onChange={e => setFormData({...formData, employee_code: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: EMP-001" />
+                  <input type="text" required value={formData.employee_code} onChange={e => setFormData({ ...formData, employee_code: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: EMP-001" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Jabatan</label>
-                  <input type="text" required value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Staff Keuangan" />
+                  <input type="text" required value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Staff Keuangan" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Cabang / Lokasi</label>
-                  <input type="text" required value={formData.branch_name} onChange={e => setFormData({...formData, branch_name: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Kantor Pusat - Jakarta" />
+                  <input type="text" required value={formData.branch_name} onChange={e => setFormData({ ...formData, branch_name: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Kantor Pusat - Jakarta" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Foto Profil Resmi (Maks 2MB)</label>
                   <input type="file" accept="image/png, image/jpeg" onChange={e => setPhotoFile(e.target.files?.[0] || null)} style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }} />
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                   <button type="button" onClick={() => setShowForm(false)} className="modena-btn-secondary" style={{ flex: 1 }}>BATAL</button>
                   <button type="submit" disabled={saving} className="modena-btn-primary" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -303,8 +303,28 @@ export default function AdminDashboard() {
           const DARK = '#1C1C1A';
 
           const Logo = () => (
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <img src="/logo-modena.png" alt="Modena Logo" style={{ height: '6mm', objectFit: 'contain' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2mm'  }}>
+              <img
+                src="/logo-modena.png"
+                alt="Modena Logo"
+                style={{
+                  width: '8mm',
+                  height: '8mm',
+                  objectFit: 'cover',
+                  borderRadius: '50%',
+                  border: '1px solid #D6D2C2'
+                }}
+              />
+
+              {/* TEXT LOGO */}
+              <div style={{ display: 'flex', flexDirection: 'column', transform: 'translateY(-0.5mm)' }}>
+                <span style={{ fontSize: '7.5pt', fontWeight: 800, lineHeight: 1.1, color: DARK }}>
+                  MODENA
+                </span>
+                <span style={{ fontSize: '7pt', fontWeight: 800, letterSpacing: '1.2px', lineHeight: 1.1, color: '#707070', marginTop: '0.5mm'}}>
+                INDONESIA
+                </span>
+              </div>
             </div>
           );
 
@@ -404,7 +424,7 @@ export default function AdminDashboard() {
                     {printData.branch_name}
                   </div>
                   <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
-                    admin@company.com
+                    PT. MODENA INDONESIA
                   </div>
                 </div>
               </div>
