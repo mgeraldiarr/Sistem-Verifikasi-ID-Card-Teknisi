@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { LogOut, Plus, Trash2, Edit, Printer, Loader2, Image as ImageIcon, ScanLine } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -19,10 +20,12 @@ type Employee = {
 };
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // State untuk Cetak Kartu
   const [printData, setPrintData] = useState<Employee | null>(null);
@@ -54,9 +57,15 @@ export default function AdminDashboard() {
     fetchEmployees();
   }, []);
 
-  // Fungsi Logout
-  const handleLogout = async () => {
+  // Fungsi Logout (Membuka Modal)
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // Konfirmasi Proses Logout
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
+    router.push('/admin/login');
   };
 
   // Membuka form (bisa mode Tambah atau Edit)
@@ -292,6 +301,43 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Konfirmasi Logout Kustom */}
+        {showLogoutModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, backdropFilter: 'blur(4px)' }}>
+            <div className="modena-card" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', padding: '2.5rem 2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem', color: 'var(--accent-red)' }}>
+                <LogOut size={48} />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+                Konfirmasi Keluar
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: '1.5' }}>
+                Apakah Anda yakin ingin keluar dari Dashboard Portal HR MODENA?
+              </p>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  type="button"
+                  onClick={() => setShowLogoutModal(false)} 
+                  className="modena-btn-secondary" 
+                  style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  BATAL
+                </button>
+                <button 
+                  type="button"
+                  onClick={confirmLogout} 
+                  className="modena-btn-primary" 
+                  style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', backgroundColor: 'var(--accent-red)', color: 'white', cursor: 'pointer' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red)'}
+                >
+                  KELUAR
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
 // src/app/verify/[id]/page.tsx
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
-import { CheckCircle, XCircle, Lock } from 'lucide-react';
+import { CheckCircle, XCircle, Lock, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 // Di Next.js 15, params adalah sebuah Promise
 interface PageProps {
@@ -131,8 +132,26 @@ export default async function VerifyPage({ params }: PageProps) {
             <strong style={{ color: 'var(--text-secondary)' }}>{timestamp} WIB</strong>
           </p>
         </div>
-
+        
       </div>
+
+      {/* Button kembali */}      
+      <div style={{ marginTop: '2rem' }}>
+        <Link
+          href='/scan'
+          className='modena-btn-primary'
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            borderRadius: '8px',
+            textDecoration: 'none'
+          }}
+        >
+          <ArrowLeft size={18} /> Kembali
+        </Link>
+      </div>
+
     </div>
   );
 }

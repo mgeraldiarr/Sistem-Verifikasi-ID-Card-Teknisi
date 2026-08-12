@@ -4,7 +4,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ScanPage() {
   const router = useRouter();
@@ -72,12 +73,49 @@ export default function ScanPage() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 1rem' }}>
       
-      {/* Header */}
+      {/* Navigation Header (Modern Navbar Style) */}
+      <div style={{ 
+        width: '100%', 
+        maxWidth: '400px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        marginBottom: '1.5rem',
+        paddingBottom: '1rem',
+        borderBottom: '1px solid var(--border-color)'
+      }}>
+        {/* Tombol Kembali Lingkaran Transparan */}
+        <Link 
+          href="/admin/dashboard" 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            backgroundColor: 'transparent',
+            color: 'var(--text-primary)',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          <ArrowLeft size={20} />
+        </Link>
+
+        {/* Judul Halaman di Tengah */}
+        <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '1rem', letterSpacing: '0.1em', color: 'var(--bg-dark)' }}>
+          SCAN ID CARD
+        </span>
+
+        {/* Spacer Kanan agar Judul Tetap di Tengah */}
+        <div style={{ width: '40px' }}></div>
+      </div>
+
+      {/* Petunjuk Singkat */}
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '1.75rem', letterSpacing: '0.15em', color: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-          <Camera size={28} /> SCANNER
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
           Arahkan QR Code ID Card ke dalam area kotak
         </p>
       </div>
