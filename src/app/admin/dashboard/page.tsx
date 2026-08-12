@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { LogOut, Plus, Trash2, Edit, Printer, Loader2, Image as ImageIcon } from 'lucide-react';
+import { LogOut, Plus, Trash2, Edit, Printer, Loader2, Image as ImageIcon, ScanLine } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import Link from 'next/link';
 
 // Definisi Tipe Data
 type Employee = {
@@ -166,9 +167,14 @@ export default function AdminDashboard() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Manajemen Karyawan</h2>
-            <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Plus size={18} /> Tambah Data
-            </button>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', borderRadius: '4px' }}>
+                <ScanLine size={18} /> Scan ID Card
+              </Link>
+              <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px' }}>
+                <Plus size={18} /> Tambah Data
+              </button>
+            </div>
           </div>
 
           <div className="modena-card" style={{ padding: '0', overflowX: 'auto' }}>
