@@ -4,60 +4,147 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { LogOut, Plus, Trash2, Edit, Printer, Loader2, Image as ImageIcon, ScanLine } from 'lucide-react';
+import { 
+  LogOut, Plus, Trash2, Edit, Printer, Loader2, 
+  Image as ImageIcon, ScanLine, Search, Filter, 
+  RefreshCw, AlertCircle, CheckCircle2, Shield, RefreshCcw, Calendar
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 
-// Definisi Tipe Data
-type Employee = {
+// Definisi Tipe Data untuk Teknisi
+type Technician = {
   id: string;
-  employee_code: string;
-  full_name: string;
-  branch_name: string;
-  position: string;
-  photo_url: string;
-  is_active: boolean;
+  technician_id: string; // e.g. MOD-T001
+  employee_number: string;
+  technician_name: string;
+  branch: string;
+  service_center: string | null;
+  photo_url: string | null;
+  phone: string | null;
+  email: string | null;
+  technician_status: 'active' | 'inactive';
+  technician_level: 'beginner' | 'intermediate' | 'advance';
+  qr_token: string;
+  created_at: string;
+  technician_performance?: Array<{
+    period: string;
+    kpi_score: number;
+    csi_score: number;
+    performance_score: number;
+    performance_level: string;
+  }>;
+  technician_id_cards?: Array<{
+    card_number: string;
+    card_status: 'active' | 'suspended' | 'expired';
+    expiry_date: string;
+  }>;
+};
+
+type SyncLog = {
+  id: string;
+  start_time: string;
+  end_time: string | null;
+  status: 'success' | 'failed' | 'partial';
+  total_records: number;
+  processed_records: number;
+  new_records: number;
+  updated_records: number;
+  error_count: number;
+  error_details: any;
 };
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [lastSyncLog, setLastSyncLog] = useState<SyncLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // State untuk Cetak Kartu
-  const [printData, setPrintData] = useState<Employee | null>(null);
+  // State Pencarian & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterBranch, setFilterBranch] = useState('');
+  const [filterLevel, setFilterLevel] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
-  // State Form Karyawan
+  // State untuk Cetak Kartu
+  const [printData, setPrintData] = useState<Technician | null>(null);
+
+  // State Form Teknisi
   const [formId, setFormId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    full_name: '',
-    employee_code: '',
-    branch_name: '',
-    position: '',
-    is_active: true,
+    technician_id: '',
+    employee_number: '',
+    technician_name: '',
+    branch: '',
+    service_center: '',
+    phone: '',
+    email: '',
+    technician_status: 'active' as 'active' | 'inactive',
+    technician_level: 'beginner' as 'beginner' | 'intermediate' | 'advance',
+    card_number: '',
+    card_status: 'active' as 'active' | 'suspended' | 'expired',
+    expiry_date: '',
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  // Mengambil data dari database
-  const fetchEmployees = async () => {
+  // Cek Sesi Login Admin
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/admin/login');
+      return false;
+    }
+    return true;
+  };
+
+  // Mengambil data teknisi & log sinkronisasi terakhir dari database
+  const fetchData = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('employees')
+    const isAuthenticated = await checkSession();
+    if (!isAuthenticated) return;
+
+    // Fetch log sinkronisasi terakhir
+    const { data: syncData } = await supabase
+      .from('sync_logs')
       .select('*')
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (syncData) setLastSyncLog(syncData);
+
+    // Fetch data teknisi beserta performa terbaru & kartu
+    const { data: techData, error } = await supabase
+      .from('technicians')
+      .select(`
+        *,
+        technician_performance (
+          period,
+          kpi_score,
+          csi_score,
+          performance_score,
+          performance_level
+        ),
+        technician_id_cards (
+          card_number,
+          card_status,
+          expiry_date
+        )
+      `)
       .order('created_at', { ascending: false });
 
-    if (data) setEmployees(data);
+    if (techData) setTechnicians(techData as unknown as Technician[]);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchEmployees();
+    fetchData();
   }, []);
 
-  // Fungsi Logout (Membuka Modal)
+  // Fungsi Logout
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
@@ -68,20 +155,46 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   };
 
-  // Membuka form (bisa mode Tambah atau Edit)
-  const openForm = (emp?: Employee) => {
-    if (emp) {
-      setFormId(emp.id);
+  // Membuka form (mode Tambah atau Edit)
+  const openForm = (tech?: Technician) => {
+    if (tech) {
+      const card = tech.technician_id_cards?.[0];
+      setFormId(tech.id);
       setFormData({
-        full_name: emp.full_name,
-        employee_code: emp.employee_code,
-        branch_name: emp.branch_name,
-        position: emp.position,
-        is_active: emp.is_active,
+        technician_id: tech.technician_id,
+        employee_number: tech.employee_number,
+        technician_name: tech.technician_name,
+        branch: tech.branch,
+        service_center: tech.service_center || '',
+        phone: tech.phone || '',
+        email: tech.email || '',
+        technician_status: tech.technician_status,
+        technician_level: tech.technician_level,
+        card_number: card?.card_number || '',
+        card_status: card?.card_status || 'active',
+        expiry_date: card?.expiry_date || '',
       });
     } else {
       setFormId(null);
-      setFormData({ full_name: '', employee_code: '', branch_name: '', position: '', is_active: true });
+      // Auto-generate format default tanggal kadaluarsa kartu (2 tahun dari sekarang)
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 2);
+      const defaultExpiry = futureDate.toISOString().split('T')[0];
+
+      setFormData({
+        technician_id: '',
+        employee_number: '',
+        technician_name: '',
+        branch: '',
+        service_center: '',
+        phone: '',
+        email: '',
+        technician_status: 'active',
+        technician_level: 'beginner',
+        card_number: '',
+        card_status: 'active',
+        expiry_date: defaultExpiry,
+      });
     }
     setPhotoFile(null);
     setShowForm(true);
@@ -90,7 +203,9 @@ export default function AdminDashboard() {
   // Fungsi Upload Foto ke Storage
   const uploadPhoto = async (file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const fileName = `tech-${crypto.randomUUID()}.${fileExt}`;
+    
+    // Gunakan bucket employee-photos yang sudah ada di Supabase
     const { error: uploadError } = await supabase.storage
       .from('employee-photos')
       .upload(fileName, file);
@@ -100,162 +215,409 @@ export default function AdminDashboard() {
       return null;
     }
 
-    // Ambil URL Publik
     const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(fileName);
     return publicUrl;
   };
 
-  // Menyimpan Data Karyawan (Insert / Update)
+  // Menyimpan Data Teknisi & Kartu (Insert / Update)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    let photo_url = formId ? employees.find(e => e.id === formId)?.photo_url : '';
+    let photo_url = formId ? technicians.find(t => t.id === formId)?.photo_url : '';
 
     if (photoFile) {
       const uploadedUrl = await uploadPhoto(photoFile);
       if (uploadedUrl) photo_url = uploadedUrl;
     }
 
-    const payload = {
-      ...formData,
-      ...(photo_url ? { photo_url } : {})
+    const techPayload = {
+      technician_id: formData.technician_id,
+      employee_number: formData.employee_number,
+      technician_name: formData.technician_name,
+      branch: formData.branch,
+      service_center: formData.service_center || null,
+      phone: formData.phone || null,
+      email: formData.email || null,
+      technician_status: formData.technician_status,
+      technician_level: formData.technician_level,
+      photo_url: photo_url || null,
+      updated_at: new Date().toISOString()
     };
 
-    if (formId) {
-      await supabase.from('employees').update(payload).eq('id', formId);
-    } else {
-      await supabase.from('employees').insert([payload]);
-    }
+    try {
+      let techId = formId;
+      let qrToken = '';
 
-    setSaving(false);
-    setShowForm(false);
-    fetchEmployees();
+      if (formId) {
+        // UPDATE TECHNICIAN
+        const { data, error } = await supabase
+          .from('technicians')
+          .update(techPayload)
+          .eq('id', formId)
+          .select('id, qr_token')
+          .single();
+        
+        if (error) throw error;
+        techId = data.id;
+        qrToken = data.qr_token;
+      } else {
+        // INSERT TECHNICIAN
+        const { data, error } = await supabase
+          .from('technicians')
+          .insert([techPayload])
+          .select('id, qr_token')
+          .single();
+
+        if (error) throw error;
+        techId = data.id;
+        qrToken = data.qr_token;
+      }
+
+      // Upsert ID Card jika nomor seri kartu diisi
+      if (formData.card_number && techId) {
+        const cardPayload = {
+          technician_id: techId,
+          card_number: formData.card_number,
+          qr_token: qrToken,
+          card_status: formData.card_status,
+          expiry_date: formData.expiry_date,
+        };
+
+        const { error: cardError } = await supabase
+          .from('technician_id_cards')
+          .upsert(cardPayload, { onConflict: 'card_number' });
+
+        if (cardError) throw cardError;
+      }
+
+      setShowForm(false);
+      fetchData();
+    } catch (err: any) {
+      alert('Gagal menyimpan data: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Toggle Status Aktif/Tidak Aktif secara instan
-  const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    await supabase.from('employees').update({ is_active: !currentStatus }).eq('id', id);
-    fetchEmployees();
+  const handleToggleActive = async (id: string, currentStatus: 'active' | 'inactive') => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    await supabase.from('technicians').update({ technician_status: newStatus }).eq('id', id);
+    fetchData();
   };
 
-  // Menghapus Karyawan
-  const handleDelete = async (id: string) => {
-    if (confirm('Yakin ingin menghapus karyawan ini secara permanen?')) {
-      await supabase.from('employees').delete().eq('id', id);
-      fetchEmployees();
+  // Regenerasi Token QR Code (Membatalkan kartu lama)
+  const handleRegenerateQR = async (tech: Technician) => {
+    if (confirm(`Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`)) {
+      const newToken = crypto.randomUUID();
+      
+      const { error: techError } = await supabase
+        .from('technicians')
+        .update({ qr_token: newToken })
+        .eq('id', tech.id);
+
+      if (techError) {
+        alert('Gagal meregenerasi token: ' + techError.message);
+        return;
+      }
+
+      // Pastikan data kartu juga ter-update agar link RLS aman
+      await supabase
+        .from('technician_id_cards')
+        .update({ qr_token: newToken })
+        .eq('technician_id', tech.id);
+
+      alert('QR Code baru berhasil di-generate!');
+      fetchData();
     }
   };
 
-  // Memicu jendela dialog Print Browser
-  const triggerPrint = (emp: Employee) => {
-    setPrintData(emp);
+  // Menghapus Teknisi
+  const handleDelete = async (id: string) => {
+    if (confirm('Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.')) {
+      await supabase.from('technicians').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
+  // Memicu cetak ID Card
+  const triggerPrint = (tech: Technician) => {
+    setPrintData(tech);
     setTimeout(() => {
       window.print();
-    }, 500); // Tunggu setengah detik agar layout render terlebih dahulu
+    }, 500);
+  };
+
+  // Filter client-side
+  const filteredTechnicians = technicians.filter(tech => {
+    const matchesSearch = 
+      tech.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tech.technician_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tech.employee_number.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesBranch = filterBranch === '' || tech.branch === filterBranch;
+    const matchesLevel = filterLevel === '' || tech.technician_level === filterLevel;
+    const matchesStatus = filterStatus === '' || tech.technician_status === filterStatus;
+
+    return matchesSearch && matchesBranch && matchesLevel && matchesStatus;
+  });
+
+  // Ekstrak daftar cabang unik untuk filter dropdown
+  const uniqueBranches = Array.from(new Set(technicians.map(t => t.branch)));
+
+  // Format Waktu WIB
+  const formatTimeWIB = (timeString: string) => {
+    return new Date(timeString).toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }) + ' WIB';
   };
 
   return (
     <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
 
-      {/* =========================================
-          BAGIAN DASHBOARD UTAMA (Disembunyikan saat Print) 
-          ========================================= */}
+      {/* DASHBOARD UTAMA */}
       <div className="no-print">
-
+        
         {/* Navbar Header */}
-        <header style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ color: 'white', fontWeight: 800, letterSpacing: '0.1em' }}>MODENA <span style={{ fontWeight: 400, opacity: 0.8, fontSize: '0.875rem' }}>| HR Portal</span></h1>
-          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', color: 'white', fontWeight: 600 }}>
-            <LogOut size={18} /> Logout
+        <header style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-dark)' }}>
+          <h1 style={{ color: 'white', fontWeight: 800, fontSize: '1.25rem', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            MODENA <span style={{ fontWeight: 400, opacity: 0.6, fontSize: '0.875rem' }}>| TECHNICIAN PORTAL</span>
+          </h1>
+          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>
+            <LogOut size={16} /> Logout
           </button>
         </header>
 
-        {/* Konten Utama */}
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 2rem' }}>
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Manajemen Karyawan</h2>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', borderRadius: '4px' }}>
-                <ScanLine size={18} /> Scan ID Card
+          {/* 📊 WIDGET SINKRONISASI EXCEL */}
+          {lastSyncLog && (
+            <div className="modena-card" style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'space-between', alignItems: 'center', borderLeft: `4px solid ${lastSyncLog.status === 'success' ? 'var(--status-active)' : (lastSyncLog.status === 'partial' ? '#F59E0B' : 'var(--status-inactive)')}` }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  {lastSyncLog.status === 'success' ? <CheckCircle2 size={16} color="var(--status-active)" /> : <AlertCircle size={16} color={lastSyncLog.status === 'partial' ? '#F59E0B' : 'var(--status-inactive)'} />}
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                    Sinkronisasi Excel Terakhir: {lastSyncLog.status.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Selesai pada: {formatTimeWIB(lastSyncLog.end_time || lastSyncLog.start_time)}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{lastSyncLog.total_records}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total Baris</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--status-active)' }}>{lastSyncLog.new_records}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Baru</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#3B82F6' }}>{lastSyncLog.updated_records}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Diberbarui</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: lastSyncLog.error_count > 0 ? 'var(--status-inactive)' : 'var(--text-secondary)' }}>{lastSyncLog.error_count}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Gagal</div>
+                </div>
+              </div>
+
+              <button onClick={fetchData} className="modena-btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '8px 16px', borderRadius: '4px' }}>
+                <RefreshCw size={14} /> Segarkan
+              </button>
+            </div>
+          )}
+
+          {/* HEADER DAN TOOLBAR */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Daftar Teknisi Modena</h2>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
+                <ScanLine size={16} /> Scan ID Card
               </Link>
-              <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px' }}>
-                <Plus size={18} /> Tambah Data
+              <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
+                <Plus size={16} /> Tambah Teknisi
               </button>
             </div>
           </div>
 
+          {/* 🔍 FILTER & SEARCH PANEL */}
+          <div className="modena-card" style={{ marginBottom: '1.5rem', padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+            {/* Input Pencarian */}
+            <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Cari nama, ID MOD, nomor karyawan..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
+              />
+            </div>
+
+            {/* Filter Cabang */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '150px' }}>
+              <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+              <select 
+                value={filterBranch} 
+                onChange={e => setFilterBranch(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
+              >
+                <option value="">Semua Cabang</option>
+                {uniqueBranches.map(branch => (
+                  <option key={branch} value={branch}>{branch}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Level */}
+            <div style={{ minWidth: '150px' }}>
+              <select 
+                value={filterLevel} 
+                onChange={e => setFilterLevel(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
+              >
+                <option value="">Semua Level</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advance">Advance</option>
+              </select>
+            </div>
+
+            {/* Filter Status */}
+            <div style={{ minWidth: '130px' }}>
+              <select 
+                value={filterStatus} 
+                onChange={e => setFilterStatus(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
+              >
+                <option value="">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+              </select>
+            </div>
+          </div>
+
+          {/* TABLE DATA */}
           <div className="modena-card" style={{ padding: '0', overflowX: 'auto' }}>
             {loading ? (
               <div style={{ padding: '4rem', display: 'flex', justifyContent: 'center' }}>
                 <Loader2 className="animate-spin-custom" size={36} color="var(--bg-dark)" />
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: '#F9FAFB' }}>
-                    <th style={{ padding: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Karyawan</th>
-                    <th style={{ padding: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Cabang</th>
-                    <th style={{ padding: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Status ID Card</th>
-                    <th style={{ padding: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Aksi</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase' }}>Teknisi</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase' }}>Cabang / Service Center</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase' }}>Performa (KPI/CSI)</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase' }}>ID Card Fisik</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase' }}>Status</th>
+                    <th style={{ padding: '1.25rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.825rem', textTransform: 'uppercase', textAlign: 'right' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map(emp => (
-                    <tr key={emp.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }}>
+                  {filteredTechnicians.map(tech => {
+                    const card = tech.technician_id_cards?.[0];
+                    const perf = tech.technician_performance?.[0];
 
-                      <td style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: '50px', height: '50px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#E5E5E5' }}>
-                          {emp.photo_url ? <img src={emp.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon color="#A3A3A3" style={{ margin: '13px' }} />}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.full_name}</div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{emp.employee_code} • {emp.position}</div>
-                        </div>
-                      </td>
+                    return (
+                      <tr key={tech.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }}>
+                        
+                        {/* Detail Profil */}
+                        <td style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#F3F4F6', flexShrink: 0, border: '1px solid var(--border-color)' }}>
+                            {tech.photo_url ? <img src={tech.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon color="#A3A3A3" style={{ margin: '12px' }} />}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{tech.technician_name}</div>
+                            <div style={{ fontSize: '0.775rem', color: 'var(--text-secondary)' }}>
+                              {tech.technician_id} • Level:{' '} 
+                              <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{tech.technician_level}</span>
+                            </div>
+                          </div>
+                        </td>
 
-                      <td style={{ padding: '1.25rem', color: 'var(--text-primary)' }}>{emp.branch_name}</td>
+                        {/* Cabang */}
+                        <td style={{ padding: '1.25rem', color: 'var(--text-primary)', fontSize: '0.875rem' }}>
+                          <div style={{ fontWeight: 600 }}>{tech.branch}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{tech.service_center || '-'}</div>
+                        </td>
 
-                      <td style={{ padding: '1.25rem' }}>
-                        <button
-                          onClick={() => handleToggleActive(emp.id, emp.is_active)}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: '999px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            backgroundColor: emp.is_active ? 'var(--status-active-glow)' : 'var(--status-inactive-glow)',
-                            color: emp.is_active ? 'var(--status-active)' : 'var(--status-inactive)',
-                            border: '1px solid transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {emp.is_active ? 'AKTIF' : 'TIDAK AKTIF'}
-                        </button>
-                      </td>
+                        {/* Performa */}
+                        <td style={{ padding: '1.25rem', fontSize: '0.875rem' }}>
+                          {perf ? (
+                            <div>
+                              <div>KPI: <strong style={{ color: 'var(--text-primary)' }}>{perf.kpi_score}%</strong> | CSI: <strong style={{ color: 'var(--text-primary)' }}>{perf.csi_score}/10</strong></div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Periode: {perf.period}</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Belum ada data</span>
+                          )}
+                        </td>
 
-                      <td style={{ padding: '1.25rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                          <button onClick={() => triggerPrint(emp)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Cetak Layout ID Card">
-                            <Printer size={18} />
+                        {/* Info ID Card */}
+                        <td style={{ padding: '1.25rem', fontSize: '0.875rem' }}>
+                          {card ? (
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{card.card_number}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Exp: {card.expiry_date}</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Belum terbit</span>
+                          )}
+                        </td>
+
+                        {/* Status Aktif */}
+                        <td style={{ padding: '1.25rem' }}>
+                          <button
+                            onClick={() => handleToggleActive(tech.id, tech.technician_status)}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '999px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              backgroundColor: tech.technician_status === 'active' ? 'var(--status-active-glow)' : 'var(--status-inactive-glow)',
+                              color: tech.technician_status === 'active' ? 'var(--status-active)' : 'var(--status-inactive)',
+                              border: '1px solid transparent',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {tech.technician_status === 'active' ? 'AKTIF' : 'NONAKTIF'}
                           </button>
-                          <button onClick={() => openForm(emp)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Edit Data">
-                            <Edit size={18} />
-                          </button>
-                          <button onClick={() => handleDelete(emp.id)} style={{ padding: '6px', background: 'transparent', color: 'var(--accent-red)', cursor: 'pointer' }} title="Hapus Data">
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
+                        </td>
 
-                    </tr>
-                  ))}
+                        {/* Aksi */}
+                        <td style={{ padding: '1.25rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button onClick={() => triggerPrint(tech)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Cetak ID Card">
+                              <Printer size={18} />
+                            </button>
+                            <button onClick={() => handleRegenerateQR(tech)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Regenerasi QR Code Token">
+                              <RefreshCcw size={18} />
+                            </button>
+                            <button onClick={() => openForm(tech)} style={{ padding: '6px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }} title="Edit Data">
+                              <Edit size={18} />
+                            </button>
+                            <button onClick={() => handleDelete(tech.id)} style={{ padding: '6px', background: 'transparent', color: 'var(--accent-red)', cursor: 'pointer' }} title="Hapus Data">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
 
-                  {employees.length === 0 && (
+                      </tr>
+                    );
+                  })}
+
+                  {filteredTechnicians.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Belum ada data karyawan.</td>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Data teknisi tidak ditemukan.</td>
                     </tr>
                   )}
                 </tbody>
@@ -264,34 +626,89 @@ export default function AdminDashboard() {
           </div>
         </main>
 
-        {/* Modal Form Tambah/Edit Karyawan */}
+        {/* Modal Form Tambah/Edit Teknisi */}
         {showForm && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, backdropFilter: 'blur(4px)' }}>
-            <div className="modena-card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modena-card" style={{ width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--bg-dark)' }}>
-                {formId ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru'}
+                {formId ? 'Edit Data Teknisi Modena' : 'Tambah Teknisi Modena Baru'}
               </h3>
 
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Lengkap</label>
-                  <input type="text" required value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Budi Santoso" />
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>ID Teknisi</label>
+                    <input type="text" required value={formData.technician_id} onChange={e => setFormData({ ...formData, technician_id: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="MOD-T001" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Nomor Karyawan</label>
+                    <input type="text" required value={formData.employee_number} onChange={e => setFormData({ ...formData, employee_number: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="10293847" />
+                  </div>
                 </div>
+
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Kode Karyawan</label>
-                  <input type="text" required value={formData.employee_code} onChange={e => setFormData({ ...formData, employee_code: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: EMP-001" />
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Nama Lengkap Teknisi</label>
+                  <input type="text" required value={formData.technician_name} onChange={e => setFormData({ ...formData, technician_name: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="Contoh: Budi Santoso" />
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Jabatan</label>
-                  <input type="text" required value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Staff Keuangan" />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Cabang / Wilayah</label>
+                    <input type="text" required value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="Contoh: Jakarta" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Service Center</label>
+                    <input type="text" value={formData.service_center} onChange={e => setFormData({ ...formData, service_center: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="Contoh: SC Selatan" />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Cabang / Lokasi</label>
-                  <input type="text" required value={formData.branch_name} onChange={e => setFormData({ ...formData, branch_name: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }} placeholder="Contoh: Kantor Pusat - Jakarta" />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Level Sertifikasi</label>
+                    <select value={formData.technician_level} onChange={e => setFormData({ ...formData, technician_level: e.target.value as any })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }}>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advance">Advance</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Status Aktif</label>
+                    <select value={formData.technician_status} onChange={e => setFormData({ ...formData, technician_status: e.target.value as any })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }}>
+                      <option value="active">Aktif</option>
+                      <option value="inactive">Nonaktif</option>
+                    </select>
+                  </div>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Nomor Telepon (Sensitif)</label>
+                    <input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="0812345..." />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Email Korporat (Sensitif)</label>
+                    <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="budi@modena.com" />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0' }}></div>
+
+                {/* Seksi ID Card Terkait */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Nomor ID Card Fisik</label>
+                    <input type="text" required={!!formId} value={formData.card_number} onChange={e => setFormData({ ...formData, card_number: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} placeholder="CARD-T001" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Tanggal Kadaluarsa Kartu</label>
+                    <input type="date" required={!!formId} value={formData.expiry_date} onChange={e => setFormData({ ...formData, expiry_date: e.target.value })} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.875rem' }} />
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Foto Profil Resmi (Maks 2MB)</label>
-                  <input type="file" accept="image/png, image/jpeg" onChange={e => setPhotoFile(e.target.files?.[0] || null)} style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }} />
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>Foto Resmi Teknisi (Maks 2MB)</label>
+                  <input type="file" accept="image/png, image/jpeg" onChange={e => setPhotoFile(e.target.files?.[0] || null)} style={{ width: '100%', padding: '0.5rem 0', fontSize: '0.875rem' }} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -305,7 +722,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Modal Konfirmasi Logout Kustom */}
+        {/* Modal Logout */}
         {showLogoutModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, backdropFilter: 'blur(4px)' }}>
             <div className="modena-card" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', padding: '2.5rem 2rem' }}>
@@ -316,41 +733,22 @@ export default function AdminDashboard() {
                 Konfirmasi Keluar
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: '1.5' }}>
-                Apakah Anda yakin ingin keluar dari Dashboard Portal HR MODENA?
+                Apakah Anda yakin ingin keluar dari Dashboard Portal Admin MODENA?
               </p>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button 
-                  type="button"
-                  onClick={() => setShowLogoutModal(false)} 
-                  className="modena-btn-secondary" 
-                  style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  BATAL
-                </button>
-                <button 
-                  type="button"
-                  onClick={confirmLogout} 
-                  className="modena-btn-primary" 
-                  style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', backgroundColor: 'var(--accent-red)', color: 'white', cursor: 'pointer' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red)'}
-                >
-                  KELUAR
-                </button>
+                <button type="button" onClick={() => setShowLogoutModal(false)} className="modena-btn-secondary" style={{ flex: 1, padding: '10px 20px', borderRadius: '4px' }}>BATAL</button>
+                <button type="button" onClick={confirmLogout} className="modena-btn-primary" style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', backgroundColor: 'var(--accent-red)', color: 'white' }}>KELUAR</button>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* =========================================
-          BAGIAN CETAK KARTU (Hanya Terlihat Saat Ctrl+P) 
-          Berkat CSS @media print di globals.css
-          ========================================= */}
+      {/* CETAK KARTU DUA SISI */}
       <div className="print-area" style={{ display: 'none' }}>
         {printData && (() => {
-          const CARD_W = '54mm';
-          const CARD_H = '85.6mm';
+          const CARD_W = '53.98mm'; // Standar kartu PVC CR80
+          const CARD_H = '85.60mm';
           const CREAM = '#ECE8DA';
           const DARK = '#1C1C1A';
 
@@ -367,67 +765,89 @@ export default function AdminDashboard() {
                   border: '1px solid #D6D2C2'
                 }}
               />
-
-              {/* TEXT LOGO */}
               <div style={{ display: 'flex', flexDirection: 'column', transform: 'translateY(-0.5mm)' }}>
                 <span style={{ fontSize: '7.5pt', fontWeight: 800, lineHeight: 1.1, color: DARK }}>
                   MODENA
                 </span>
-                <span style={{ fontSize: '7pt', fontWeight: 800, letterSpacing: '1.2px', lineHeight: 1.1, color: '#707070', marginTop: '0.5mm'}}>
-                INDONESIA
+                <span style={{ fontSize: '6pt', fontWeight: 800, letterSpacing: '1px', lineHeight: 1.1, color: '#707070', marginTop: '0.5mm'}}>
+                  AUTHORIZED
                 </span>
               </div>
             </div>
           );
 
+          // Level Teks
+          const levelLabels: Record<string, string> = {
+            beginner: 'BEGINNER',
+            intermediate: 'INTERMEDIATE',
+            advance: 'ADVANCED'
+          };
+          const levelText = levelLabels[printData.technician_level] || printData.technician_level.toUpperCase();
+
           return (
             <div style={{ display: 'flex', gap: '10mm', flexWrap: 'wrap', padding: '10mm' }}>
+              
               {/* ============ KARTU DEPAN ============ */}
               <div
                 style={{
                   width: CARD_W,
                   height: CARD_H,
                   backgroundColor: CREAM,
-                  borderRadius: '4mm',
+                  borderRadius: '3.5mm',
                   overflow: 'hidden',
                   position: 'relative',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                   display: 'flex',
                   flexDirection: 'column',
                   fontFamily: 'var(--font-sans, Arial, sans-serif)',
+                  border: '1px solid #D6D2C2'
                 }}
               >
                 {/* Header logo */}
-                <div style={{ padding: '5mm 5mm 0' }}>
+                <div style={{ padding: '4mm 4mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Logo />
+                  <span style={{
+                    fontSize: '5pt',
+                    fontWeight: 700,
+                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    padding: '1mm 2mm',
+                    borderRadius: '1mm',
+                    color: DARK
+                  }}>
+                    {levelText}
+                  </span>
                 </div>
 
-                {/* Foto profil (otomatis grayscale) */}
+                {/* Foto profil */}
                 <div
                   style={{
                     flex: 1,
-                    margin: '4mm 4mm 0',
+                    margin: '3mm 4mm 0',
                     borderRadius: '2mm',
                     overflow: 'hidden',
                     backgroundColor: '#D6D2C2',
+                    border: '1px solid #C5C1B1'
                   }}
                 >
                   {printData.photo_url ? (
                     <img
                       src={printData.photo_url}
-                      alt={printData.full_name}
+                      alt={printData.technician_name}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%' }} />
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ImageIcon color="#A3A3A3" size={24} />
+                    </div>
                   )}
                 </div>
 
-                {/* Nama & jabatan */}
-                <div style={{ backgroundColor: DARK, color: 'white', padding: '3.5mm 5mm' }}>
-                  <div style={{ fontSize: '11pt', fontWeight: 700, lineHeight: 1.1 }}>{printData.full_name}</div>
-                  <div style={{ fontSize: '6pt', fontWeight: 400, color: '#C9C9C9', marginTop: '1mm' }}>
-                    {printData.position}
+                {/* Nama & Status */}
+                <div style={{ backgroundColor: DARK, color: 'white', padding: '3mm 4mm' }}>
+                  <div style={{ fontSize: '9.5pt', fontWeight: 800, lineHeight: 1.1, textTransform: 'uppercase', letterSpacing: '0.2px' }}>
+                    {printData.technician_name}
+                  </div>
+                  <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#DA291C', marginTop: '1mm', letterSpacing: '0.8px' }}>
+                    AUTHORIZED TECHNICIAN
                   </div>
                 </div>
               </div>
@@ -438,48 +858,57 @@ export default function AdminDashboard() {
                   width: CARD_W,
                   height: CARD_H,
                   backgroundColor: CREAM,
-                  borderRadius: '4mm',
+                  borderRadius: '3.5mm',
+                  overflow: 'hidden',
                   position: 'relative',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                   display: 'flex',
                   flexDirection: 'column',
-                  padding: '5mm',
+                  padding: '4mm',
                   fontFamily: 'var(--font-sans, Arial, sans-serif)',
+                  border: '1px solid #D6D2C2'
                 }}
               >
-                <Logo />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Logo />
+                  <Shield size={16} style={{ color: '#DA291C' }} />
+                </div>
 
                 {/* QR Code */}
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '6mm 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '4mm 0' }}>
                   <QRCodeSVG
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.id}`}
-                    size={110}
-                    style={{ width: '24mm', height: '24mm' }}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.qr_token}`}
+                    size={100}
+                    style={{ width: '22mm', height: '22mm' }}
                     level="M"
                   />
                 </div>
 
-                {/* ID */}
-                <div style={{ marginTop: '4mm' }}>
-                  <div style={{ fontSize: '6pt', fontWeight: 700, color: DARK, letterSpacing: '0.5px' }}>ID</div>
-                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
-                    {printData.employee_code}
+                {/* Detail ID */}
+                <div style={{ marginTop: '2mm', display: 'flex', flexDirection: 'column', gap: '2mm' }}>
+                  <div>
+                    <div style={{ fontSize: '5.5pt', fontWeight: 800, color: '#707070', letterSpacing: '0.5px' }}>ID TEKNISI</div>
+                    <div style={{ fontSize: '7pt', fontWeight: 700, color: DARK }}>
+                      {printData.technician_id}
+                    </div>
                   </div>
-                </div>
 
-                {/* Kontak */}
-                <div style={{ marginTop: '4mm' }}>
-                  <div style={{ fontSize: '6pt', fontWeight: 700, color: DARK, letterSpacing: '0.5px' }}>
-                    CONTACT
+                  <div>
+                    <div style={{ fontSize: '5.5pt', fontWeight: 800, color: '#707070', letterSpacing: '0.5px' }}>CABANG / WILAYAH</div>
+                    <div style={{ fontSize: '7pt', fontWeight: 700, color: DARK }}>
+                      {printData.branch}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
-                    {printData.branch_name}
-                  </div>
-                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: DARK, marginTop: '0.5mm' }}>
-                    PT. MODENA INDONESIA
+
+                  <div>
+                    <div style={{ fontSize: '5.5pt', fontWeight: 800, color: '#707070', letterSpacing: '0.5px' }}>KONTAK LAYANAN</div>
+                    <div style={{ fontSize: '6.5pt', fontWeight: 600, color: '#4A4A4A', lineHeight: '1.2', marginTop: '0.5mm' }}>
+                      PT MODENA INDONESIA<br/>
+                      Call Center: 1500715
+                    </div>
                   </div>
                 </div>
               </div>
+
             </div>
           );
         })()}
