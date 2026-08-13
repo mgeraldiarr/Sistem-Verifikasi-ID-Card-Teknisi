@@ -152,3 +152,37 @@ CREATE POLICY admin_all_audit_logs ON audit_logs
     TO authenticated
     USING (auth.uid() IS NOT NULL)
     WITH CHECK (auth.uid() IS NOT NULL);
+
+-- 10. TRIGGER AUDIT TRAIL (OTOMATISASI BACKEND)
+
+-- Fungsi untuk mencatat perubahan status teknisi ke tabel audit_logs secara otomatis
+CREATE OR REPLACE FUNCTION trg_log_technician_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.technician_status IS DISTINCT FROM NEW.technician_status THEN
+        INSERT INTO audit_logs (
+            user_id,
+            action,
+            target_table,
+            target_id,
+            old_values,
+            new_values
+        ) VALUES (
+            auth.uid(), -- ID admin yang mengubah status (jika terautentikasi di Supabase)
+            'update_status',
+            'technicians',
+            NEW.id,
+            jsonb_build_object('status', OLD.technician_status),
+            jsonb_build_object('status', NEW.technician_status)
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Pasang trigger pada tabel technicians
+DROP TRIGGER IF EXISTS technicians_status_change_trigger ON technicians;
+CREATE TRIGGER technicians_status_change_trigger
+    AFTER UPDATE ON technicians
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_log_technician_status_change();
