@@ -31,7 +31,7 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
       photo_url,
       technician_status,
       technician_level,
-      technician_id_cards (
+      technician_id_cards!technician_id_cards_technician_id_fkey (
         card_number,
         card_status,
         expiry_date

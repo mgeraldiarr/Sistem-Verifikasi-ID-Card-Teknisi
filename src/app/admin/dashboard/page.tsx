@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           performance_score,
           performance_level
         ),
-        technician_id_cards (
+        technician_id_cards!technician_id_cards_technician_id_fkey (
           card_number,
           card_status,
           expiry_date
