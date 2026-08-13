@@ -44,8 +44,12 @@ export default function ScanPage() {
           window.navigator.vibrate(200);
         }
 
-        // Pindah ke URL profil
-        router.push(decodedText);
+        // Ekstrak path lokal (misal: /verify/uuid) dari URL penuh agar navigasi router.push lancar
+        const verifyIndex = decodedText.indexOf('/verify/');
+        const localPath = decodedText.substring(verifyIndex);
+
+        // Pindah ke URL profil token
+        router.push(localPath);
       } else {
         setError('QR Code tidak dikenali. Harap scan ID Card perusahaan resmi.');
         setTimeout(() => setError(null), 3500); // Hapus pesan error setelah 3.5 detik
