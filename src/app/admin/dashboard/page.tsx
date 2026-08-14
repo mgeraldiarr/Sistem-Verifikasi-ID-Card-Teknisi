@@ -4,9 +4,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { 
-  LogOut, Plus, Trash2, Edit, Printer, Loader2, 
-  Image as ImageIcon, ScanLine, Search, Filter, 
+import {
+  LogOut, Plus, Trash2, Edit, Printer, Loader2,
+  Image as ImageIcon, ScanLine, Search, Filter,
   RefreshCw, AlertCircle, CheckCircle2, Shield, RefreshCcw, Calendar
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -204,7 +204,7 @@ export default function AdminDashboard() {
   const uploadPhoto = async (file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `tech-${crypto.randomUUID()}.${fileExt}`;
-    
+
     // Gunakan bucket employee-photos yang sudah ada di Supabase
     const { error: uploadError } = await supabase.storage
       .from('employee-photos')
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
           .eq('id', formId)
           .select('id, qr_token')
           .single();
-        
+
         if (error) throw error;
         techId = data.id;
         qrToken = data.qr_token;
@@ -311,7 +311,7 @@ export default function AdminDashboard() {
   const handleRegenerateQR = async (tech: Technician) => {
     if (confirm(`Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`)) {
       const newToken = crypto.randomUUID();
-      
+
       const { error: techError } = await supabase
         .from('technicians')
         .update({ qr_token: newToken })
@@ -351,11 +351,11 @@ export default function AdminDashboard() {
 
   // Filter client-side
   const filteredTechnicians = technicians.filter(tech => {
-    const matchesSearch = 
+    const matchesSearch =
       tech.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tech.technician_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tech.employee_number.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesBranch = filterBranch === '' || tech.branch === filterBranch;
     const matchesLevel = filterLevel === '' || tech.technician_level === filterLevel;
     const matchesStatus = filterStatus === '' || tech.technician_status === filterStatus;
@@ -380,12 +380,24 @@ export default function AdminDashboard() {
 
       {/* DASHBOARD UTAMA */}
       <div className="no-print">
-        
+
         {/* Navbar Header */}
         <header style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-dark)' }}>
-          <h1 style={{ color: 'white', fontWeight: 800, fontSize: '1.25rem', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            MODENA <span style={{ fontWeight: 400, opacity: 0.6, fontSize: '0.875rem' }}>| TECHNICIAN PORTAL</span>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+            <img
+              src="/modena-logo-white.png"
+              alt="MODENA"
+              style={{
+                height: '1.8rem',      /* Tinggi disesuaikan dengan navbar */
+                width: 'auto',
+                objectFit: 'contain'
+              }}
+            />
+            <span style={{ color: 'white', fontWeight: 400, opacity: 0.6, fontSize: '0.875rem', letterSpacing: '0.05em' }}>
+              | TECHNICIAN PORTAL
+            </span>
           </h1>
+
           <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>
             <LogOut size={16} /> Logout
           </button>
@@ -407,7 +419,7 @@ export default function AdminDashboard() {
                   Selesai pada: {formatTimeWIB(lastSyncLog.end_time || lastSyncLog.start_time)}
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{lastSyncLog.total_records}</div>
@@ -435,7 +447,7 @@ export default function AdminDashboard() {
 
           {/* HEADER DAN TOOLBAR */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Daftar Teknisi Modena</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Daftar Teknisi</h2>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
                 <ScanLine size={16} /> Scan ID Card
@@ -451,9 +463,9 @@ export default function AdminDashboard() {
             {/* Input Pencarian */}
             <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                placeholder="Cari nama, ID MOD, nomor karyawan..." 
+              <input
+                type="text"
+                placeholder="Cari nama, ID MOD, nomor karyawan..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
@@ -463,8 +475,8 @@ export default function AdminDashboard() {
             {/* Filter Cabang */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '150px' }}>
               <Filter size={16} style={{ color: 'var(--text-muted)' }} />
-              <select 
-                value={filterBranch} 
+              <select
+                value={filterBranch}
                 onChange={e => setFilterBranch(e.target.value)}
                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
               >
@@ -477,8 +489,8 @@ export default function AdminDashboard() {
 
             {/* Filter Level */}
             <div style={{ minWidth: '150px' }}>
-              <select 
-                value={filterLevel} 
+              <select
+                value={filterLevel}
                 onChange={e => setFilterLevel(e.target.value)}
                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
               >
@@ -491,8 +503,8 @@ export default function AdminDashboard() {
 
             {/* Filter Status */}
             <div style={{ minWidth: '130px' }}>
-              <select 
-                value={filterStatus} 
+              <select
+                value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.875rem', outline: 'none' }}
               >
@@ -528,7 +540,7 @@ export default function AdminDashboard() {
 
                     return (
                       <tr key={tech.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }}>
-                        
+
                         {/* Detail Profil */}
                         <td style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                           <div style={{ width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#F3F4F6', flexShrink: 0, border: '1px solid var(--border-color)' }}>
@@ -537,7 +549,7 @@ export default function AdminDashboard() {
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{tech.technician_name}</div>
                             <div style={{ fontSize: '0.775rem', color: 'var(--text-secondary)' }}>
-                              {tech.technician_id} • Level:{' '} 
+                              {tech.technician_id} • Level:{' '}
                               <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{tech.technician_level}</span>
                             </div>
                           </div>
@@ -635,7 +647,7 @@ export default function AdminDashboard() {
               </h3>
 
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.4rem' }}>ID Teknisi</label>
@@ -753,7 +765,7 @@ export default function AdminDashboard() {
           const DARK = '#1C1C1A';
 
           const Logo = () => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2mm'  }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
               <img
                 src="/logo-modena.png"
                 alt="Modena Logo"
@@ -769,7 +781,7 @@ export default function AdminDashboard() {
                 <span style={{ fontSize: '7.5pt', fontWeight: 800, lineHeight: 1.1, color: DARK }}>
                   MODENA
                 </span>
-                <span style={{ fontSize: '6pt', fontWeight: 800, letterSpacing: '1px', lineHeight: 1.1, color: '#707070', marginTop: '0.5mm'}}>
+                <span style={{ fontSize: '6pt', fontWeight: 800, letterSpacing: '1px', lineHeight: 1.1, color: '#707070', marginTop: '0.5mm' }}>
                   AUTHORIZED
                 </span>
               </div>
@@ -786,7 +798,7 @@ export default function AdminDashboard() {
 
           return (
             <div style={{ display: 'flex', gap: '10mm', flexWrap: 'wrap', padding: '10mm' }}>
-              
+
               {/* ============ KARTU DEPAN ============ */}
               <div
                 style={{
@@ -902,7 +914,7 @@ export default function AdminDashboard() {
                   <div>
                     <div style={{ fontSize: '5.5pt', fontWeight: 800, color: '#707070', letterSpacing: '0.5px' }}>KONTAK LAYANAN</div>
                     <div style={{ fontSize: '6.5pt', fontWeight: 600, color: '#4A4A4A', lineHeight: '1.2', marginTop: '0.5mm' }}>
-                      PT MODENA INDONESIA<br/>
+                      PT MODENA INDONESIA<br />
                       Call Center: 1500715
                     </div>
                   </div>

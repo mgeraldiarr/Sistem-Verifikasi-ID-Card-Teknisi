@@ -1,6 +1,22 @@
 /* src/app/globals.css */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+@font-face {
+  font-family: 'ModenaSans';
+  src: url('/fonts/ModenaSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ModenaSans';
+  src: url('/fonts/ModenaSans-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   /* MODENA Color Palette */
   --bg-primary: #FFFFFF;

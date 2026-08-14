@@ -51,7 +51,7 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
   const isTechnicianActive = technician.technician_status === 'active';
   const isCardActive = cardInfo?.card_status === 'active';
-  
+
   // Periksa apakah kartu kadaluarsa
   const expiryDate = cardInfo ? new Date(cardInfo.expiry_date) : null;
   const today = new Date();
@@ -113,12 +113,21 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem 1rem' }}>
-      
+
       {/* Header Logo MODENA */}
       <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-        <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '2rem', letterSpacing: '0.15em', color: 'var(--bg-dark)', margin: 0 }}>
-          MODENA
-        </h1>
+        <img
+          src="/modena-logo-official.png"
+          alt="MODENA"
+          style={{
+            height: '1.8rem',
+            width: 'auto',
+            objectFit: 'contain',
+            display: 'inline-block',
+            marginBottom: '0.25rem'
+          }}
+        />
+
         <span style={{ fontSize: '0.75rem', letterSpacing: '0.3em', color: 'var(--text-secondary)', fontWeight: 500 }}>
           AUTHORIZED SERVICE
         </span>
@@ -126,7 +135,7 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
       {/* Main Card Teknisi */}
       <div className="modena-card" style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
-        
+
         {/* Badge Status Keaktifan */}
         <div style={{
           backgroundColor: statusColorClass,
@@ -148,19 +157,19 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
         {/* Foto Profil Teknisi */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div style={{ 
-            width: '140px', 
-            height: '140px', 
-            borderRadius: '12px', 
-            overflow: 'hidden', 
+          <div style={{
+            width: '140px',
+            height: '140px',
+            borderRadius: '12px',
+            overflow: 'hidden',
             border: '2px solid var(--border-color)',
             backgroundColor: '#F3F4F6',
             boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
           }}>
             {technician.photo_url ? (
-              <img 
-                src={technician.photo_url} 
-                alt={technician.technician_name} 
+              <img
+                src={technician.photo_url}
+                alt={technician.technician_name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
@@ -194,9 +203,9 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Sertifikasi Level</span>
-              <span style={{ 
-                fontWeight: 700, 
-                fontSize: '0.825rem', 
+              <span style={{
+                fontWeight: 700,
+                fontSize: '0.825rem',
                 color: technician.technician_level === 'advance' ? '#B45309' : (technician.technician_level === 'intermediate' ? '#0F766E' : 'var(--text-primary)'),
                 backgroundColor: technician.technician_level === 'advance' ? '#FEF3C7' : (technician.technician_level === 'intermediate' ? '#CCFBF1' : '#F3F4F6'),
                 padding: '2px 8px',
@@ -233,10 +242,10 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
         </div>
 
         {/* Watermark Validasi Digital */}
-        <div style={{ 
-          marginTop: '1rem', 
-          padding: '1rem', 
-          backgroundColor: 'var(--bg-secondary)', 
+        <div style={{
+          marginTop: '1rem',
+          padding: '1rem',
+          backgroundColor: 'var(--bg-secondary)',
           borderRadius: '8px',
           display: 'flex',
           alignItems: 'flex-start',
@@ -247,14 +256,14 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
         }}>
           <Lock size={14} style={{ flexShrink: 0, marginTop: '2px', color: isValid ? 'var(--status-active)' : 'var(--status-inactive)' }} />
           <p style={{ lineHeight: '1.4', margin: 0 }}>
-            Halaman ini adalah bukti resmi verifikasi digital identitas teknisi MODENA.<br/>
+            Halaman ini adalah bukti resmi verifikasi digital identitas teknisi MODENA.<br />
             Diverifikasi pada: <strong style={{ color: 'var(--text-secondary)' }}>{timestamp} WIB</strong>
           </p>
         </div>
-        
+
       </div>
 
-      {/* Button kembali */}      
+      {/* Button kembali */}
       <div style={{ marginTop: '2rem' }}>
         <Link
           href='/scan'

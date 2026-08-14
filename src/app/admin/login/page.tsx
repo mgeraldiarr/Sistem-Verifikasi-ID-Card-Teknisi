@@ -35,14 +35,23 @@ export default function AdminLogin() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-charcoal)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      
+
       <div className="modena-card" style={{ width: '100%', maxWidth: '400px', backgroundColor: 'var(--bg-primary)' }}>
-        
+
         {/* Header Form */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '2rem', letterSpacing: '0.15em', color: 'var(--bg-dark)' }}>
-            MODENA
-          </h1>
+          <img
+            src="/modena-logo-official.png"
+            alt="MODENA"
+            style={{
+              height: '1.8rem',        /* Mengatur tinggi logo agar proporsional */
+              width: 'auto',
+              objectFit: 'contain',
+              display: 'inline-block',
+              marginBottom: '0.25rem'
+            }}
+          />
+
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
             <Lock size={16} /> Admin Portal
           </p>
@@ -61,8 +70,8 @@ export default function AdminLogin() {
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
               Email
             </label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -75,8 +84,8 @@ export default function AdminLogin() {
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
               Password
             </label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -85,10 +94,10 @@ export default function AdminLogin() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
-            className="modena-btn-primary" 
+            className="modena-btn-primary"
             style={{ width: '100%', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
           >
             {loading ? <Loader2 size={18} className="animate-spin-custom" /> : 'MASUK'}
