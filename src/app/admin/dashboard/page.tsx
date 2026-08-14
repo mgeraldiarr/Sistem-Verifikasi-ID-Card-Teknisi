@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   LogOut, Plus, Trash2, Edit, Printer, Loader2,
-  Image as ImageIcon, ScanLine, Search, Filter,
+  Image as ImageIcon, Search, Filter,
   RefreshCw, AlertCircle, CheckCircle2, Shield, RefreshCcw, Calendar
 } from 'lucide-react';
+import AuthWrapper from '@/components/AuthWrapper';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
@@ -55,7 +56,7 @@ type SyncLog = {
   error_details: any;
 };
 
-export default function AdminDashboard() {
+function AdminDashboard() {
   const router = useRouter();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [lastSyncLog, setLastSyncLog] = useState<SyncLog | null>(null);
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
   const [saving, setSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [uploadingExcel, setUploadingExcel] = useState(false);
+  const [lastFileName, setLastFileName] = useState<string | null>(null);
 
   // State untuk Custom Alert & Confirm Modal
   const [notification, setNotification] = useState<{
@@ -198,6 +200,39 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
+    if (typeof window !== 'undefined') {
+      setLastFileName(localStorage.getItem('last_uploaded_file_name'));
+    }
+
+    // Subscribe to realtime database changes for synchronization
+    const channel = supabase
+      .channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'technicians' },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'technician_performance' },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sync_logs' },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Fungsi Logout
@@ -356,6 +391,97 @@ export default function AdminDashboard() {
     }
   };
 
+  // HELPER SINKRONISASI EXCEL (Mendukung Header Inggris/Indonesia, Tanggal Excel, & Translasi Nilai)
+  const getRowValue = (row: any, keys: string[]) => {
+    for (const rawKey of Object.keys(row)) {
+      const normKey = rawKey.toLowerCase().replace(/[\s_\-\/]/g, '');
+      if (keys.some(k => k.toLowerCase().replace(/[\s_\-\/]/g, '') === normKey)) {
+        return row[rawKey];
+      }
+    }
+    return undefined;
+  };
+
+  const parseExcelDate = (val: any) => {
+    if (!val) return null;
+    if (val instanceof Date) return val.toISOString().split('T')[0];
+    if (typeof val === 'number') {
+      const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+      return date.toISOString().split('T')[0];
+    }
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    return null;
+  };
+
+  const parseExcelNumber = (val: any) => {
+    if (val === undefined || val === null) return 0;
+    if (typeof val === 'number') return val;
+    const str = String(val).trim().replace(',', '.');
+    const num = Number(str);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const parseExcelPeriod = (val: any) => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      const y = val.getFullYear();
+      const m = String(val.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    }
+    if (typeof val === 'number') {
+      const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    }
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}$/.test(str)) return str;
+    const parts = str.split(/[\/\-]/);
+    if (parts.length === 2) {
+      if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+      } else {
+        return `${parts[1]}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    }
+    return null;
+  };
+
+  const mapStatus = (val: any): 'active' | 'inactive' => {
+    if (!val) return 'active';
+    const str = String(val).trim().toLowerCase();
+    if (['aktif', 'active', 'yes', '1', 'true', 'aktif/active'].includes(str)) return 'active';
+    if (['nonaktif', 'tidak aktif', 'inactive', 'no', '0', 'false', 'blokir', 'diblokir', 'non-aktif', 'non_aktif'].includes(str)) return 'inactive';
+    return 'active';
+  };
+
+  const mapLevel = (val: any): 'beginner' | 'intermediate' | 'advance' => {
+    if (!val) return 'beginner';
+    const str = String(val).trim().toLowerCase();
+    if (['beginner', 'pemula', 'basic', 'begginer'].includes(str)) return 'beginner';
+    if (['intermediate', 'menengah', 'madya'].includes(str)) return 'intermediate';
+    if (['advance', 'advanced', 'mahir', 'senior', 'adv'].includes(str)) return 'advance';
+    return 'beginner';
+  };
+
+  const mapCardStatus = (val: any): 'active' | 'suspended' | 'expired' => {
+    if (!val) return 'active';
+    const str = String(val).trim().toLowerCase();
+    if (['aktif', 'active', 'yes', '1', 'true'].includes(str)) return 'active';
+    if (['suspended', 'ditangguhkan', 'suspend', 'tangguh'].includes(str)) return 'suspended';
+    if (['expired', 'kadaluarsa', 'habis', 'exp'].includes(str)) return 'expired';
+    return 'active';
+  };
+
   // Handler Upload Excel secara manual
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -381,117 +507,190 @@ export default function AdminDashboard() {
         let successCount = 0;
         let updateCount = 0;
         let insertCount = 0;
+        const errorDetails: any[] = [];
 
-        for (const row of data) {
-          if (!row.technician_id || !row.employee_number || !row.technician_name || !row.branch) {
-            continue; // Skip baris yang tidak lengkap
-          }
+        // 1. Bersihkan baris kosong (abaikan baris kosong di bagian bawah Excel)
+        const activeRows = data.filter(row => {
+          return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
+        });
 
-          const techPayload = {
-            technician_id: String(row.technician_id).trim(),
-            employee_number: String(row.employee_number).trim(),
-            technician_name: String(row.technician_name).trim(),
-            branch: String(row.branch).trim(),
-            service_center: row.service_center ? String(row.service_center).trim() : null,
-            photo_url: row.photo_url ? String(row.photo_url).trim() : null,
-            phone: row.phone ? String(row.phone).trim() : null,
-            email: row.email ? String(row.email).trim() : null,
-            technician_status: String(row.technician_status || 'active').trim() as any,
-            technician_level: String(row.technician_level || 'beginner').trim() as any,
-            updated_at: new Date().toISOString()
-          };
+        if (activeRows.length === 0) {
+          showCustomAlert('error', 'File Kosong', 'Tidak ada data baris yang valid di file Excel.');
+          setUploadingExcel(false);
+          return;
+        }
 
-          // 1. Cek duplikasi teknisi
-          const { data: existing } = await supabase
-            .from('technicians')
-            .select('id, qr_token')
-            .eq('technician_id', techPayload.technician_id)
-            .maybeSingle();
+        // 2. Proses baris demi baris secara independen (jika satu gagal, yang lain tetap berlanjut)
+        for (let idx = 0; idx < activeRows.length; idx++) {
+          const row = activeRows[idx];
+          const rowNum = idx + 1;
 
-          let techId = '';
-          let qrToken = '';
+          try {
+            // Ekstraksi nilai kolom wajib secara fleksibel (Mendukung Bahasa Inggris & Indonesia)
+            const technician_id = String(getRowValue(row, ['technician_id', 'id_teknisi', 'id teknisi', 'id']) || '').trim();
+            const employee_number = String(getRowValue(row, ['employee_number', 'no_karyawan', 'no karyawan', 'nik', 'nomor_karyawan', 'nomor karyawan']) || '').trim();
+            const technician_name = String(getRowValue(row, ['technician_name', 'nama_teknisi', 'nama teknisi', 'nama', 'nama_lengkap', 'nama lengkap']) || '').trim();
+            const branch = String(getRowValue(row, ['branch', 'cabang', 'wilayah']) || '').trim();
 
-          if (existing) {
-            const { data: updated, error } = await supabase
-              .from('technicians')
-              .update(techPayload)
-              .eq('id', existing.id)
-              .select('id, qr_token')
-              .single();
-            if (error) throw error;
-            techId = updated.id;
-            qrToken = updated.qr_token;
-            updateCount++;
-          } else {
-            const { data: inserted, error } = await supabase
-              .from('technicians')
-              .insert([techPayload])
-              .select('id, qr_token')
-              .single();
-            if (error) throw error;
-            techId = inserted.id;
-            qrToken = inserted.qr_token;
-            insertCount++;
-          }
+            // Lewati jika kolom wajib tidak lengkap
+            if (!technician_id || !employee_number || !technician_name || !branch) {
+              const missing = [];
+              if (!technician_id) missing.push('ID/ID Teknisi');
+              if (!employee_number) missing.push('NIK/No Karyawan');
+              if (!technician_name) missing.push('Nama');
+              if (!branch) missing.push('Cabang');
+              throw new Error(`Kolom wajib tidak lengkap: ${missing.join(', ')}`);
+            }
 
-          // 2. Hubungkan data performa
-          if (row.period) {
-            const perfPayload = {
-              technician_id: techId,
-              period: String(row.period).trim(),
-              kpi_score: row.kpi_score ? Number(row.kpi_score) : 0,
-              csi_score: row.csi_score ? Number(row.csi_score) : 0,
-              performance_score: row.performance_score ? Number(row.performance_score) : 0,
-              performance_level: String(row.performance_level || row.technician_level || 'beginner').trim() as any,
-              data_source: 'excel',
+            // Ekstraksi nilai kolom opsional secara fleksibel
+            const service_center = getRowValue(row, ['service_center', 'service center', 'lokasi', 'lokasi_service', 'lokasi service']);
+            const photo_url = getRowValue(row, ['photo_url', 'photo', 'foto', 'foto_url', 'link_foto', 'link foto']);
+            const phone = getRowValue(row, ['phone', 'no_hp', 'no hp', 'telepon', 'phone_number', 'kontak', 'no_telp', 'no telp']);
+            const email = getRowValue(row, ['email', 'surel']);
+            const rawStatus = getRowValue(row, ['technician_status', 'status_teknisi', 'status teknisi', 'status', 'status_keaktifan', 'status keaktifan']);
+            const rawLevel = getRowValue(row, ['technician_level', 'level_teknisi', 'level teknisi', 'level', 'sertifikasi', 'level_sertifikasi', 'level sertifikasi']);
+
+            const techPayload = {
+              technician_id,
+              employee_number,
+              technician_name,
+              branch,
+              service_center: service_center ? String(service_center).trim() : null,
+              photo_url: photo_url ? String(photo_url).trim() : null,
+              phone: phone ? String(phone).trim() : null,
+              email: email ? String(email).trim() : null,
+              technician_status: mapStatus(rawStatus),
+              technician_level: mapLevel(rawLevel),
               updated_at: new Date().toISOString()
             };
 
-            const { error: perfError } = await supabase
-              .from('technician_performance')
-              .upsert(perfPayload, { onConflict: 'technician_id,period' });
-            if (perfError) throw perfError;
+            // A. Cek duplikasi teknisi
+            const { data: existing } = await supabase
+              .from('technicians')
+              .select('id, qr_token')
+              .eq('technician_id', techPayload.technician_id)
+              .maybeSingle();
+
+            let techId = '';
+            let qrToken = '';
+
+            if (existing) {
+              const { data: updated, error } = await supabase
+                .from('technicians')
+                .update(techPayload)
+                .eq('id', existing.id)
+                .select('id, qr_token')
+                .single();
+              if (error) throw error;
+              techId = updated.id;
+              qrToken = updated.qr_token;
+              updateCount++;
+            } else {
+              const { data: inserted, error } = await supabase
+                .from('technicians')
+                .insert([techPayload])
+                .select('id, qr_token')
+                .single();
+              if (error) throw error;
+              techId = inserted.id;
+              qrToken = inserted.qr_token;
+              insertCount++;
+            }
+
+            // B. Hubungkan data performa
+            const periodRaw = getRowValue(row, ['period', 'periode', 'bulan']);
+            const period = parseExcelPeriod(periodRaw);
+            if (period) {
+              const kpiRaw = getRowValue(row, ['kpi_score', 'kpi', 'skor kpi', 'skor_kpi', 'nilai kpi', 'nilai_kpi']);
+              const csiRaw = getRowValue(row, ['csi_score', 'csi', 'skor csi', 'skor_csi', 'nilai csi', 'nilai_csi']);
+              const perfRaw = getRowValue(row, ['performance_score', 'performance', 'performa', 'skor_performa', 'skor performa', 'nilai_performa', 'nilai performa']);
+              const perfLvlRaw = getRowValue(row, ['performance_level', 'level_performa', 'level performa']);
+
+              const perfPayload = {
+                technician_id: techId,
+                period,
+                kpi_score: parseExcelNumber(kpiRaw),
+                csi_score: parseExcelNumber(csiRaw),
+                performance_score: parseExcelNumber(perfRaw),
+                performance_level: perfLvlRaw ? mapLevel(perfLvlRaw) : mapLevel(rawLevel),
+                data_source: 'excel',
+                updated_at: new Date().toISOString()
+              };
+
+              const { error: perfError } = await supabase
+                .from('technician_performance')
+                .upsert(perfPayload, { onConflict: 'technician_id,period' });
+              if (perfError) throw perfError;
+            }
+
+            // C. Hubungkan data ID Card
+            const card_number = getRowValue(row, ['card_number', 'no_kartu', 'no kartu', 'nomor kartu', 'nomor_kartu', 'serial_number', 'serial number']);
+            if (card_number) {
+              const cardStatusRaw = getRowValue(row, ['card_status', 'status_kartu', 'status kartu']);
+              const expiryDateRaw = getRowValue(row, ['expiry_date', 'tanggal_kadaluarsa', 'tanggal kadaluarsa', 'expired', 'masa berlaku', 'masa_berlaku']);
+              const expiry_date = parseExcelDate(expiryDateRaw);
+
+              const cardPayload = {
+                technician_id: techId,
+                card_number: String(card_number).trim(),
+                qr_token: qrToken,
+                card_status: mapCardStatus(cardStatusRaw),
+                expiry_date: expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
+              };
+
+              const { error: cardError } = await supabase
+                .from('technician_id_cards')
+                .upsert(cardPayload, { onConflict: 'card_number' });
+              if (cardError) throw cardError;
+            }
+
+            successCount++;
+          } catch (err: any) {
+            console.error(`Error pada baris ${rowNum}:`, err.message);
+            errorDetails.push({
+              row: rowNum,
+              technician_id: String(row.technician_id || 'UNKNOWN'),
+              error: err.message || 'Error tidak dikenal saat menyimpan.'
+            });
           }
-
-          // 3. Hubungkan data ID Card
-          if (row.card_number) {
-            const cardPayload = {
-              technician_id: techId,
-              card_number: String(row.card_number).trim(),
-              qr_token: qrToken,
-              card_status: String(row.card_status || 'active').trim() as any,
-              expiry_date: row.expiry_date ? String(row.expiry_date).trim() : new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
-            };
-
-            const { error: cardError } = await supabase
-              .from('technician_id_cards')
-              .upsert(cardPayload, { onConflict: 'card_number' });
-            if (cardError) throw cardError;
-          }
-
-          successCount++;
         }
 
         // Tulis log sinkronisasi
+        const finalStatus = errorDetails.length === 0 ? 'success' : (successCount === 0 ? 'failed' : 'partial');
         await supabase
           .from('sync_logs')
           .insert({
             start_time: new Date().toISOString(),
             end_time: new Date().toISOString(),
-            status: 'success',
-            total_records: data.length,
+            status: finalStatus,
+            total_records: activeRows.length,
             processed_records: successCount,
             new_records: insertCount,
             updated_records: updateCount,
-            error_count: data.length - successCount,
-            error_details: []
+            error_count: errorDetails.length,
+            error_details: errorDetails
           });
 
-        showCustomAlert(
-          'success',
-          'Sinkronisasi Excel Sukses',
-          `Berhasil memproses ${successCount} teknisi (${insertCount} baru, ${updateCount} diperbarui).`
-        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('last_uploaded_file_name', file.name);
+          setLastFileName(file.name);
+        }
+
+        if (finalStatus === 'success') {
+          showCustomAlert(
+            'success',
+            'Sinkronisasi Excel Sukses',
+            `File: "${file.name}"\nBerhasil memproses seluruh data: ${successCount} teknisi (${insertCount} baru, ${updateCount} diperbarui).`
+          );
+        } else {
+          const firstError = errorDetails[0];
+          showCustomAlert(
+            errorDetails.length === activeRows.length ? 'error' : 'warning',
+            errorDetails.length === activeRows.length ? 'Gagal Sinkronisasi Excel' : 'Sinkronisasi Excel Selesai Sebagian',
+            `File: "${file.name}"\nBerhasil: ${successCount}, Gagal: ${errorDetails.length}.\n\nError pertama (Baris ${firstError.row}): ${firstError.error}`
+          );
+        }
+        
         fetchData();
 
       } catch (err: any) {
@@ -633,6 +832,11 @@ export default function AdminDashboard() {
                     Sinkronisasi Excel Terakhir: {lastSyncLog.status.toUpperCase()}
                   </span>
                 </div>
+                {lastFileName && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>
+                    File: <strong style={{ color: 'var(--text-primary)' }}>{lastFileName}</strong>
+                  </div>
+                )}
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   Selesai pada: {formatTimeWIB(lastSyncLog.end_time || lastSyncLog.start_time)}
                 </div>
@@ -667,9 +871,7 @@ export default function AdminDashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Daftar Teknisi</h2>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
-                <ScanLine size={16} /> Scan ID Card
-              </Link>
+
               <label 
                 className="modena-btn-secondary" 
                 style={{ 
@@ -1223,5 +1425,13 @@ export default function AdminDashboard() {
       )}
 
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthWrapper>
+      <AdminDashboard />
+    </AuthWrapper>
   );
 }

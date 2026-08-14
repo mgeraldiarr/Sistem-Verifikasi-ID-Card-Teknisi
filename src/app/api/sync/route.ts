@@ -24,6 +24,97 @@ interface SyncRecord {
   expiry_date?: string; // Format: YYYY-MM-DD
 }
 
+// HELPER SINKRONISASI EXCEL (Mendukung Header Inggris/Indonesia, Tanggal Excel, & Translasi Nilai)
+const getRowValue = (row: any, keys: string[]) => {
+  for (const rawKey of Object.keys(row)) {
+    const normKey = rawKey.toLowerCase().replace(/[\s_\-\/]/g, '');
+    if (keys.some(k => k.toLowerCase().replace(/[\s_\-\/]/g, '') === normKey)) {
+      return row[rawKey];
+    }
+  }
+  return undefined;
+};
+
+const parseExcelDate = (val: any) => {
+  if (!val) return null;
+  if (val instanceof Date) return val.toISOString().split('T')[0];
+  if (typeof val === 'number') {
+    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return date.toISOString().split('T')[0];
+  }
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return null;
+};
+
+const parseExcelNumber = (val: any) => {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return val;
+  const str = String(val).trim().replace(',', '.');
+  const num = Number(str);
+  return isNaN(num) ? 0 : num;
+};
+
+const parseExcelPeriod = (val: any) => {
+  if (!val) return null;
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  if (typeof val === 'number') {
+    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}$/.test(str)) return str;
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 2) {
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+    } else {
+      return `${parts[1]}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  return null;
+};
+
+const mapStatus = (val: any): 'active' | 'inactive' => {
+  if (!val) return 'active';
+  const str = String(val).trim().toLowerCase();
+  if (['aktif', 'active', 'yes', '1', 'true', 'aktif/active'].includes(str)) return 'active';
+  if (['nonaktif', 'tidak aktif', 'inactive', 'no', '0', 'false', 'blokir', 'diblokir', 'non-aktif', 'non_aktif'].includes(str)) return 'inactive';
+  return 'active';
+};
+
+const mapLevel = (val: any): 'beginner' | 'intermediate' | 'advance' => {
+  if (!val) return 'beginner';
+  const str = String(val).trim().toLowerCase();
+  if (['beginner', 'pemula', 'basic', 'begginer'].includes(str)) return 'beginner';
+  if (['intermediate', 'menengah', 'madya'].includes(str)) return 'intermediate';
+  if (['advance', 'advanced', 'mahir', 'senior', 'adv'].includes(str)) return 'advance';
+  return 'beginner';
+};
+
+const mapCardStatus = (val: any): 'active' | 'suspended' | 'expired' => {
+  if (!val) return 'active';
+  const str = String(val).trim().toLowerCase();
+  if (['aktif', 'active', 'yes', '1', 'true'].includes(str)) return 'active';
+  if (['suspended', 'ditangguhkan', 'suspend', 'tangguh'].includes(str)) return 'suspended';
+  if (['expired', 'kadaluarsa', 'habis', 'exp'].includes(str)) return 'expired';
+  return 'active';
+};
+
 export async function POST(req: NextRequest) {
   const startTime = new Date().toISOString();
   
@@ -88,63 +179,51 @@ export async function POST(req: NextRequest) {
 
     // 4. Lakukan pemrosesan record secara sekuensial (baris per baris)
     for (let i = 0; i < payload.length; i++) {
-      const record = payload[i] as Partial<SyncRecord>;
+      const row = payload[i];
       const rowNum = i + 1;
 
       try {
-        // A. Validasi Wajib Field
-        if (!record.technician_id || !record.employee_number || !record.technician_name || !record.branch) {
+        // Ekstraksi nilai kolom wajib secara fleksibel (Mendukung Bahasa Inggris & Indonesia)
+        const technician_id = String(getRowValue(row, ['technician_id', 'id_teknisi', 'id teknisi', 'id']) || '').trim();
+        const employee_number = String(getRowValue(row, ['employee_number', 'no_karyawan', 'no karyawan', 'nik', 'nomor_karyawan', 'nomor karyawan']) || '').trim();
+        const technician_name = String(getRowValue(row, ['technician_name', 'nama_teknisi', 'nama teknisi', 'nama', 'nama_lengkap', 'nama lengkap']) || '').trim();
+        const branch = String(getRowValue(row, ['branch', 'cabang', 'wilayah']) || '').trim();
+
+        if (!technician_id || !employee_number || !technician_name || !branch) {
           throw new Error('Kolom wajib (technician_id, employee_number, technician_name, branch) tidak boleh kosong.');
         }
 
-        // Validasi Status Teknisi
-        if (record.technician_status && !['active', 'inactive'].includes(record.technician_status)) {
-          throw new Error(`Status teknisi harus 'active' atau 'inactive' (Ditemukan: ${record.technician_status}).`);
-        }
+        // Ekstraksi nilai kolom opsional secara fleksibel
+        const service_center = getRowValue(row, ['service_center', 'service center', 'lokasi', 'lokasi_service', 'lokasi service']);
+        const photo_url = getRowValue(row, ['photo_url', 'photo', 'foto', 'foto_url', 'link_foto', 'link foto']);
+        const phone = getRowValue(row, ['phone', 'no_hp', 'no hp', 'telepon', 'phone_number', 'kontak', 'no_telp', 'no telp']);
+        const email = getRowValue(row, ['email', 'surel']);
+        const rawStatus = getRowValue(row, ['technician_status', 'status_teknisi', 'status teknisi', 'status', 'status_keaktifan', 'status keaktifan']);
+        const rawLevel = getRowValue(row, ['technician_level', 'level_teknisi', 'level teknisi', 'level', 'sertifikasi', 'level_sertifikasi', 'level sertifikasi']);
 
-        // Validasi Level Teknisi
-        if (record.technician_level && !['beginner', 'intermediate', 'advance'].includes(record.technician_level)) {
-          throw new Error(`Level teknisi harus 'beginner', 'intermediate', atau 'advance'.`);
-        }
-
-        // Validasi Skor Angka
-        if (record.kpi_score !== undefined && (record.kpi_score < 0 || record.kpi_score > 100)) {
-          throw new Error('Skor KPI harus berada di kisaran 0 hingga 100.');
-        }
-        if (record.csi_score !== undefined && (record.csi_score < 0 || record.csi_score > 10)) {
-          throw new Error('Skor CSI harus berada di kisaran 0 hingga 10.');
-        }
-
-        // Validasi Periode (Format YYYY-MM)
-        if (!record.period || !/^\d{4}-\d{2}$/.test(record.period)) {
-          throw new Error('Periode tidak valid. Gunakan format YYYY-MM (contoh: 2026-08).');
-        }
+        const techData = {
+          technician_id,
+          employee_number,
+          technician_name,
+          branch,
+          service_center: service_center ? String(service_center).trim() : null,
+          photo_url: photo_url ? String(photo_url).trim() : null,
+          phone: phone ? String(phone).trim() : null,
+          email: email ? String(email).trim() : null,
+          technician_status: mapStatus(rawStatus),
+          technician_level: mapLevel(rawLevel),
+          updated_at: new Date().toISOString()
+        };
 
         // B. Upsert data ke tabel utama: technicians
-        // Cek dulu apakah teknisi sudah terdaftar berdasarkan technician_id unik
         const { data: existingTech } = await supabaseAdmin
           .from('technicians')
           .select('id, qr_token')
-          .eq('technician_id', record.technician_id)
+          .eq('technician_id', techData.technician_id)
           .maybeSingle();
 
         let techId: string;
         let qrToken: string;
-        let isNew = false;
-
-        const techData = {
-          technician_id: record.technician_id,
-          employee_number: record.employee_number,
-          technician_name: record.technician_name,
-          branch: record.branch,
-          service_center: record.service_center || null,
-          photo_url: record.photo_url || null,
-          phone: record.phone || null,
-          email: record.email || null,
-          technician_status: record.technician_status || 'active',
-          technician_level: record.technician_level || 'beginner',
-          updated_at: new Date().toISOString()
-        };
 
         if (existingTech) {
           // UPDATE
@@ -161,7 +240,6 @@ export async function POST(req: NextRequest) {
           updatedRecords++;
         } else {
           // INSERT (Baru)
-          isNew = true;
           const { data: newTech, error: insertError } = await supabaseAdmin
             .from('technicians')
             .insert(techData)
@@ -175,31 +253,45 @@ export async function POST(req: NextRequest) {
         }
 
         // C. Upsert data performa ke tabel: technician_performance
-        const performanceData = {
-          technician_id: techId,
-          period: record.period,
-          kpi_score: record.kpi_score || 0,
-          csi_score: record.csi_score || 0,
-          performance_score: record.performance_score || 0,
-          performance_level: record.performance_level || record.technician_level || 'beginner',
-          data_source: 'excel',
-          updated_at: new Date().toISOString()
-        };
+        const periodRaw = getRowValue(row, ['period', 'periode', 'bulan']);
+        const period = parseExcelPeriod(periodRaw);
+        if (period) {
+          const kpiRaw = getRowValue(row, ['kpi_score', 'kpi', 'skor kpi', 'skor_kpi', 'nilai kpi', 'nilai_kpi']);
+          const csiRaw = getRowValue(row, ['csi_score', 'csi', 'skor csi', 'skor_csi', 'nilai csi', 'nilai_csi']);
+          const perfRaw = getRowValue(row, ['performance_score', 'performance', 'performa', 'skor_performa', 'skor performa', 'nilai_performa', 'nilai performa']);
+          const perfLvlRaw = getRowValue(row, ['performance_level', 'level_performa', 'level performa']);
 
-        const { error: perfError } = await supabaseAdmin
-          .from('technician_performance')
-          .upsert(performanceData, { onConflict: 'technician_id,period' });
+          const performanceData = {
+            technician_id: techId,
+            period,
+            kpi_score: parseExcelNumber(kpiRaw),
+            csi_score: parseExcelNumber(csiRaw),
+            performance_score: parseExcelNumber(perfRaw),
+            performance_level: perfLvlRaw ? mapLevel(perfLvlRaw) : mapLevel(rawLevel),
+            data_source: 'excel',
+            updated_at: new Date().toISOString()
+          };
 
-        if (perfError) throw perfError;
+          const { error: perfError } = await supabaseAdmin
+            .from('technician_performance')
+            .upsert(performanceData, { onConflict: 'technician_id,period' });
+
+          if (perfError) throw perfError;
+        }
 
         // D. Upsert ID Card jika data card_number disertakan
-        if (record.card_number) {
+        const card_number = getRowValue(row, ['card_number', 'no_kartu', 'no kartu', 'nomor kartu', 'nomor_kartu', 'serial_number', 'serial number']);
+        if (card_number) {
+          const cardStatusRaw = getRowValue(row, ['card_status', 'status_kartu', 'status kartu']);
+          const expiryDateRaw = getRowValue(row, ['expiry_date', 'tanggal_kadaluarsa', 'tanggal kadaluarsa', 'expired', 'masa berlaku', 'masa_berlaku']);
+          const expiry_date = parseExcelDate(expiryDateRaw);
+
           const cardData = {
             technician_id: techId,
-            card_number: record.card_number,
+            card_number: String(card_number).trim(),
             qr_token: qrToken,
-            card_status: record.card_status || 'active',
-            expiry_date: record.expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
+            card_status: mapCardStatus(cardStatusRaw),
+            expiry_date: expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
           };
 
           const { error: cardError } = await supabaseAdmin
@@ -214,7 +306,7 @@ export async function POST(req: NextRequest) {
         console.error(`Error pada baris ${rowNum}:`, err.message);
         errorDetails.push({
           row: rowNum,
-          technician_id: record.technician_id,
+          technician_id: String(row.technician_id || 'UNKNOWN'),
           error: err.message || 'Error tidak dikenal saat memproses baris database.'
         });
       }
