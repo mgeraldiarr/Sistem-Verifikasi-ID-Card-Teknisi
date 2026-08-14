@@ -65,6 +65,60 @@ export default function AdminDashboard() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [uploadingExcel, setUploadingExcel] = useState(false);
 
+  // State untuk Custom Alert & Confirm Modal
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+    onClose?: () => void;
+  }>({
+    show: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+
+  const showCustomAlert = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string, onClose?: () => void) => {
+    setNotification({
+      show: true,
+      type,
+      title,
+      message,
+      onClose
+    });
+  };
+
+  const showCustomConfirm = (title: string, message: string, onConfirm: () => void, onCancel?: () => void) => {
+    setConfirmModal({
+      show: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmModal(prev => ({ ...prev, show: false }));
+      },
+      onCancel: () => {
+        if (onCancel) onCancel();
+        setConfirmModal(prev => ({ ...prev, show: false }));
+      }
+    });
+  };
+
   // State Pencarian & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
@@ -213,7 +267,7 @@ export default function AdminDashboard() {
       .upload(fileName, file);
 
     if (uploadError) {
-      alert('Gagal mengupload foto: ' + uploadError.message);
+      showCustomAlert('error', 'Gagal Upload Foto', uploadError.message);
       return null;
     }
 
@@ -296,7 +350,7 @@ export default function AdminDashboard() {
       setShowForm(false);
       fetchData();
     } catch (err: any) {
-      alert('Gagal menyimpan data: ' + err.message);
+      showCustomAlert('error', 'Gagal Menyimpan Data', err.message);
     } finally {
       setSaving(false);
     }
@@ -319,7 +373,7 @@ export default function AdminDashboard() {
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         if (data.length === 0) {
-          alert('File Excel kosong atau tidak memiliki data.');
+          showCustomAlert('error', 'File Kosong', 'File Excel kosong atau tidak memiliki data.');
           setUploadingExcel(false);
           return;
         }
@@ -433,11 +487,15 @@ export default function AdminDashboard() {
             error_details: []
           });
 
-        alert(`Sinkronisasi Excel Sukses! Berhasil memproses ${successCount} teknisi (${insertCount} baru, ${updateCount} diperbarui).`);
+        showCustomAlert(
+          'success',
+          'Sinkronisasi Excel Sukses',
+          `Berhasil memproses ${successCount} teknisi (${insertCount} baru, ${updateCount} diperbarui).`
+        );
         fetchData();
 
       } catch (err: any) {
-        alert('Gagal memproses file Excel: ' + err.message);
+        showCustomAlert('error', 'Gagal Memproses Excel', err.message);
       } finally {
         setUploadingExcel(false);
         e.target.value = ''; // Reset file input
@@ -456,36 +514,49 @@ export default function AdminDashboard() {
 
   // Regenerasi Token QR Code (Membatalkan kartu lama)
   const handleRegenerateQR = async (tech: Technician) => {
-    if (confirm(`Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`)) {
-      const newToken = crypto.randomUUID();
+    showCustomConfirm(
+      'Konfirmasi Regenerasi QR',
+      `Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`,
+      async () => {
+        const newToken = crypto.randomUUID();
 
-      const { error: techError } = await supabase
-        .from('technicians')
-        .update({ qr_token: newToken })
-        .eq('id', tech.id);
+        const { error: techError } = await supabase
+          .from('technicians')
+          .update({ qr_token: newToken })
+          .eq('id', tech.id);
 
-      if (techError) {
-        alert('Gagal meregenerasi token: ' + techError.message);
-        return;
+        if (techError) {
+          showCustomAlert('error', 'Gagal Regenerasi', techError.message);
+          return;
+        }
+
+        // Pastikan data kartu juga ter-update agar link RLS aman
+        await supabase
+          .from('technician_id_cards')
+          .update({ qr_token: newToken })
+          .eq('technician_id', tech.id);
+
+        showCustomAlert('success', 'Berhasil', 'QR Code baru berhasil di-generate!');
+        fetchData();
       }
-
-      // Pastikan data kartu juga ter-update agar link RLS aman
-      await supabase
-        .from('technician_id_cards')
-        .update({ qr_token: newToken })
-        .eq('technician_id', tech.id);
-
-      alert('QR Code baru berhasil di-generate!');
-      fetchData();
-    }
+    );
   };
 
   // Menghapus Teknisi
   const handleDelete = async (id: string) => {
-    if (confirm('Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.')) {
-      await supabase.from('technicians').delete().eq('id', id);
-      fetchData();
-    }
+    showCustomConfirm(
+      'Konfirmasi Hapus Teknisi',
+      'Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.',
+      async () => {
+        const { error } = await supabase.from('technicians').delete().eq('id', id);
+        if (error) {
+          showCustomAlert('error', 'Gagal Menghapus Data', error.message);
+        } else {
+          showCustomAlert('success', 'Terhapus', 'Data teknisi berhasil dihapus.');
+          fetchData();
+        }
+      }
+    );
   };
 
   // Memicu cetak ID Card
@@ -1101,6 +1172,55 @@ export default function AdminDashboard() {
           );
         })()}
       </div>
+
+      {/* Custom Alert/Notification Modal */}
+      {notification.show && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <div className="modena-card" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', padding: '2.5rem 2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem', color: notification.type === 'success' ? 'var(--status-active)' : (notification.type === 'error' ? 'var(--accent-red)' : '#F59E0B') }}>
+              {notification.type === 'success' ? <CheckCircle2 size={48} /> : <AlertCircle size={48} />}
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+              {notification.title}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+              {notification.message}
+            </p>
+            <button 
+              type="button" 
+              onClick={() => {
+                setNotification(prev => ({ ...prev, show: false }));
+                if (notification.onClose) notification.onClose();
+              }} 
+              className="modena-btn-primary" 
+              style={{ width: '100%', padding: '10px 20px', borderRadius: '4px' }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Modal */}
+      {confirmModal.show && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <div className="modena-card" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', padding: '2.5rem 2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem', color: 'var(--accent-red)' }}>
+              <AlertCircle size={48} />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+              {confirmModal.title}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: '1.5' }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button type="button" onClick={confirmModal.onCancel} className="modena-btn-secondary" style={{ flex: 1, padding: '10px 20px', borderRadius: '4px' }}>BATAL</button>
+              <button type="button" onClick={confirmModal.onConfirm} className="modena-btn-primary" style={{ flex: 1, padding: '10px 20px', borderRadius: '4px', backgroundColor: 'var(--accent-red)', color: 'white' }}>LANJUTKAN</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
