@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 // Definisi Tipe Data untuk Teknisi
 type Technician = {
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [uploadingExcel, setUploadingExcel] = useState(false);
 
   // State Pencarian & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -300,6 +302,151 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handler Upload Excel secara manual
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingExcel(true);
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        if (data.length === 0) {
+          alert('File Excel kosong atau tidak memiliki data.');
+          setUploadingExcel(false);
+          return;
+        }
+
+        let successCount = 0;
+        let updateCount = 0;
+        let insertCount = 0;
+
+        for (const row of data) {
+          if (!row.technician_id || !row.employee_number || !row.technician_name || !row.branch) {
+            continue; // Skip baris yang tidak lengkap
+          }
+
+          const techPayload = {
+            technician_id: String(row.technician_id).trim(),
+            employee_number: String(row.employee_number).trim(),
+            technician_name: String(row.technician_name).trim(),
+            branch: String(row.branch).trim(),
+            service_center: row.service_center ? String(row.service_center).trim() : null,
+            photo_url: row.photo_url ? String(row.photo_url).trim() : null,
+            phone: row.phone ? String(row.phone).trim() : null,
+            email: row.email ? String(row.email).trim() : null,
+            technician_status: String(row.technician_status || 'active').trim() as any,
+            technician_level: String(row.technician_level || 'beginner').trim() as any,
+            updated_at: new Date().toISOString()
+          };
+
+          // 1. Cek duplikasi teknisi
+          const { data: existing } = await supabase
+            .from('technicians')
+            .select('id, qr_token')
+            .eq('technician_id', techPayload.technician_id)
+            .maybeSingle();
+
+          let techId = '';
+          let qrToken = '';
+
+          if (existing) {
+            const { data: updated, error } = await supabase
+              .from('technicians')
+              .update(techPayload)
+              .eq('id', existing.id)
+              .select('id, qr_token')
+              .single();
+            if (error) throw error;
+            techId = updated.id;
+            qrToken = updated.qr_token;
+            updateCount++;
+          } else {
+            const { data: inserted, error } = await supabase
+              .from('technicians')
+              .insert([techPayload])
+              .select('id, qr_token')
+              .single();
+            if (error) throw error;
+            techId = inserted.id;
+            qrToken = inserted.qr_token;
+            insertCount++;
+          }
+
+          // 2. Hubungkan data performa
+          if (row.period) {
+            const perfPayload = {
+              technician_id: techId,
+              period: String(row.period).trim(),
+              kpi_score: row.kpi_score ? Number(row.kpi_score) : 0,
+              csi_score: row.csi_score ? Number(row.csi_score) : 0,
+              performance_score: row.performance_score ? Number(row.performance_score) : 0,
+              performance_level: String(row.performance_level || row.technician_level || 'beginner').trim() as any,
+              data_source: 'excel',
+              updated_at: new Date().toISOString()
+            };
+
+            const { error: perfError } = await supabase
+              .from('technician_performance')
+              .upsert(perfPayload, { onConflict: 'technician_id,period' });
+            if (perfError) throw perfError;
+          }
+
+          // 3. Hubungkan data ID Card
+          if (row.card_number) {
+            const cardPayload = {
+              technician_id: techId,
+              card_number: String(row.card_number).trim(),
+              qr_token: qrToken,
+              card_status: String(row.card_status || 'active').trim() as any,
+              expiry_date: row.expiry_date ? String(row.expiry_date).trim() : new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
+            };
+
+            const { error: cardError } = await supabase
+              .from('technician_id_cards')
+              .upsert(cardPayload, { onConflict: 'card_number' });
+            if (cardError) throw cardError;
+          }
+
+          successCount++;
+        }
+
+        // Tulis log sinkronisasi
+        await supabase
+          .from('sync_logs')
+          .insert({
+            start_time: new Date().toISOString(),
+            end_time: new Date().toISOString(),
+            status: 'success',
+            total_records: data.length,
+            processed_records: successCount,
+            new_records: insertCount,
+            updated_records: updateCount,
+            error_count: data.length - successCount,
+            error_details: []
+          });
+
+        alert(`Sinkronisasi Excel Sukses! Berhasil memproses ${successCount} teknisi (${insertCount} baru, ${updateCount} diperbarui).`);
+        fetchData();
+
+      } catch (err: any) {
+        alert('Gagal memproses file Excel: ' + err.message);
+      } finally {
+        setUploadingExcel(false);
+        e.target.value = ''; // Reset file input
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
   // Toggle Status Aktif/Tidak Aktif secara instan
   const handleToggleActive = async (id: string, currentStatus: 'active' | 'inactive') => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
@@ -452,6 +599,35 @@ export default function AdminDashboard() {
               <Link href="/scan" className="modena-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
                 <ScanLine size={16} /> Scan ID Card
               </Link>
+              <label 
+                className="modena-btn-secondary" 
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem', 
+                  borderRadius: '4px', 
+                  padding: '10px 18px', 
+                  fontSize: '0.825rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {uploadingExcel ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin-custom" /> Memproses...
+                  </>
+                ) : (
+                  <>
+                    <Calendar size={16} /> Upload Excel
+                  </>
+                )}
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls" 
+                  onChange={handleExcelUpload} 
+                  disabled={uploadingExcel}
+                  style={{ display: 'none' }} 
+                />
+              </label>
               <button onClick={() => openForm()} className="modena-btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '10px 18px', fontSize: '0.825rem' }}>
                 <Plus size={16} /> Tambah Teknisi
               </button>
