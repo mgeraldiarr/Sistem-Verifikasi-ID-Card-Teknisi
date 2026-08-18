@@ -2,6 +2,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { notFound } from 'next/navigation';
 import { CheckCircle, XCircle, Lock } from 'lucide-react';
+import TechnicianCard3D from '@/components/TechnicianCard3D';
 
 // Menghindari Next.js melakukan caching halaman agar status keaktifan terupdate secara real-time
 export const dynamic = 'force-dynamic';
@@ -82,16 +83,11 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
     year: 'numeric'
   }) : '-';
 
-  // Warna-warna utama sesuai desain kartu fisik
-  const CREAM = '#ECE8DA';
-  const DARK = '#1C1C1A';
-  const ACCENT_RED = '#DA291C';
-
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2.5rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
 
       {/* Header Logo MODENA */}
-      <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
         <img
           src="/modena-logo-official.png"
           alt="MODENA"
@@ -108,95 +104,15 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
         </span>
       </div>
 
-      {/* Tampilan Visual Kartu Fisik (Sisi Depan ID Card) */}
-      <div 
-        style={{ 
-          width: '320px', 
-          height: '508px', /* Rasio CR80 standar kartu nama portrait */
-          backgroundColor: CREAM,
-          borderRadius: '18px',
-          overflow: 'hidden',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid #D6D2C2',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
-          marginBottom: '2rem'
-        }}
-      >
-        {/* Header ID Card */}
-        <div style={{ padding: '14px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Logo MODENA Authorized */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img
-              src="/logo-modena.png"
-              alt="Modena Logo"
-              style={{
-                width: '28px',
-                height: '28px',
-                objectFit: 'cover',
-                borderRadius: '50%',
-                border: '1px solid #D6D2C2'
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', transform: 'translateY(-1px)' }}>
-              <span style={{ fontSize: '9px', fontWeight: 800, lineHeight: 1.1, color: DARK }}>
-                MODENA
-              </span>
-              <span style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', lineHeight: 1.1, color: '#707070', marginTop: '1px' }}>
-                AUTHORIZED
-              </span>
-            </div>
-          </div>
-
-          {/* Level Sertifikasi */}
-          <span style={{
-            fontSize: '7px',
-            fontWeight: 800,
-            backgroundColor: 'rgba(0,0,0,0.06)',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            color: DARK,
-            letterSpacing: '0.5px'
-          }}>
-            {levelText}
-          </span>
-        </div>
-
-        {/* Foto Profil Teknisi */}
-        <div
-          style={{
-            flex: 1,
-            margin: '12px 16px 0',
-            borderRadius: '10px',
-            overflow: 'hidden',
-            backgroundColor: '#D6D2C2',
-            border: '1px solid #C5C1B1',
-            position: 'relative'
-          }}
-        >
-          {technician.photo_url ? (
-            <img
-              src={technician.photo_url}
-              alt={technician.technician_name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB' }}>
-              <span style={{ color: '#9CA3AF', fontSize: '0.875rem' }}>Tidak Ada Foto</span>
-            </div>
-          )}
-        </div>
-
-        {/* Strip Nama & Jabatan (Warna Gelap) */}
-        <div style={{ backgroundColor: DARK, color: 'white', padding: '12px 16px', textAlign: 'left' }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, lineHeight: 1.15, textTransform: 'uppercase', letterSpacing: '0.2px' }}>
-            {technician.technician_name}
-          </div>
-          <div style={{ fontSize: '7px', fontWeight: 800, color: ACCENT_RED, marginTop: '4px', letterSpacing: '0.8px' }}>
-            AUTHORIZED TECHNICIAN
-          </div>
-        </div>
+      {/* Tampilan Visual Kartu 3D Interaktif (Sisi Depan & Belakang) */}
+      <div style={{ marginBottom: '2rem' }}>
+        <TechnicianCard3D
+          technician={technician}
+          cardInfo={cardInfo}
+          levelText={levelText}
+          formattedExpiryDate={formattedExpiryDate}
+          isValid={isValid}
+        />
       </div>
 
       {/* Informasi Detail & Status Verifikasi Digital */}
