@@ -115,10 +115,52 @@ const mapCardStatus = (val: any): 'active' | 'suspended' | 'expired' => {
   return 'active';
 };
 
+// Rate limiting configuration
+const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per minute
+
+const getClientIp = (req: NextRequest) => {
+  const xForwardedFor = req.headers.get('x-forwarded-for');
+  if (xForwardedFor) {
+    return xForwardedFor.split(',')[0].trim();
+  }
+  return (req as any).ip || '127.0.0.1';
+};
+
 export async function POST(req: NextRequest) {
   const startTime = new Date().toISOString();
   
-  // 1. Otorisasi Token Rahasia (Bypass RLS via Service-to-Server)
+  // 1. Rate Limiting Check
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const rateData = rateLimitMap.get(ip) || { count: 0, lastReset: now };
+
+  if (now - rateData.lastReset > RATE_LIMIT_WINDOW) {
+    rateData.count = 1;
+    rateData.lastReset = now;
+  } else {
+    rateData.count++;
+  }
+  rateLimitMap.set(ip, rateData);
+
+  if (rateData.count > MAX_REQUESTS_PER_WINDOW) {
+    return NextResponse.json(
+      { error: 'Too Many Requests: Batas laju permintaan terlampaui. Silakan coba lagi nanti.' },
+      { status: 429 }
+    );
+  }
+
+  // 2. Content-Type Validation
+  const contentType = req.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return NextResponse.json(
+      { error: 'Unsupported Media Type: Content-Type harus application/json.' },
+      { status: 415 }
+    );
+  }
+
+  // 3. Otorisasi Token Rahasia (Bypass RLS via Service-to-Server)
   const authHeader = req.headers.get('authorization');
   const secretToken = process.env.SYNC_SECRET_TOKEN;
 
@@ -144,8 +186,25 @@ export async function POST(req: NextRequest) {
   const errorDetails: Array<{ row: number; technician_id?: string; error: string }> = [];
 
   try {
-    // 2. Baca Body Payload
-    const payload = await req.json();
+    // 4. Baca dan Batasi Ukuran Body Payload (Maksimal 2 MB)
+    const bodyText = await req.text();
+    if (bodyText.length > 2 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Payload Too Large: Ukuran payload maksimal adalah 2 MB.' },
+        { status: 413 }
+      );
+    }
+
+    let payload: any;
+    try {
+      payload = JSON.parse(bodyText);
+    } catch (parseErr) {
+      return NextResponse.json(
+        { error: 'Bad Request: Format JSON tidak valid.' },
+        { status: 400 }
+      );
+    }
+
     if (!Array.isArray(payload)) {
       return NextResponse.json(
         { error: 'Format payload tidak valid. Harus berupa JSON Array.' },
