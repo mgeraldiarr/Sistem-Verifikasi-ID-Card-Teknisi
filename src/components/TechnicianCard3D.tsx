@@ -1,8 +1,8 @@
 // src/components/TechnicianCard3D.tsx
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { RotateCw, ShieldCheck, QrCode as QrIcon, Award, Play, Pause, RefreshCw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ShieldCheck, QrCode as QrIcon, Award } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface TechnicianData {
@@ -38,13 +38,13 @@ export default function TechnicianCard3D({
   isValid,
   verifyUrl,
 }: TechnicianCard3DProps) {
-  // State untuk Rotasi 360 Derajat (X dan Y)
+  // State untuk menyimpan sudut rotasi kartu (dalam derajat)
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
-  const [isAutoSpinning, setIsAutoSpinning] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [glarePos, setGlarePos] = useState({ x: 50, y: 50, opacity: 0 });
 
+  // Ref untuk mencatat koordinat awal saat pengguna mulai melakukan drag/touch
   const dragStartRef = useRef<{ x: number; y: number; rotX: number; rotY: number }>({
     x: 0,
     y: 0,
@@ -52,35 +52,16 @@ export default function TechnicianCard3D({
     rotY: 0,
   });
 
-  const animFrameRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Styling Warna MODENA
+  // Styling Warna Khas MODENA
   const CREAM = '#ECE8DA';
   const DARK = '#1C1C1A';
   const ACCENT_RED = '#DA291C';
 
-  // Loop Animasi Auto-Spin 360°
-  useEffect(() => {
-    if (isAutoSpinning) {
-      const spin = () => {
-        setRotateY(prev => (prev + 1.2) % 360);
-        animFrameRef.current = requestAnimationFrame(spin);
-      };
-      animFrameRef.current = requestAnimationFrame(spin);
-    } else if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-    }
-
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [isAutoSpinning]);
-
-  // Penanganan Drag Mouse untuk Rotasi Bebas 360°
+  // 1. Memulai Drag (Klik Mouse)
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
-    setIsAutoSpinning(false);
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -89,18 +70,17 @@ export default function TechnicianCard3D({
     };
   };
 
+  // 2. Pergerakan Drag Mouse (Memutar Kartu 360°)
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragStartRef.current) return;
-
-    if (isDragging) {
+    if (isDragging && dragStartRef.current) {
       const deltaX = e.clientX - dragStartRef.current.x;
       const deltaY = e.clientY - dragStartRef.current.y;
 
-      setRotateY(dragStartRef.current.rotY + deltaX * 0.8);
-      setRotateX(Math.max(-60, Math.min(60, dragStartRef.current.rotX - deltaY * 0.6)));
+      setRotateY(dragStartRef.current.rotY + deltaX * 0.85);
+      setRotateX(Math.max(-65, Math.min(65, dragStartRef.current.rotX - deltaY * 0.65)));
     }
 
-    // Hitung posisi kilapan cahaya (Glare)
+    // Efek Pantulan Cahaya (Holographic Glare)
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
       const glareX = ((e.clientX - rect.left) / rect.width) * 100;
@@ -109,16 +89,16 @@ export default function TechnicianCard3D({
     }
   };
 
+  // 3. Melepas Drag Mouse
   const handleMouseUp = () => {
     setIsDragging(false);
     setGlarePos(prev => ({ ...prev, opacity: 0 }));
   };
 
-  // Penanganan Drag Sentuhan Layar HP (Touch Gestures 360°)
+  // 4. Memulai Touch Layar Sentuh HP
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 0) return;
     setIsDragging(true);
-    setIsAutoSpinning(false);
     const touch = e.touches[0];
     dragStartRef.current = {
       x: touch.clientX,
@@ -128,6 +108,7 @@ export default function TechnicianCard3D({
     };
   };
 
+  // 5. Pergerakan Sentuhan Jari di HP (Memutar Kartu 360°)
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || e.touches.length === 0) return;
     const touch = e.touches[0];
@@ -135,7 +116,7 @@ export default function TechnicianCard3D({
     const deltaY = touch.clientY - dragStartRef.current.y;
 
     setRotateY(dragStartRef.current.rotY + deltaX * 1.0);
-    setRotateX(Math.max(-60, Math.min(60, dragStartRef.current.rotX - deltaY * 0.8)));
+    setRotateX(Math.max(-65, Math.min(65, dragStartRef.current.rotX - deltaY * 0.8)));
 
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
@@ -145,93 +126,8 @@ export default function TechnicianCard3D({
     }
   };
 
-  // Tombol Aksi Kontrol 360°
-  const toggleAutoSpin = () => {
-    setIsAutoSpinning(prev => !prev);
-  };
-
-  const flip180 = () => {
-    setIsAutoSpinning(false);
-    setRotateY(prev => (prev + 180) % 360);
-  };
-
-  const resetPosition = () => {
-    setIsAutoSpinning(false);
-    setRotateX(0);
-    setRotateY(0);
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-      
-      {/* Panel Kontrol Rotasi 360° Interaktif */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button
-          onClick={toggleAutoSpin}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: isAutoSpinning ? ACCENT_RED : DARK,
-            color: '#FFFFFF',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {isAutoSpinning ? <Pause size={14} /> : <Play size={14} />}
-          <span>{isAutoSpinning ? 'Hentikan Putaran' : 'Putar 360° Otomatis'}</span>
-        </button>
-
-        <button
-          onClick={flip180}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#333330',
-            color: '#FFFFFF',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <RotateCw size={14} />
-          <span>Balik 180°</span>
-        </button>
-
-        <button
-          onClick={resetPosition}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.5rem 0.8rem',
-            backgroundColor: '#E5E7EB',
-            color: DARK,
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          title="Reset Posisi Depan"
-        >
-          <RefreshCw size={13} />
-          <span>Reset</span>
-        </button>
-      </div>
 
       {/* Container Utama 3D Perspective */}
       <div
@@ -245,7 +141,7 @@ export default function TechnicianCard3D({
           WebkitUserSelect: 'none'
         }}
       >
-        {/* Card Motion 360° Wrapper */}
+        {/* Card Motion 360° Drag & Touch Wrapper */}
         <div
           ref={cardRef}
           onMouseDown={handleMouseDown}
@@ -260,7 +156,7 @@ export default function TechnicianCard3D({
             height: '100%',
             position: 'relative',
             transformStyle: 'preserve-3d',
-            transition: isDragging || isAutoSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            transition: isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
             transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
             borderRadius: '18px',
           }}
@@ -294,7 +190,7 @@ export default function TechnicianCard3D({
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.1)',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
-              transform: 'translateZ(1px)', // Mencegah clipping 3D
+              transform: 'translateZ(1px)',
             }}
           >
             {/* Header ID Card */}
@@ -420,7 +316,7 @@ export default function TechnicianCard3D({
               padding: '16px',
               border: '1px solid #333330',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
-              transform: 'rotateY(180deg) translateZ(1px)', // Pemutaran 180 derajat
+              transform: 'rotateY(180deg) translateZ(1px)',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
             }}
