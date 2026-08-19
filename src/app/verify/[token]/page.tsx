@@ -41,9 +41,107 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
     .eq('qr_token', token)
     .single();
 
-  // Jika error atau data tidak ditemukan, alihkan ke halaman 404
+  // Jika data tidak ditemukan (misalnya QR code lama yang telah diregenerasi / hangus)
   if (error || !technician) {
-    notFound();
+    const timestamp = new Date().toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      dateStyle: 'medium',
+      timeStyle: 'medium',
+    });
+
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
+        
+        {/* Header Logo MODENA */}
+        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+          <img
+            src="/modena-logo-official.png"
+            alt="MODENA"
+            style={{
+              height: '1.8rem',
+              width: 'auto',
+              objectFit: 'contain',
+              display: 'inline-block',
+              marginBottom: '0.25rem'
+            }}
+          />
+          <span style={{ fontSize: '0.75rem', letterSpacing: '0.3em', color: '#707070', fontWeight: 700 }}>
+            AUTHORIZED SERVICE
+          </span>
+        </div>
+
+        {/* Card Status Kartu Hangus / Tidak Valid */}
+        <div 
+          style={{ 
+            width: '100%', 
+            maxWidth: '420px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: '1.25rem', 
+            padding: '2rem 1.5rem', 
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.04)',
+            textAlign: 'center'
+          }}
+        >
+          {/* Badge Icon Merah */}
+          <div style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            backgroundColor: '#FEE2E2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#DA291C'
+          }}>
+            <XCircle size={32} />
+          </div>
+
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1C1C1A', margin: 0, lineHeight: 1.3 }}>
+            KARTU / QR CODE TIDAK VALID ATAU TELAH HANGUS
+          </h2>
+
+          <p style={{ fontSize: '0.875rem', color: '#4B5563', margin: 0, lineHeight: 1.6 }}>
+            QR Code ini sudah tidak berlaku (ID Card fisik lama telah diregenerasi/diperbarui oleh HR) atau token tidak terdaftar dalam sistem verifikasi resmi MODENA.
+          </p>
+
+          <div style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: '#FFF5F5',
+            borderRadius: '8px',
+            border: '1px dashed #FECDD3',
+            fontSize: '11px',
+            color: '#9F1239',
+            lineHeight: 1.5
+          }}>
+            Silakan minta teknisi di lokasi untuk menunjukkan ID Card fisik terbaru dengan QR Code aktif.
+          </div>
+
+          {/* Watermark Keamanan */}
+          <div style={{
+            marginTop: '0.5rem',
+            paddingTop: '1rem',
+            borderTop: '1px solid #F3F4F6',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            color: '#9CA3AF'
+          }}>
+            <Lock size={14} color="#DA291C" />
+            <span>Verifikasi Sistem MODENA • {timestamp} WIB</span>
+          </div>
+        </div>
+
+      </div>
+    );
   }
 
   const cardList = technician.technician_id_cards as any[];

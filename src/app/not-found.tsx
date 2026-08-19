@@ -58,28 +58,9 @@ export default function NotFound() {
         </h1>
 
         <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: 0, lineHeight: 1.5 }}>
-          ID Card Teknisi atau token verifikasi yang Anda panggil tidak ditemukan atau tidak valid.
+          ID Card Teknisi tidak ditemukan atau tidak valid.
         </p>
 
-        <Link
-          href="/admin/login"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginTop: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#1C1C1A',
-            color: '#FFFFFF',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontSize: '0.875rem',
-            fontWeight: 700
-          }}
-        >
-          <ArrowLeft size={16} />
-          <span>Kembali ke Portal HR</span>
-        </Link>
       </div>
     </div>
   );
