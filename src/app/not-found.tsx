@@ -57,7 +57,7 @@ export default function NotFound() {
         </h1>
 
         <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: 0, lineHeight: 1.5 }}>
-          ID Card Teknisi tidak ditemukan atau tidak valid.
+         Halaman tidak ditemukan atau data ID Card tidak terdaftar dalam sistem verifikasi resmi MODENA.
         </p>
 
       </div>
