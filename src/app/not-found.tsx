@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function NotFound() {
   return (
