@@ -1,8 +1,8 @@
 // src/components/TechnicianCard3D.tsx
 "use client";
 
-import React, { useState, useRef } from 'react';
-import { RotateCw, ShieldCheck, QrCode as QrIcon, Award } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { RotateCw, ShieldCheck, QrCode as QrIcon, Award, Play, Pause, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface TechnicianData {
@@ -38,154 +38,242 @@ export default function TechnicianCard3D({
   isValid,
   verifyUrl,
 }: TechnicianCard3DProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
+  // State untuk Rotasi 360 Derajat (X dan Y)
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
+  const [isAutoSpinning, setIsAutoSpinning] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [glarePos, setGlarePos] = useState({ x: 50, y: 50, opacity: 0 });
-  const [isHovered, setIsHovered] = useState(false);
+
+  const dragStartRef = useRef<{ x: number; y: number; rotX: number; rotY: number }>({
+    x: 0,
+    y: 0,
+    rotX: 0,
+    rotY: 0,
+  });
+
+  const animFrameRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Styling Warna Khas MODENA
+  // Styling Warna MODENA
   const CREAM = '#ECE8DA';
   const DARK = '#1C1C1A';
   const ACCENT_RED = '#DA291C';
 
-  // Penanganan Gestur Mouse / Touch untuk Efek 3D Tilt
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  // Loop Animasi Auto-Spin 360°
+  useEffect(() => {
+    if (isAutoSpinning) {
+      const spin = () => {
+        setRotateY(prev => (prev + 1.2) % 360);
+        animFrameRef.current = requestAnimationFrame(spin);
+      };
+      animFrameRef.current = requestAnimationFrame(spin);
+    } else if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
 
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isAutoSpinning]);
 
-    const rY = ((x - centerX) / centerX) * 15;
-    const rX = -((y - centerY) / centerY) * 15;
-
-    setRotateX(rX);
-    setRotateY(rY);
-
-    const glareX = (x / rect.width) * 100;
-    const glareY = (y / rect.height) * 100;
-    setGlarePos({ x: glareX, y: glareY, opacity: 0.35 });
+  // Penanganan Drag Mouse untuk Rotasi Bebas 360°
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setIsAutoSpinning(false);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      rotX: rotateX,
+      rotY: rotateY,
+    };
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!cardRef.current || e.touches.length === 0) return;
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragStartRef.current) return;
+
+    if (isDragging) {
+      const deltaX = e.clientX - dragStartRef.current.x;
+      const deltaY = e.clientY - dragStartRef.current.y;
+
+      setRotateY(dragStartRef.current.rotY + deltaX * 0.8);
+      setRotateX(Math.max(-60, Math.min(60, dragStartRef.current.rotX - deltaY * 0.6)));
+    }
+
+    // Hitung posisi kilapan cahaya (Glare)
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const glareX = ((e.clientX - rect.left) / rect.width) * 100;
+      const glareY = ((e.clientY - rect.top) / rect.height) * 100;
+      setGlarePos({ x: glareX, y: glareY, opacity: 0.35 });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setGlarePos(prev => ({ ...prev, opacity: 0 }));
+  };
+
+  // Penanganan Drag Sentuhan Layar HP (Touch Gestures 360°)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) return;
+    setIsDragging(true);
+    setIsAutoSpinning(false);
     const touch = e.touches[0];
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const rY = ((x - centerX) / centerX) * 15;
-    const rX = -((y - centerY) / centerY) * 15;
-
-    setRotateX(rX);
-    setRotateY(rY);
-
-    const glareX = (x / rect.width) * 100;
-    const glareY = (y / rect.height) * 100;
-    setGlarePos({ x: glareX, y: glareY, opacity: 0.35 });
+    dragStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      rotX: rotateX,
+      rotY: rotateY,
+    };
   };
 
-  const handleMouseLeave = () => {
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - dragStartRef.current.x;
+    const deltaY = touch.clientY - dragStartRef.current.y;
+
+    setRotateY(dragStartRef.current.rotY + deltaX * 1.0);
+    setRotateX(Math.max(-60, Math.min(60, dragStartRef.current.rotX - deltaY * 0.8)));
+
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const glareX = ((touch.clientX - rect.left) / rect.width) * 100;
+      const glareY = ((touch.clientY - rect.top) / rect.height) * 100;
+      setGlarePos({ x: glareX, y: glareY, opacity: 0.35 });
+    }
+  };
+
+  // Tombol Aksi Kontrol 360°
+  const toggleAutoSpin = () => {
+    setIsAutoSpinning(prev => !prev);
+  };
+
+  const flip180 = () => {
+    setIsAutoSpinning(false);
+    setRotateY(prev => (prev + 180) % 360);
+  };
+
+  const resetPosition = () => {
+    setIsAutoSpinning(false);
     setRotateX(0);
     setRotateY(0);
-    setGlarePos(prev => ({ ...prev, opacity: 0 }));
-    setIsHovered(false);
-  };
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-  };
-
-  const toggleFlip = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsFlipped(prev => !prev);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
       
-      {/* Tombol Kontrol Putar Kartu */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      {/* Panel Kontrol Rotasi 360° Interaktif */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
         <button
-          onClick={toggleFlip}
+          onClick={toggleAutoSpin}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.55rem 1.2rem',
-            backgroundColor: DARK,
+            gap: '0.4rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: isAutoSpinning ? ACCENT_RED : DARK,
             color: '#FFFFFF',
-            borderRadius: '30px',
-            fontSize: '0.8rem',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
             fontWeight: 700,
             border: 'none',
             cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(28, 28, 26, 0.25)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             transition: 'all 0.2s ease',
-            letterSpacing: '0.5px'
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <RotateCw size={15} style={{ transition: 'transform 0.4s ease', transform: isFlipped ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-          <span>{isFlipped ? 'Tampilkan Sisi Depan' : 'Putar Kartu 3D (Sisi Belakang)'}</span>
+          {isAutoSpinning ? <Pause size={14} /> : <Play size={14} />}
+          <span>{isAutoSpinning ? 'Hentikan Putaran' : 'Putar 360° Otomatis'}</span>
+        </button>
+
+        <button
+          onClick={flip180}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: '#333330',
+            color: '#FFFFFF',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <RotateCw size={14} />
+          <span>Balik 180°</span>
+        </button>
+
+        <button
+          onClick={resetPosition}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.5rem 0.8rem',
+            backgroundColor: '#E5E7EB',
+            color: DARK,
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          title="Reset Posisi Depan"
+        >
+          <RefreshCw size={13} />
+          <span>Reset</span>
         </button>
       </div>
 
-      {/* Container Utam 3D Perspective */}
+      {/* Container Utama 3D Perspective */}
       <div
         style={{
           perspective: '1200px',
           width: '320px',
           height: '508px',
-          cursor: 'grab',
-          position: 'relative'
+          cursor: isDragging ? 'grabbing' : 'grab',
+          position: 'relative',
+          userSelect: 'none',
+          WebkitUserSelect: 'none'
         }}
       >
-        {/* Card Motion Wrapper */}
+        {/* Card Motion 360° Wrapper */}
         <div
           ref={cardRef}
+          onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
-          onTouchEnd={handleMouseLeave}
+          onTouchEnd={handleMouseUp}
           style={{
             width: '100%',
             height: '100%',
             position: 'relative',
             transformStyle: 'preserve-3d',
-            transition: isHovered ? 'transform 0.1s ease-out' : 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transform: `rotateX(${rotateX}deg) rotateY(${rotateY + (isFlipped ? 180 : 0)}deg)`,
+            transition: isDragging || isAutoSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
             borderRadius: '18px',
-            animation: !isHovered && !isFlipped ? 'subtleFloat 4s ease-in-out infinite' : 'none',
           }}
         >
-          {/* Keyframe Float Animation */}
-          <style>{`
-            @keyframes subtleFloat {
-              0%, 100% { transform: rotateX(0deg) rotateY(0deg) translateY(0px); }
-              50% { transform: rotateX(2deg) rotateY(-4deg) translateY(-8px); }
-            }
-          `}</style>
-
           {/* Layer Pantulan Cahaya (Holographic Glare) */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
               borderRadius: '18px',
-              zIndex: 20,
+              zIndex: 30,
               pointerEvents: 'none',
               background: `radial-gradient(circle at ${glarePos.x}% ${glarePos.y}%, rgba(255,255,255,${glarePos.opacity}) 0%, rgba(255,255,255,0) 70%)`,
-              transition: 'background 0.1s ease-out',
               backfaceVisibility: 'hidden'
             }}
           />
@@ -203,9 +291,10 @@ export default function TechnicianCard3D({
               display: 'flex',
               flexDirection: 'column',
               border: '1px solid #D6D2C2',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.18), 0 4px 10px rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.1)',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
+              transform: 'translateZ(1px)', // Mencegah clipping 3D
             }}
           >
             {/* Header ID Card */}
@@ -275,7 +364,7 @@ export default function TechnicianCard3D({
                 </div>
               )}
 
-              {/* Verified Badge Overlay jika Valid */}
+              {/* Verified Badge Overlay */}
               {isValid && (
                 <div
                   style={{
@@ -330,8 +419,8 @@ export default function TechnicianCard3D({
               justifyContent: 'space-between',
               padding: '16px',
               border: '1px solid #333330',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-              transform: 'rotateY(180deg)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
+              transform: 'rotateY(180deg) translateZ(1px)', // Pemutaran 180 derajat
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
             }}
@@ -349,7 +438,7 @@ export default function TechnicianCard3D({
               </span>
             </div>
 
-            {/* Area QR Code & Info Digital */}
+            {/* Area QR Code */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0', gap: '10px' }}>
               <div
                 style={{
@@ -408,7 +497,7 @@ export default function TechnicianCard3D({
 
       {/* Petunjuk Penggunaan untuk Konsumen */}
       <span style={{ fontSize: '0.75rem', color: '#888888', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
-        💡 Geser / Usap kartu untuk melihat efek 3D • Tekan tombol di atas untuk membalik kartu
+        💡 Drag / Usap kartu ke kanan/kiri/atas/bawah untuk memutar 360° secara bebas
       </span>
     </div>
   );
