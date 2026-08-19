@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS technician_id_cards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     technician_id UUID NOT NULL REFERENCES technicians(id) ON DELETE CASCADE,
     card_number VARCHAR(100) UNIQUE NOT NULL, -- Nomor Seri Kartu Unik
-    qr_token UUID NOT NULL REFERENCES technicians(qr_token) ON DELETE CASCADE,
+    qr_token UUID NOT NULL REFERENCES technicians(qr_token) ON UPDATE CASCADE ON DELETE CASCADE,
     issue_date DATE DEFAULT CURRENT_DATE NOT NULL,
     expiry_date DATE NOT NULL,
     card_status VARCHAR(20) DEFAULT 'active' NOT NULL
