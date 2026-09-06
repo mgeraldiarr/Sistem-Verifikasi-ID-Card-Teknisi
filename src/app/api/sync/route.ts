@@ -1,119 +1,16 @@
 // src/app/api/sync/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-
-// Interface untuk validasi payload data Excel yang masuk
-interface SyncRecord {
-  technician_id: string; // Format: MOD-Txxx
-  employee_number: string;
-  technician_name: string;
-  branch: string;
-  service_center?: string;
-  photo_url?: string;
-  phone?: string;
-  email?: string;
-  technician_status: 'active' | 'inactive';
-  technician_level: 'beginner' | 'intermediate' | 'advance';
-  period: string; // Format: YYYY-MM
-  kpi_score: number;
-  csi_score: number;
-  performance_score: number;
-  performance_level: 'beginner' | 'intermediate' | 'advance';
-  card_number?: string;
-  card_status?: 'active' | 'suspended' | 'expired';
-  expiry_date?: string; // Format: YYYY-MM-DD
-}
-
-// HELPER SINKRONISASI EXCEL (Mendukung Header Inggris/Indonesia, Tanggal Excel, & Translasi Nilai)
-const getRowValue = (row: any, keys: string[]) => {
-  for (const rawKey of Object.keys(row)) {
-    const normKey = rawKey.toLowerCase().replace(/[\s_\-\/]/g, '');
-    if (keys.some(k => k.toLowerCase().replace(/[\s_\-\/]/g, '') === normKey)) {
-      return row[rawKey];
-    }
-  }
-  return undefined;
-};
-
-const parseExcelDate = (val: any) => {
-  if (!val) return null;
-  if (val instanceof Date) return val.toISOString().split('T')[0];
-  if (typeof val === 'number') {
-    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-    return date.toISOString().split('T')[0];
-  }
-  const str = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const d = new Date(str);
-  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  return null;
-};
-
-const parseExcelNumber = (val: any) => {
-  if (val === undefined || val === null) return 0;
-  if (typeof val === 'number') return val;
-  const str = String(val).trim().replace(',', '.');
-  const num = Number(str);
-  return isNaN(num) ? 0 : num;
-};
-
-const parseExcelPeriod = (val: any) => {
-  if (!val) return null;
-  if (val instanceof Date) {
-    const y = val.getFullYear();
-    const m = String(val.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  }
-  if (typeof val === 'number') {
-    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  }
-  const str = String(val).trim();
-  if (/^\d{4}-\d{2}$/.test(str)) return str;
-  const parts = str.split(/[\/\-]/);
-  if (parts.length === 2) {
-    if (parts[0].length === 4) {
-      return `${parts[0]}-${parts[1].padStart(2, '0')}`;
-    } else {
-      return `${parts[1]}-${parts[0].padStart(2, '0')}`;
-    }
-  }
-  const d = new Date(str);
-  if (!isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  }
-  return null;
-};
-
-const mapStatus = (val: any): 'active' | 'inactive' => {
-  if (!val) return 'active';
-  const str = String(val).trim().toLowerCase();
-  if (['aktif', 'active', 'yes', '1', 'true', 'aktif/active'].includes(str)) return 'active';
-  if (['nonaktif', 'tidak aktif', 'inactive', 'no', '0', 'false', 'blokir', 'diblokir', 'non-aktif', 'non_aktif'].includes(str)) return 'inactive';
-  return 'active';
-};
-
-const mapLevel = (val: any): 'beginner' | 'intermediate' | 'advance' => {
-  if (!val) return 'beginner';
-  const str = String(val).trim().toLowerCase();
-  if (['beginner', 'pemula', 'basic', 'begginer'].includes(str)) return 'beginner';
-  if (['intermediate', 'menengah', 'madya'].includes(str)) return 'intermediate';
-  if (['advance', 'advanced', 'mahir', 'senior', 'adv'].includes(str)) return 'advance';
-  return 'beginner';
-};
-
-const mapCardStatus = (val: any): 'active' | 'suspended' | 'expired' => {
-  if (!val) return 'active';
-  const str = String(val).trim().toLowerCase();
-  if (['aktif', 'active', 'yes', '1', 'true'].includes(str)) return 'active';
-  if (['suspended', 'ditangguhkan', 'suspend', 'tangguh'].includes(str)) return 'suspended';
-  if (['expired', 'kadaluarsa', 'habis', 'exp'].includes(str)) return 'expired';
-  return 'active';
-};
+import {
+  getRowValue,
+  mapCardStatus,
+  mapLevel,
+  mapStatus,
+  parseExcelDate,
+  parseExcelNumber,
+  parseExcelPeriod,
+} from '@/lib/excel';
+import { SyncErrorDetail, SyncRecord } from '@/types';
 
 // Rate limiting configuration
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
@@ -160,54 +57,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Otorisasi Token Rahasia (Bypass RLS via Service-to-Server)
-  const authHeader = req.headers.get('authorization');
-  const secretToken = process.env.SYNC_SECRET_TOKEN;
+  // A. Autentikasi API Key
+  const apiKey = req.headers.get('x-api-key');
+  const validApiKey = process.env.SYNC_API_KEY;
 
-  if (!secretToken) {
+  if (!validApiKey || apiKey !== validApiKey) {
     return NextResponse.json(
-      { error: 'SYNC_SECRET_TOKEN belum dikonfigurasi di server.' },
-      { status: 500 }
-    );
-  }
-
-  if (!authHeader || authHeader !== `Bearer ${secretToken}`) {
-    return NextResponse.json(
-      { error: 'Unauthorized: Token sinkronisasi tidak valid.' },
+      { error: 'Unauthorized: Akses ditolak. API Key tidak valid.' },
       { status: 401 }
     );
   }
 
-  let syncLogId: string | null = null;
   let totalRecords = 0;
   let processedRecords = 0;
   let newRecords = 0;
   let updatedRecords = 0;
-  const errorDetails: Array<{ row: number; technician_id?: string; error: string }> = [];
+  const errorDetails: SyncErrorDetail[] = [];
+  let syncLogId: string | null = null;
 
   try {
-    // 4. Baca dan Batasi Ukuran Body Payload (Maksimal 2 MB)
-    const bodyText = await req.text();
-    if (bodyText.length > 2 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Payload Too Large: Ukuran payload maksimal adalah 2 MB.' },
-        { status: 413 }
-      );
-    }
+    const payload: SyncRecord[] = await req.json();
 
-    let payload: any;
-    try {
-      payload = JSON.parse(bodyText);
-    } catch (parseErr) {
+    if (!Array.isArray(payload) || payload.length === 0) {
       return NextResponse.json(
-        { error: 'Bad Request: Format JSON tidak valid.' },
-        { status: 400 }
-      );
-    }
-
-    if (!Array.isArray(payload)) {
-      return NextResponse.json(
-        { error: 'Format payload tidak valid. Harus berupa JSON Array.' },
+        { error: 'Bad Request: Payload harus berupa array berisi data teknisi.' },
         { status: 400 }
       );
     }

@@ -5,19 +5,21 @@ import React, { useState, useRef } from 'react';
 import { ShieldCheck, QrCode as QrIcon, Award } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
+import { CardStatus, TechnicianLevel, TechnicianStatus } from '@/types';
+
 interface TechnicianData {
   technician_id: string;
   technician_name: string;
   branch: string;
   service_center: string | null;
   photo_url: string | null;
-  technician_status: 'active' | 'inactive';
-  technician_level: 'beginner' | 'intermediate' | 'advance';
+  technician_status: TechnicianStatus;
+  technician_level: TechnicianLevel;
 }
 
 interface CardInfoData {
   card_number: string;
-  card_status: 'active' | 'suspended' | 'expired';
+  card_status: CardStatus;
   expiry_date: string;
 }
 
