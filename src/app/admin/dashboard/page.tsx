@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import { QRCodeSVG } from 'qrcode.react';
-import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 // Definisi Tipe Data untuk Teknisi
@@ -194,6 +193,9 @@ function AdminDashboard() {
       `)
       .order('created_at', { ascending: false });
 
+    if (error) {
+      console.error('Error fetching technicians:', error);
+    }
     if (techData) setTechnicians(techData as unknown as Technician[]);
     setLoading(false);
   };
