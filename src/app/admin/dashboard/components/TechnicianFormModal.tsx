@@ -4,6 +4,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { TechnicianFormData, TechnicianLevel, TechnicianStatus } from '@/types';
+import { DSC_BRANCHES } from '@/constants/service-center';
 
 interface TechnicianFormModalProps {
   show: boolean;
@@ -200,6 +201,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
               <input
                 type="text"
                 required
+                list="dsc-branches-list"
                 value={formData.branch}
                 onChange={(e) =>
                   setFormData({ ...formData, branch: e.target.value })
@@ -212,8 +214,13 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                   outline: 'none',
                   fontSize: '0.875rem',
                 }}
-                placeholder="Contoh: Jakarta"
+                placeholder="Pilih atau ketik cabang DSC..."
               />
+              <datalist id="dsc-branches-list">
+                {DSC_BRANCHES.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label

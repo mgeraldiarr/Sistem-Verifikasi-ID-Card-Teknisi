@@ -16,6 +16,7 @@ import {
 import { useDashboardData } from './hooks/useDashboardData';
 import { processExcelUpload } from './utils/excel-uploader';
 import { DashboardHeader } from './components/DashboardHeader';
+import { DashboardSidebar } from './components/DashboardSidebar';
 import { SyncLogWidget } from './components/SyncLogWidget';
 import { DashboardToolbar } from './components/DashboardToolbar';
 import { DashboardFilters } from './components/DashboardFilters';
@@ -398,57 +399,77 @@ function AdminDashboard() {
     return Array.from(new Set(technicians.map((t) => t.branch)));
   }, [technicians]);
 
+  const branchCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    technicians.forEach((t) => {
+      if (t.branch) {
+        counts[t.branch] = (counts[t.branch] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [technicians]);
+
   return (
     <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
       {/* DASHBOARD UTAMA */}
       <div className="no-print">
         <DashboardHeader onLogout={handleLogout} />
 
-        <main
-          style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            padding: '2rem 1.5rem',
-          }}
-        >
-          {/* WIDGET SINKRONISASI EXCEL */}
-          <SyncLogWidget
-            lastSyncLog={lastSyncLog}
-            lastFileName={lastFileName}
-            onRefresh={fetchData}
+        {/* Layout 2 Kolom: Sidebar (Lingkup Layanan & Cabang) + Konten Utama */}
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          <DashboardSidebar
+            selectedBranch={filterBranch}
+            onSelectBranch={setFilterBranch}
+            totalTechnicians={technicians.length}
+            techniciansBranchCounts={branchCounts}
           />
 
-          {/* HEADER DAN TOOLBAR */}
-          <DashboardToolbar
-            uploadingExcel={uploadingExcel}
-            onExcelUpload={handleExcelUpload}
-            onAddTechnician={() => openForm()}
-          />
+          <main
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '2rem 1.5rem',
+            }}
+          >
+            {/* WIDGET SINKRONISASI EXCEL */}
+            <SyncLogWidget
+              lastSyncLog={lastSyncLog}
+              lastFileName={lastFileName}
+              onRefresh={fetchData}
+            />
 
-          {/* FILTER & SEARCH PANEL */}
-          <DashboardFilters
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            filterBranch={filterBranch}
-            setFilterBranch={setFilterBranch}
-            filterLevel={filterLevel}
-            setFilterLevel={setFilterLevel}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            uniqueBranches={uniqueBranches}
-          />
+            {/* HEADER DAN TOOLBAR */}
+            <DashboardToolbar
+              uploadingExcel={uploadingExcel}
+              onExcelUpload={handleExcelUpload}
+              onAddTechnician={() => openForm()}
+            />
 
-          {/* TABLE DATA */}
-          <TechnicianTable
-            loading={loading}
-            technicians={filteredTechnicians}
-            onToggleActive={handleToggleActive}
-            onPrint={triggerPrint}
-            onRegenerateQR={handleRegenerateQR}
-            onEdit={openForm}
-            onDelete={handleDelete}
-          />
-        </main>
+            {/* FILTER & SEARCH PANEL */}
+            <DashboardFilters
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filterBranch={filterBranch}
+              setFilterBranch={setFilterBranch}
+              filterLevel={filterLevel}
+              setFilterLevel={setFilterLevel}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              uniqueBranches={uniqueBranches}
+            />
+
+            {/* TABLE DATA */}
+            <TechnicianTable
+              loading={loading}
+              technicians={filteredTechnicians}
+              onToggleActive={handleToggleActive}
+              onPrint={triggerPrint}
+              onRegenerateQR={handleRegenerateQR}
+              onEdit={openForm}
+              onDelete={handleDelete}
+            />
+          </main>
+        </div>
 
         {/* Modal Form Tambah/Edit Teknisi */}
         <TechnicianFormModal
