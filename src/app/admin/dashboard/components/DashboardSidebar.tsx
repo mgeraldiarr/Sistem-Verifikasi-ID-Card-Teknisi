@@ -16,7 +16,6 @@ import {
 import {
   SERVICE_SCOPES,
   DSC_BRANCHES,
-  ServiceCenterType,
 } from '@/constants/service-center';
 
 interface DashboardSidebarProps {
