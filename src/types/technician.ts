@@ -12,6 +12,12 @@ export interface TechnicianPerformance {
   csi_score: number;
   performance_score: number;
   performance_level: string;
+  tat?: number;
+  rtat?: number;
+  csat?: number;
+  grooming_score?: number;
+  service_score?: number;
+  repair_quality_score?: number;
 }
 
 export interface TechnicianIdCard {
@@ -52,6 +58,14 @@ export interface TechnicianFormData {
   card_number: string;
   card_status: CardStatus;
   expiry_date: string;
+  // 6 Indikator Evaluasi 12 Kolom
+  tat?: number;
+  rtat?: number;
+  csat?: number;
+  grooming_score?: number;
+  service_score?: number;
+  repair_quality_score?: number;
+  performance_score?: number;
 }
 
 export interface TechnicianPublicData {
