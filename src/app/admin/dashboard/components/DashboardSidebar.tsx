@@ -231,6 +231,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       }}
                     />
                     <input
+                      id="sidebar-branch-search"
+                      name="sidebar_branch_search"
                       type="text"
                       placeholder="Cari cabang DSC..."
                       value={branchSearch}

@@ -19,7 +19,7 @@ export default function AdminLogin() {
     setError(null);
 
     // Otentikasi menggunakan Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });

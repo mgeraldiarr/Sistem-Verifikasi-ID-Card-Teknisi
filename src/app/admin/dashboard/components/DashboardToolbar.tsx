@@ -37,6 +37,7 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
       </h2>
       <div style={{ display: 'flex', gap: '0.75rem' }}>
         <label
+          htmlFor="excel-file-input"
           className="modena-btn-secondary"
           style={{
             display: 'inline-flex',
@@ -58,6 +59,8 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
             </>
           )}
           <input
+            id="excel-file-input"
+            name="excel_file_input"
             type="file"
             accept=".xlsx, .xls"
             onChange={onExcelUpload}

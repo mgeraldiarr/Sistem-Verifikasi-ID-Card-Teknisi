@@ -83,6 +83,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           >
             <div>
               <label
+                htmlFor="form-technician-id"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -93,6 +94,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 ID Teknisi
               </label>
               <input
+                id="form-technician-id"
+                name="technician_id"
                 type="text"
                 required
                 value={formData.technician_id}
@@ -115,6 +118,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             </div>
             <div>
               <label
+                htmlFor="form-employee-number"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -125,6 +129,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Nomor Karyawan
               </label>
               <input
+                id="form-employee-number"
+                name="employee_number"
                 type="text"
                 required
                 value={formData.employee_number}
@@ -149,6 +155,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
 
           <div>
             <label
+              htmlFor="form-technician-name"
               style={{
                 display: 'block',
                 fontSize: '0.825rem',
@@ -159,6 +166,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
               Nama Lengkap Teknisi
             </label>
             <input
+              id="form-technician-name"
+              name="technician_name"
               type="text"
               required
               value={formData.technician_name}
@@ -189,6 +198,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           >
             <div>
               <label
+                htmlFor="form-branch"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -199,6 +209,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Cabang / Wilayah
               </label>
               <input
+                id="form-branch"
+                name="branch"
                 type="text"
                 required
                 list="dsc-branches-list"
@@ -224,6 +236,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             </div>
             <div>
               <label
+                htmlFor="form-service-center"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -234,6 +247,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Service Center
               </label>
               <input
+                id="form-service-center"
+                name="service_center"
                 type="text"
                 value={formData.service_center}
                 onChange={(e) =>
@@ -264,6 +279,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           >
             <div>
               <label
+                htmlFor="form-technician-level"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -274,6 +290,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Level Sertifikasi
               </label>
               <select
+                id="form-technician-level"
+                name="technician_level"
                 value={formData.technician_level}
                 onChange={(e) =>
                   setFormData({
@@ -297,6 +315,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             </div>
             <div>
               <label
+                htmlFor="form-technician-status"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -307,6 +326,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Status Aktif
               </label>
               <select
+                id="form-technician-status"
+                name="technician_status"
                 value={formData.technician_status}
                 onChange={(e) =>
                   setFormData({
@@ -338,6 +359,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           >
             <div>
               <label
+                htmlFor="form-phone"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -348,6 +370,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Nomor Telepon (Sensitif)
               </label>
               <input
+                id="form-phone"
+                name="phone"
                 type="text"
                 value={formData.phone}
                 onChange={(e) =>
@@ -366,6 +390,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             </div>
             <div>
               <label
+                htmlFor="form-email"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -376,6 +401,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Email Korporat (Sensitif)
               </label>
               <input
+                id="form-email"
+                name="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) =>
@@ -411,6 +438,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           >
             <div>
               <label
+                htmlFor="form-card-number"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -421,6 +449,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Nomor ID Card Fisik
               </label>
               <input
+                id="form-card-number"
+                name="card_number"
                 type="text"
                 required={!!formId}
                 value={formData.card_number}
@@ -443,6 +473,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             </div>
             <div>
               <label
+                htmlFor="form-expiry-date"
                 style={{
                   display: 'block',
                   fontSize: '0.825rem',
@@ -453,6 +484,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 Tanggal Kadaluarsa Kartu
               </label>
               <input
+                id="form-expiry-date"
+                name="expiry_date"
                 type="date"
                 required={!!formId}
                 value={formData.expiry_date}
@@ -476,6 +509,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
 
           <div>
             <label
+              htmlFor="form-photo-file"
               style={{
                 display: 'block',
                 fontSize: '0.825rem',
@@ -486,6 +520,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
               Foto Resmi Teknisi (Maks 2MB)
             </label>
             <input
+              id="form-photo-file"
+              name="photo_file"
               type="file"
               accept="image/png, image/jpeg"
               onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
