@@ -41,8 +41,8 @@ export function useDashboardData() {
 
       if (syncData) setLastSyncLog(syncData as SyncLog);
 
-      // Fetch data teknisi beserta performa terbaru & kartu
-      const { data: techData, error } = await supabase
+      // Fetch data teknisi beserta performa terbaru & kartu (dengan fallback query otomatis jika database belum dimigrasi)
+      let { data: techData, error } = await supabase
         .from('technicians')
         .select(
           `
@@ -52,7 +52,13 @@ export function useDashboardData() {
             kpi_score,
             csi_score,
             performance_score,
-            performance_level
+            performance_level,
+            tat,
+            rtat,
+            csat,
+            grooming_score,
+            service_score,
+            repair_quality_score
           ),
           technician_id_cards!technician_id_cards_technician_id_fkey (
             card_number,
@@ -64,8 +70,36 @@ export function useDashboardData() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching technicians:', error);
+        // Jika kolom baru belum ada di Supabase, fallback ke skema dasar agar dashboard tetap berfungsi normal
+        const fallbackRes = await supabase
+          .from('technicians')
+          .select(
+            `
+            *,
+            technician_performance (
+              period,
+              kpi_score,
+              csi_score,
+              performance_score,
+              performance_level
+            ),
+            technician_id_cards!technician_id_cards_technician_id_fkey (
+              card_number,
+              card_status,
+              expiry_date
+            )
+          `
+          )
+          .order('created_at', { ascending: false });
+
+        if (!fallbackRes.error) {
+          techData = fallbackRes.data;
+          error = null;
+        } else {
+          console.error('Error fetching technicians:', error);
+        }
       }
+
       if (techData) {
         setTechnicians(techData as unknown as Technician[]);
       }

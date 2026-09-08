@@ -4,12 +4,13 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import {
   getRowValue,
   mapCardStatus,
-  mapLevel,
   mapStatus,
   parseExcelDate,
   parseExcelNumber,
   parseExcelPeriod,
+  parseMonthNameToPeriod,
 } from '@/lib/excel';
+import { calculateHybridKpi } from '@/lib/kpi';
 import { ExcelUploadResult, SyncErrorDetail } from '@/types';
 
 interface ProcessExcelUploadOptions {
@@ -58,11 +59,36 @@ export async function processExcelUpload({
           const rowNum = idx + 1;
 
           try {
-            // Ekstraksi nilai kolom wajib
-            const technician_id = String(
+            // Ekstraksi identitas utama (Mendukung 12 Kolom Standar MODENA & Format Legacy)
+            const technician_name = String(
+              getRowValue(row, [
+                'technician full names',
+                'technician full name',
+                'technician_name',
+                'nama_teknisi',
+                'nama teknisi',
+                'nama',
+                'nama_lengkap',
+                'nama lengkap',
+              ]) || ''
+            ).trim();
+
+            const branch = String(
+              getRowValue(row, ['branch', 'cabang', 'wilayah']) || ''
+            ).trim();
+
+            if (!technician_name || !branch) {
+              const missing = [];
+              if (!technician_name) missing.push('Technician Full Names / Nama');
+              if (!branch) missing.push('Branch / Cabang');
+              throw new Error(`Kolom wajib tidak lengkap: ${missing.join(', ')}`);
+            }
+
+            let technician_id = String(
               getRowValue(row, ['technician_id', 'id_teknisi', 'id teknisi', 'id']) || ''
             ).trim();
-            const employee_number = String(
+
+            let employee_number = String(
               getRowValue(row, [
                 'employee_number',
                 'no_karyawan',
@@ -72,36 +98,143 @@ export async function processExcelUpload({
                 'nomor karyawan',
               ]) || ''
             ).trim();
-            const technician_name = String(
-              getRowValue(row, [
-                'technician_name',
-                'nama_teknisi',
-                'nama teknisi',
-                'nama',
-                'nama_lengkap',
-                'nama lengkap',
-              ]) || ''
-            ).trim();
-            const branch = String(
-              getRowValue(row, ['branch', 'cabang', 'wilayah']) || ''
-            ).trim();
 
-            if (!technician_id || !employee_number || !technician_name || !branch) {
-              const missing = [];
-              if (!technician_id) missing.push('ID/ID Teknisi');
-              if (!employee_number) missing.push('NIK/No Karyawan');
-              if (!technician_name) missing.push('Nama');
-              if (!branch) missing.push('Cabang');
-              throw new Error(`Kolom wajib tidak lengkap: ${missing.join(', ')}`);
+            // A. Cari apakah teknisi sudah ada sebelumnya (by ID atau by Name + Branch)
+            let existingTech: any = null;
+            if (technician_id) {
+              const { data } = await supabase
+                .from('technicians')
+                .select('id, qr_token, technician_id, employee_number, technician_level')
+                .eq('technician_id', technician_id)
+                .maybeSingle();
+              existingTech = data;
             }
 
-            // Ekstraksi nilai kolom opsional
+            if (!existingTech) {
+              const { data } = await supabase
+                .from('technicians')
+                .select('id, qr_token, technician_id, employee_number, technician_level')
+                .ilike('technician_name', technician_name)
+                .ilike('branch', branch)
+                .maybeSingle();
+              existingTech = data;
+            }
+
+            // Jika teknisi sudah ada, gunakan ID & NIK terdaftarnya
+            if (existingTech) {
+              if (!technician_id) technician_id = existingTech.technician_id;
+              if (!employee_number) employee_number = existingTech.employee_number;
+            } else {
+              // Jika teknisi baru dan file 12 kolom tidak menyertakan ID/NIK, generate otomatis
+              if (!technician_id) {
+                const branchCode = branch
+                  .replace(/[^a-zA-Z]/g, '')
+                  .slice(0, 3)
+                  .toUpperCase() || 'MOD';
+                technician_id = `MOD-${branchCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+              }
+              if (!employee_number) {
+                employee_number = `10${Math.floor(100000 + Math.random() * 900000)}`;
+              }
+            }
+
+            // B. Ekstraksi 6 Indikator Evaluasi Standar
+            const tatRaw = getRowValue(row, [
+              'tat',
+              'turn around time',
+              'turn_around_time',
+            ]);
+            const rtatRaw = getRowValue(row, [
+              'rtat',
+              'repeat turn around time',
+              'repeat_turn_around_time',
+            ]);
+            const csatRaw = getRowValue(row, [
+              'csat',
+              'customer satisfaction',
+              'customer_satisfaction',
+              'csi',
+              'csi_score',
+            ]);
+            const groomingRaw = getRowValue(row, [
+              'penampilan',
+              'grooming',
+              'grooming_score',
+              'skor penampilan',
+              'skor_penampilan',
+            ]);
+            const serviceRaw = getRowValue(row, [
+              'pelayanan',
+              'service',
+              'service_score',
+              'skor pelayanan',
+              'skor_pelayanan',
+            ]);
+            const repairQualityRaw = getRowValue(row, [
+              'hasil perbaikan',
+              'hasil_perbaikan',
+              'repair quality',
+              'repair_quality',
+              'kualitas perbaikan',
+              'kualitas_perbaikan',
+            ]);
+
+            // C. Ekstraksi Nilai dari Klien (Kolom 11 & 12)
+            const clientScoreRaw = getRowValue(row, [
+              'technician level',
+              'technician_level',
+              'skor kpi',
+              'skor_kpi',
+              'kpi',
+              'kpi_score',
+              'skor total',
+              'skor_total',
+              'total score',
+              'performance_score',
+            ]);
+            const clientStatusRaw = getRowValue(row, [
+              'status',
+              'level',
+              'level teknisi',
+              'level_teknisi',
+              'status level',
+              'performance_level',
+            ]);
+
+            const tatNum = parseExcelNumber(tatRaw);
+            const rtatNum = parseExcelNumber(rtatRaw);
+            const csatNum = parseExcelNumber(csatRaw);
+            const groomingNum = parseExcelNumber(groomingRaw);
+            const serviceNum = parseExcelNumber(serviceRaw);
+            const repairQualityNum = parseExcelNumber(repairQualityRaw);
+
+            const clientScoreParsed =
+              clientScoreRaw !== undefined &&
+              clientScoreRaw !== null &&
+              String(clientScoreRaw).trim() !== ''
+                ? parseExcelNumber(clientScoreRaw)
+                : null;
+
+            // D. Hitung Skor & Level dengan Mekanisme Penilaian Hybrid
+            const { score: finalScore, level: finalLevel } = calculateHybridKpi(
+              {
+                tat: tatNum,
+                rtat: rtatNum,
+                csat: csatNum,
+                grooming_score: groomingNum,
+                service_score: serviceNum,
+                repair_quality_score: repairQualityNum,
+              },
+              clientScoreParsed,
+              clientStatusRaw ? String(clientStatusRaw) : null
+            );
+
+            // E. Ekstraksi Informasi Tambahan Profil
             const service_center = getRowValue(row, [
               'service_center',
               'service center',
               'lokasi',
               'lokasi_service',
-              'lokasi service',
             ]);
             const photo_url = getRowValue(row, [
               'photo_url',
@@ -109,35 +242,20 @@ export async function processExcelUpload({
               'foto',
               'foto_url',
               'link_foto',
-              'link foto',
             ]);
             const phone = getRowValue(row, [
               'phone',
               'no_hp',
               'no hp',
               'telepon',
-              'phone_number',
               'kontak',
-              'no_telp',
-              'no telp',
             ]);
             const email = getRowValue(row, ['email', 'surel']);
-            const rawStatus = getRowValue(row, [
+            const rawKeaktifan = getRowValue(row, [
               'technician_status',
-              'status_teknisi',
-              'status teknisi',
-              'status',
               'status_keaktifan',
               'status keaktifan',
-            ]);
-            const rawLevel = getRowValue(row, [
-              'technician_level',
-              'level_teknisi',
-              'level teknisi',
-              'level',
-              'sertifikasi',
-              'level_sertifikasi',
-              'level sertifikasi',
+              'keaktifan',
             ]);
 
             const techPayload = {
@@ -149,26 +267,19 @@ export async function processExcelUpload({
               photo_url: photo_url ? String(photo_url).trim() : null,
               phone: phone ? String(phone).trim() : null,
               email: email ? String(email).trim() : null,
-              technician_status: mapStatus(rawStatus),
-              technician_level: mapLevel(rawLevel),
+              technician_status: mapStatus(rawKeaktifan),
+              technician_level: finalLevel,
               updated_at: new Date().toISOString(),
             };
-
-            // A. Cek duplikasi teknisi
-            const { data: existing } = await supabase
-              .from('technicians')
-              .select('id, qr_token')
-              .eq('technician_id', techPayload.technician_id)
-              .maybeSingle();
 
             let techId = '';
             let qrToken = '';
 
-            if (existing) {
+            if (existingTech) {
               const { data: updated, error } = await supabase
                 .from('technicians')
                 .update(techPayload)
-                .eq('id', existing.id)
+                .eq('id', existingTech.id)
                 .select('id, qr_token')
                 .single();
               if (error) throw error;
@@ -187,59 +298,69 @@ export async function processExcelUpload({
               insertCount++;
             }
 
-            // B. Hubungkan data performa
-            const periodRaw = getRowValue(row, ['period', 'periode', 'bulan']);
-            const period = parseExcelPeriod(periodRaw);
-            if (period) {
-              const kpiRaw = getRowValue(row, [
-                'kpi_score',
-                'kpi',
-                'skor kpi',
-                'skor_kpi',
-                'nilai kpi',
-                'nilai_kpi',
-              ]);
-              const csiRaw = getRowValue(row, [
-                'csi_score',
-                'csi',
-                'skor csi',
-                'skor_csi',
-                'nilai csi',
-                'nilai_csi',
-              ]);
-              const perfRaw = getRowValue(row, [
-                'performance_score',
-                'performance',
-                'performa',
-                'skor_performa',
-                'skor performa',
-                'nilai_performa',
-                'nilai performa',
-              ]);
-              const perfLvlRaw = getRowValue(row, [
-                'performance_level',
-                'level_performa',
-                'level performa',
-              ]);
-
-              const perfPayload = {
-                technician_id: techId,
-                period,
-                kpi_score: parseExcelNumber(kpiRaw),
-                csi_score: parseExcelNumber(csiRaw),
-                performance_score: parseExcelNumber(perfRaw),
-                performance_level: perfLvlRaw ? mapLevel(perfLvlRaw) : mapLevel(rawLevel),
-                data_source: 'excel',
-                updated_at: new Date().toISOString(),
-              };
-
-              const { error: perfError } = await supabase
-                .from('technician_performance')
-                .upsert(perfPayload, { onConflict: 'technician_id,period' });
-              if (perfError) throw perfError;
+            // F. Simpan Rekam Performa (12 Kolom Evaluasi)
+            const yearRaw = getRowValue(row, ['year', 'tahun']);
+            const monthRaw = getRowValue(row, ['month', 'bulan', 'periode', 'period']);
+            let period = parseMonthNameToPeriod(yearRaw, monthRaw);
+            if (!period) {
+              period = parseExcelPeriod(monthRaw) || parseExcelPeriod(yearRaw);
+            }
+            if (!period) {
+              const now = new Date();
+              period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             }
 
-            // C. Hubungkan data ID Card
+            const csiCalculated =
+              csatNum > 0 && csatNum <= 10
+                ? csatNum
+                : Math.round((csatNum / 10) * 10) / 10;
+
+            const perfPayload = {
+              technician_id: techId,
+              period,
+              kpi_score: finalScore,
+              csi_score: csiCalculated,
+              performance_score: finalScore,
+              performance_level: finalLevel,
+              tat: tatNum || null,
+              rtat: rtatNum || null,
+              csat: csatNum || null,
+              grooming_score: groomingNum || null,
+              service_score: serviceNum || null,
+              repair_quality_score: repairQualityNum || null,
+              data_source: 'excel_12_col',
+              updated_at: new Date().toISOString(),
+            };
+
+            const { error: perfError } = await supabase
+              .from('technician_performance')
+              .upsert(perfPayload, { onConflict: 'technician_id,period' });
+
+            // Fallback otomatis jika database Supabase belum menjalankan migrasi 6 kolom indikator
+            if (
+              perfError &&
+              (perfError.message?.includes('schema cache') ||
+                perfError.message?.includes('does not exist'))
+            ) {
+              const fallbackPerfPayload = {
+                technician_id: techId,
+                period,
+                kpi_score: finalScore,
+                csi_score: csiCalculated,
+                performance_score: finalScore,
+                performance_level: finalLevel,
+                data_source: 'excel_12_col',
+                updated_at: new Date().toISOString(),
+              };
+              const { error: fallbackError } = await supabase
+                .from('technician_performance')
+                .upsert(fallbackPerfPayload, { onConflict: 'technician_id,period' });
+              if (fallbackError) throw fallbackError;
+            } else if (perfError) {
+              throw perfError;
+            }
+
+            // G. Hubungkan atau Terbitkan ID Card
             const card_number = getRowValue(row, [
               'card_number',
               'no_kartu',
@@ -247,47 +368,56 @@ export async function processExcelUpload({
               'nomor kartu',
               'nomor_kartu',
               'serial_number',
-              'serial number',
             ]);
-            if (card_number) {
-              const cardStatusRaw = getRowValue(row, [
-                'card_status',
-                'status_kartu',
-                'status kartu',
-              ]);
-              const expiryDateRaw = getRowValue(row, [
-                'expiry_date',
-                'tanggal_kadaluarsa',
-                'tanggal kadaluarsa',
-                'expired',
-                'masa berlaku',
-                'masa_berlaku',
-              ]);
-              const expiry_date = parseExcelDate(expiryDateRaw);
+            const cardStatusRaw = getRowValue(row, [
+              'card_status',
+              'status_kartu',
+              'status kartu',
+            ]);
+            const expiryDateRaw = getRowValue(row, [
+              'expiry_date',
+              'tanggal_kadaluarsa',
+              'tanggal kadaluarsa',
+              'expired',
+              'masa berlaku',
+            ]);
+            const expiry_date = parseExcelDate(expiryDateRaw);
 
-              const cardPayload = {
-                technician_id: techId,
-                card_number: String(card_number).trim(),
-                qr_token: qrToken,
-                card_status: mapCardStatus(cardStatusRaw),
-                expiry_date:
-                  expiry_date ||
-                  new Date(new Date().setFullYear(new Date().getFullYear() + 2))
-                    .toISOString()
-                    .split('T')[0],
-              };
+            // Default card number jika tidak disediakan di file 12 kolom
+            const defaultCardNumber =
+              card_number ? String(card_number).trim() : `CARD-${technician_id.replace(/^MOD-/, '')}`;
 
-              const { error: cardError } = await supabase
-                .from('technician_id_cards')
-                .upsert(cardPayload, { onConflict: 'card_number' });
-              if (cardError) throw cardError;
-            }
+            // Cek apakah sudah ada kartu untuk teknisi ini
+            const { data: existingCard } = await supabase
+              .from('technician_id_cards')
+              .select('id, card_number')
+              .eq('technician_id', techId)
+              .maybeSingle();
+
+            const finalCardNumber = existingCard ? existingCard.card_number : defaultCardNumber;
+
+            const cardPayload = {
+              technician_id: techId,
+              card_number: finalCardNumber,
+              qr_token: qrToken,
+              card_status: mapCardStatus(cardStatusRaw),
+              expiry_date:
+                expiry_date ||
+                new Date(new Date().setFullYear(new Date().getFullYear() + 2))
+                  .toISOString()
+                  .split('T')[0],
+            };
+
+            const { error: cardError } = await supabase
+              .from('technician_id_cards')
+              .upsert(cardPayload, { onConflict: 'card_number' });
+            if (cardError) throw cardError;
 
             successCount++;
           } catch (err: any) {
             errorDetails.push({
               row: rowNum,
-              technician_id: String(row.technician_id || 'UNKNOWN'),
+              technician_id: String(row['Technician Full Names'] || row.technician_id || 'UNKNOWN'),
               error: err.message || 'Error tidak dikenal saat menyimpan.',
             });
           }
