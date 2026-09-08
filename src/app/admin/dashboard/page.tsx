@@ -18,6 +18,7 @@ import { processExcelUpload } from './utils/excel-uploader';
 import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardSidebar } from './components/DashboardSidebar';
 import { SyncLogWidget } from './components/SyncLogWidget';
+import { SkillDistributionWidget } from './components/SkillDistributionWidget';
 import { DashboardToolbar } from './components/DashboardToolbar';
 import { DashboardFilters } from './components/DashboardFilters';
 import { TechnicianTable } from './components/TechnicianTable';
@@ -286,6 +287,7 @@ function AdminDashboard() {
   const openForm = (tech?: Technician) => {
     if (tech) {
       const card = tech.technician_id_cards?.[0];
+      const perf = tech.technician_performance?.[0];
       setFormId(tech.id);
       setFormData({
         technician_id: tech.technician_id,
@@ -300,6 +302,13 @@ function AdminDashboard() {
         card_number: card?.card_number || '',
         card_status: card?.card_status || 'active',
         expiry_date: card?.expiry_date || '',
+        tat: perf?.tat,
+        rtat: perf?.rtat,
+        csat: perf?.csat ?? (perf?.csi_score ? perf.csi_score * 10 : undefined),
+        grooming_score: perf?.grooming_score,
+        service_score: perf?.service_score,
+        repair_quality_score: perf?.repair_quality_score,
+        performance_score: perf?.kpi_score ?? perf?.performance_score,
       });
     } else {
       setFormId(null);
@@ -320,6 +329,13 @@ function AdminDashboard() {
         card_number: '',
         card_status: 'active',
         expiry_date: defaultExpiry,
+        tat: undefined,
+        rtat: undefined,
+        csat: undefined,
+        grooming_score: undefined,
+        service_score: undefined,
+        repair_quality_score: undefined,
+        performance_score: undefined,
       });
     }
     setPhotoFile(null);
@@ -413,6 +429,75 @@ function AdminDashboard() {
           .upsert(cardPayload, { onConflict: 'card_number' });
 
         if (cardError) throw cardError;
+      }
+
+      // Simpan data performa (6 indikator KPI) jika tersedia
+      const hasPerfData =
+        formData.tat !== undefined ||
+        formData.rtat !== undefined ||
+        formData.csat !== undefined ||
+        formData.grooming_score !== undefined ||
+        formData.service_score !== undefined ||
+        formData.repair_quality_score !== undefined ||
+        formData.performance_score !== undefined;
+
+      if (hasPerfData && techId) {
+        const existingPerf = formId
+          ? technicians.find((t) => t.id === formId)?.technician_performance?.[0]
+          : null;
+        const now = new Date();
+        const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const period = existingPerf?.period || defaultPeriod;
+
+        const finalScore = formData.performance_score ?? 0;
+        const csatVal = formData.csat ?? 0;
+        const csiVal =
+          csatVal > 0 && csatVal <= 10
+            ? csatVal
+            : Math.round((csatVal / 10) * 10) / 10;
+
+        const { error: perfError } = await supabase.from('technician_performance').upsert(
+          {
+            technician_id: techId,
+            period,
+            kpi_score: finalScore,
+            csi_score: csiVal,
+            performance_score: finalScore,
+            performance_level: formData.technician_level,
+            tat: formData.tat ?? null,
+            rtat: formData.rtat ?? null,
+            csat: formData.csat ?? null,
+            grooming_score: formData.grooming_score ?? null,
+            service_score: formData.service_score ?? null,
+            repair_quality_score: formData.repair_quality_score ?? null,
+            data_source: 'web_form',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'technician_id,period' }
+        );
+
+        // Fallback jika database Supabase belum menjalankan migrasi 6 kolom
+        if (
+          perfError &&
+          (perfError.message?.includes('schema cache') ||
+            perfError.message?.includes('does not exist'))
+        ) {
+          await supabase.from('technician_performance').upsert(
+            {
+              technician_id: techId,
+              period,
+              kpi_score: finalScore,
+              csi_score: csiVal,
+              performance_score: finalScore,
+              performance_level: formData.technician_level,
+              data_source: 'web_form',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'technician_id,period' }
+          );
+        } else if (perfError) {
+          throw perfError;
+        }
       }
 
       setShowForm(false);
@@ -607,6 +692,91 @@ function AdminDashboard() {
     return counts;
   }, [technicians]);
 
+  // Perhitungan Agregasi Distribusi Skill Teknisi & Metrik YTD secara dinamis
+  const skillDistributionStats = useMemo(() => {
+    const total = filteredTechnicians.length;
+    let beginnerCount = 0;
+    let intermediateCount = 0;
+    let advanceCount = 0;
+    let totalKpi = 0;
+    let totalCsi = 0;
+    let kpiCount = 0;
+    let csiCount = 0;
+
+    filteredTechnicians.forEach((t) => {
+      if (t.technician_level === 'beginner') beginnerCount++;
+      else if (t.technician_level === 'intermediate') intermediateCount++;
+      else if (t.technician_level === 'advance') advanceCount++;
+
+      const perf = t.technician_performance?.[0];
+      if (perf) {
+        if (typeof perf.kpi_score === 'number' && !isNaN(perf.kpi_score)) {
+          totalKpi += perf.kpi_score;
+          kpiCount++;
+        }
+        if (typeof perf.csi_score === 'number' && !isNaN(perf.csi_score)) {
+          totalCsi += perf.csi_score;
+          csiCount++;
+        }
+      }
+    });
+
+    const beginnerPercent = total > 0 ? Math.round((beginnerCount / total) * 100) : 0;
+    const intermediatePercent = total > 0 ? Math.round((intermediateCount / total) * 100) : 0;
+    const advancePercent =
+      total > 0
+        ? Math.max(0, 100 - beginnerPercent - intermediatePercent)
+        : 0;
+
+    const avgKpi = kpiCount > 0 ? Math.round((totalKpi / kpiCount) * 10) / 10 : 0;
+    const avgCsi = csiCount > 0 ? Math.round((totalCsi / csiCount) * 10) / 10 : 0;
+
+    return {
+      total,
+      beginnerCount,
+      beginnerPercent,
+      intermediateCount,
+      intermediatePercent,
+      advanceCount,
+      advancePercent,
+      avgKpi,
+      avgCsi,
+    };
+  }, [filteredTechnicians]);
+
+  // Label Periode YTD Dinamis
+  const dynamicPeriodLabel = useMemo(() => {
+    const MONTH_NAMES = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+
+    if (filterYear && filterMonth) {
+      const parts = filterMonth.split('-');
+      const mIndex = parseInt(parts[1], 10) - 1;
+      const mName = MONTH_NAMES[mIndex] || filterMonth;
+      return `YTD Jan - ${mName} ${filterYear}`;
+    }
+
+    if (filterYear) {
+      return `YTD ${filterYear} (Jan - Des)`;
+    }
+
+    if (filterMonth) {
+      const parts = filterMonth.split('-');
+      const mIndex = parseInt(parts[1], 10) - 1;
+      const mName = MONTH_NAMES[mIndex] || filterMonth;
+      return `YTD ${mName} ${parts[0] || ''}`;
+    }
+
+    return 'YTD Kumulatif (Semua Periode)';
+  }, [filterYear, filterMonth]);
+
+  // Label Cabang Dinamis
+  const dynamicBranchLabel = useMemo(() => {
+    return filterBranch ? `DSC ${filterBranch}` : 'Semua Cabang DSC (31 Cabang)';
+  }, [filterBranch]);
+
   return (
     <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
       {/* DASHBOARD UTAMA */}
@@ -634,6 +804,14 @@ function AdminDashboard() {
               lastSyncLog={lastSyncLog}
               lastFileName={lastFileName}
               onRefresh={fetchData}
+            />
+
+            {/* WIDGET DISTRIBUSI SKILL TEKNISI (PERFORMANCE TRACKING WIDGET) */}
+            <SkillDistributionWidget
+              stats={skillDistributionStats}
+              periodLabel={dynamicPeriodLabel}
+              branchLabel={dynamicBranchLabel}
+              loading={loading}
             />
 
             {/* HEADER DAN TOOLBAR */}

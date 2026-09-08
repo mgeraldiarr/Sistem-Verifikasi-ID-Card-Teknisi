@@ -2,18 +2,21 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Loader2, Plus } from 'lucide-react';
+import { Calendar, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
+import { downloadMasterTemplateExcel } from '@/lib/template-generator';
 
 interface DashboardToolbarProps {
   uploadingExcel: boolean;
   onExcelUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAddTechnician: () => void;
+  onDownloadTemplate?: () => void;
 }
 
 export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   uploadingExcel,
   onExcelUpload,
   onAddTechnician,
+  onDownloadTemplate,
 }) => {
   return (
     <div
@@ -35,7 +38,26 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
       >
         Daftar Teknisi
       </h2>
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={onDownloadTemplate || downloadMasterTemplateExcel}
+          className="modena-btn-secondary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            borderRadius: '4px',
+            padding: '10px 16px',
+            fontSize: '0.825rem',
+            cursor: 'pointer',
+          }}
+          title="Download Master Template Excel 12 Kolom Evaluasi Teknisi MODENA"
+        >
+          <FileSpreadsheet size={16} color="var(--accent-red)" />
+          <span>Download Template</span>
+        </button>
+
         <label
           htmlFor="excel-file-input"
           className="modena-btn-secondary"

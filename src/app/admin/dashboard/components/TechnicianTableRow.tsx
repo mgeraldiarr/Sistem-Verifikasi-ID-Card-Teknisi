@@ -1,10 +1,11 @@
 // src/app/admin/dashboard/components/TechnicianTableRow.tsx
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Edit,
   Image as ImageIcon,
+  Info,
   Printer,
   RefreshCcw,
   Trash2,
@@ -30,6 +31,35 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
 }) => {
   const card = tech.technician_id_cards?.[0];
   const perf = tech.technician_performance?.[0];
+  const [showPopover, setShowPopover] = useState(false);
+
+  // Level badge helper (konsisten dengan widget distribusi skill)
+  const levelBadgeConfig: Record<
+    string,
+    { label: string; bg: string; text: string; dot: string }
+  > = {
+    beginner: {
+      label: 'Beginner',
+      bg: 'rgba(16, 185, 129, 0.12)',
+      text: '#047857',
+      dot: '#10B981',
+    },
+    intermediate: {
+      label: 'Intermediate',
+      bg: 'rgba(245, 158, 11, 0.12)',
+      text: '#B45309',
+      dot: '#F59E0B',
+    },
+    advance: {
+      label: 'Advance',
+      bg: 'rgba(59, 130, 246, 0.12)',
+      text: '#1D4ED8',
+      dot: '#3B82F6',
+    },
+  };
+
+  const levelInfo =
+    levelBadgeConfig[tech.technician_level] || levelBadgeConfig.beginner;
 
   return (
     <tr
@@ -120,28 +150,217 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
         </div>
       </td>
 
-      {/* Performa */}
-      <td style={{ padding: '1.25rem', fontSize: '0.875rem' }}>
+      {/* Performa dengan Quick-Peek Popover 6 Indikator */}
+      <td
+        style={{
+          padding: '1.25rem',
+          fontSize: '0.875rem',
+          position: 'relative',
+        }}
+        onMouseEnter={() => setShowPopover(true)}
+        onMouseLeave={() => setShowPopover(false)}
+      >
         {perf ? (
           <div>
-            <div>
-              KPI:{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>
-                {perf.kpi_score}%
-              </strong>{' '}
-              | CSI:{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>
-                {perf.csi_score}/10
-              </strong>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                cursor: 'pointer',
+              }}
+              onClick={() => setShowPopover((prev) => !prev)}
+            >
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {perf.kpi_score ?? perf.performance_score}%
+              </div>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  backgroundColor: levelInfo.bg,
+                  color: levelInfo.text,
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: levelInfo.dot,
+                  }}
+                />
+                {levelInfo.label}
+              </span>
+              <Info
+                size={14}
+                style={{
+                  color: showPopover ? 'var(--accent-red)' : 'var(--text-muted)',
+                  transition: 'color 0.15s',
+                }}
+              />
             </div>
+
             <div
               style={{
                 fontSize: '0.75rem',
                 color: 'var(--text-secondary)',
+                marginTop: '0.2rem',
               }}
             >
               Periode: {perf.period}
             </div>
+
+            {/* QUICK-PEEK POPOVER (6 INDIKATOR EVALUASI HYBRID) */}
+            {showPopover && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '80%',
+                  left: '1rem',
+                  zIndex: 50,
+                  width: '275px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '10px',
+                  boxShadow:
+                    '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid var(--border-color)',
+                  padding: '0.85rem',
+                  pointerEvents: 'auto',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid var(--border-color)',
+                    paddingBottom: '0.5rem',
+                    marginBottom: '0.6rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      color: 'var(--text-primary)',
+                      letterSpacing: '0.02em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    6 Indikator Evaluasi
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--text-secondary)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {perf.period}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.35rem',
+                    fontSize: '0.775rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      TAT <span style={{ fontSize: '0.7rem' }}>(20%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.tat ?? perf.kpi_score ?? '-'}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      RTAT <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.rtat ?? '-'}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      CSAT <span style={{ fontSize: '0.7rem' }}>(25%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.csat ?? (perf.csi_score ? perf.csi_score * 10 : '-')}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Penampilan <span style={{ fontSize: '0.7rem' }}>(10%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.grooming_score ?? '-'}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Pelayanan <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.service_score ?? '-'}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Hasil Perbaikan <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                    </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {perf.repair_quality_score ?? '-'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: '0.6rem',
+                    paddingTop: '0.5rem',
+                    borderTop: '1px dashed var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    Skor Total KPI
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 800,
+                      color: 'var(--accent-red)',
+                    }}
+                  >
+                    {perf.kpi_score ?? perf.performance_score}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <span
