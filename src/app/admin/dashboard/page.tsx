@@ -1,8 +1,8 @@
 // src/app/admin/dashboard/page.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useMemo, useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AuthWrapper from '@/components/AuthWrapper';
 import {
@@ -29,6 +29,8 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 function AdminDashboard() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     technicians,
     lastSyncLog,
@@ -93,11 +95,164 @@ function AdminDashboard() {
     });
   };
 
-  // State Filter & Pencarian
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterBranch, setFilterBranch] = useState('');
-  const [filterLevel, setFilterLevel] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  // 1. Membaca Parameter Filter Langsung dari URL Query (Deep Linking)
+  const filterBranch = searchParams.get('branch') || '';
+  const filterMonth = searchParams.get('month') || '';
+  const filterYear = searchParams.get('year') || '';
+  const filterLevel = searchParams.get('level') || '';
+  const filterStatus = searchParams.get('status') || '';
+
+  // Kunci cabang aktif saat ini ('all' untuk semua cabang, atau nama cabang)
+  const currentBranchKey = filterBranch || 'all';
+
+  // 2. Local State untuk Search Input agar pengetikan 100% responsif tanpa lag
+  const urlQ = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(urlQ);
+
+  useEffect(() => {
+    setSearchQuery(urlQ);
+  }, [urlQ]);
+
+  // 3. Struktur Memori Filter Per Cabang (Per-Branch Filter Memory)
+  interface BranchFilterState {
+    searchQuery: string;
+    filterMonth: string;
+    filterYear: string;
+    filterLevel: string;
+    filterStatus: string;
+  }
+
+  const DEFAULT_FILTER: BranchFilterState = {
+    searchQuery: '',
+    filterMonth: '',
+    filterYear: '',
+    filterLevel: '',
+    filterStatus: '',
+  };
+
+  // State memori filter untuk masing-masing cabang agar filter tidak hilang saat pindah cabang
+  const [branchFilterMemory, setBranchFilterMemory] = useState<
+    Record<string, BranchFilterState>
+  >(() => {
+    const initialBranch = searchParams.get('branch') || 'all';
+    return {
+      [initialBranch]: {
+        searchQuery: searchParams.get('q') || '',
+        filterMonth: searchParams.get('month') || '',
+        filterYear: searchParams.get('year') || '',
+        filterLevel: searchParams.get('level') || '',
+        filterStatus: searchParams.get('status') || '',
+      },
+    };
+  });
+
+  // Helper untuk menyimpan filter ke memori cabang aktif
+  const saveFilterToMemory = (updates: Partial<BranchFilterState>) => {
+    setBranchFilterMemory((prev) => {
+      const existing = prev[currentBranchKey] || DEFAULT_FILTER;
+      return {
+        ...prev,
+        [currentBranchKey]: {
+          ...existing,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  // 4. Helper untuk memperbarui URL Query Parameters tanpa reload halaman
+  const updateQueryParams = useCallback(
+    (updates: Record<string, string | null | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      let hasChanged = false;
+
+      Object.entries(updates).forEach(([key, value]) => {
+        const current = params.get(key);
+        if (value) {
+          if (current !== value) {
+            params.set(key, value);
+            hasChanged = true;
+          }
+        } else {
+          if (current !== null) {
+            params.delete(key);
+            hasChanged = true;
+          }
+        }
+      });
+
+      if (!hasChanged) return;
+
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  // 5. Debounce update query teks pencarian ke URL & memori (300ms) saat user mengetik
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== urlQ) {
+        saveFilterToMemory({ searchQuery });
+        updateQueryParams({ q: searchQuery || null });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, urlQ, updateQueryParams, currentBranchKey]);
+
+  // 6. Setter untuk filter parameter yang menyinkronkan ke memori cabang dan URL
+  const setFilterMonth = (val: string) => {
+    saveFilterToMemory({ filterMonth: val });
+    updateQueryParams({ month: val || null });
+  };
+  const setFilterYear = (val: string) => {
+    saveFilterToMemory({ filterYear: val });
+    updateQueryParams({ year: val || null });
+  };
+  const setFilterLevel = (val: string) => {
+    saveFilterToMemory({ filterLevel: val });
+    updateQueryParams({ level: val || null });
+  };
+  const setFilterStatus = (val: string) => {
+    saveFilterToMemory({ filterStatus: val });
+    updateQueryParams({ status: val || null });
+  };
+
+  // 7. Reset Filter: Bersihkan parameter filter cabang ini di memori dan URL, tapi PERTAHANKAN cabangnya!
+  const handleResetFilters = () => {
+    setBranchFilterMemory((prev) => ({
+      ...prev,
+      [currentBranchKey]: DEFAULT_FILTER,
+    }));
+    setSearchQuery('');
+    updateQueryParams({
+      q: null,
+      month: null,
+      year: null,
+      level: null,
+      status: null,
+    });
+  };
+
+  // 8. Ganti Cabang dari Sidebar: Pulihkan filter yang pernah disimpan di cabang tersebut!
+  const handleSelectBranch = (newBranch: string) => {
+    const nextKey = newBranch || 'all';
+    // Ambil riwayat filter yang pernah disetel di cabang tujuan (atau default jika belum pernah difilter)
+    const saved = branchFilterMemory[nextKey] || DEFAULT_FILTER;
+
+    // Sinkronkan local search input
+    setSearchQuery(saved.searchQuery);
+
+    // Terapkan filter cabang tersebut ke URL
+    updateQueryParams({
+      branch: newBranch || null,
+      q: saved.searchQuery || null,
+      month: saved.filterMonth || null,
+      year: saved.filterYear || null,
+      level: saved.filterLevel || null,
+      status: saved.filterStatus || null,
+    });
+  };
 
   // State Cetak Kartu
   const [printData, setPrintData] = useState<Technician | null>(null);
@@ -380,24 +535,67 @@ function AdminDashboard() {
   // Filter client-side
   const filteredTechnicians = useMemo(() => {
     return technicians.filter((tech) => {
+      // 1. Filter Nama Teknisi / ID / Nomor Karyawan (Pencarian Teks Instan)
       const matchesSearch =
+        searchQuery === '' ||
         tech.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tech.technician_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tech.employee_number.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesBranch = filterBranch === '' || tech.branch === filterBranch;
+      // 2. Filter Cabang DSC
+      const matchesBranch =
+        filterBranch === '' ||
+        tech.branch.toLowerCase() === filterBranch.toLowerCase();
+
+      // 3. Filter Level & Status
       const matchesLevel =
         filterLevel === '' || tech.technician_level === filterLevel;
       const matchesStatus =
         filterStatus === '' || tech.technician_status === filterStatus;
 
-      return matchesSearch && matchesBranch && matchesLevel && matchesStatus;
-    });
-  }, [technicians, searchQuery, filterBranch, filterLevel, filterStatus]);
+      // 4. Filter Waktu Berbasis Kalender (Month & Year)
+      const latestPeriod = tech.technician_performance?.[0]?.period; // contoh: '2026-08'
+      const createdDate = tech.created_at ? new Date(tech.created_at) : null;
+      const createdYear = createdDate ? String(createdDate.getFullYear()) : '';
+      const createdMonth = createdDate
+        ? String(createdDate.getMonth() + 1).padStart(2, '0')
+        : '';
+      const createdYearMonth =
+        createdYear && createdMonth ? `${createdYear}-${createdMonth}` : '';
 
-  const uniqueBranches = useMemo(() => {
-    return Array.from(new Set(technicians.map((t) => t.branch)));
-  }, [technicians]);
+      // Pencocokan Bulan (YYYY-MM)
+      let matchesMonth = true;
+      if (filterMonth) {
+        matchesMonth =
+          latestPeriod === filterMonth || createdYearMonth === filterMonth;
+      }
+
+      // Pencocokan Tahun (YYYY)
+      let matchesYear = true;
+      if (filterYear) {
+        const periodYear = latestPeriod ? latestPeriod.split('-')[0] : '';
+        matchesYear = periodYear === filterYear || createdYear === filterYear;
+      }
+
+      return (
+        matchesSearch &&
+        matchesBranch &&
+        matchesLevel &&
+        matchesStatus &&
+        matchesMonth &&
+        matchesYear
+      );
+    });
+  }, [
+    technicians,
+    searchQuery,
+    filterBranch,
+    filterLevel,
+    filterStatus,
+    filterMonth,
+    filterYear,
+  ]);
+
 
   const branchCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -419,7 +617,7 @@ function AdminDashboard() {
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
           <DashboardSidebar
             selectedBranch={filterBranch}
-            onSelectBranch={setFilterBranch}
+            onSelectBranch={handleSelectBranch}
             totalTechnicians={technicians.length}
             techniciansBranchCounts={branchCounts}
           />
@@ -445,17 +643,19 @@ function AdminDashboard() {
               onAddTechnician={() => openForm()}
             />
 
-            {/* FILTER & SEARCH PANEL */}
+            {/* FILTER & SEARCH PANEL (ADVANCED FILTERING) */}
             <DashboardFilters
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              filterBranch={filterBranch}
-              setFilterBranch={setFilterBranch}
+              filterMonth={filterMonth}
+              setFilterMonth={setFilterMonth}
+              filterYear={filterYear}
+              setFilterYear={setFilterYear}
               filterLevel={filterLevel}
               setFilterLevel={setFilterLevel}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
-              uniqueBranches={uniqueBranches}
+              onResetFilters={handleResetFilters}
             />
 
             {/* TABLE DATA */}
@@ -519,7 +719,9 @@ function AdminDashboard() {
 export default function DashboardPage() {
   return (
     <AuthWrapper>
-      <AdminDashboard />
+      <Suspense fallback={null}>
+        <AdminDashboard />
+      </Suspense>
     </AuthWrapper>
   );
 }
