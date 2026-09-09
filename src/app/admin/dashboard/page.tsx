@@ -1,10 +1,16 @@
 // src/app/admin/dashboard/page.tsx
-'use client';
+"use client";
 
-import React, { useMemo, useState, useEffect, useCallback, Suspense } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import AuthWrapper from '@/components/AuthWrapper';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  Suspense,
+} from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import AuthWrapper from "@/components/AuthWrapper";
 import {
   ConfirmModalState,
   NotificationState,
@@ -12,33 +18,28 @@ import {
   Technician,
   TechnicianFormData,
   TechnicianStatus,
-} from '@/types';
-import { useDashboardData } from './hooks/useDashboardData';
-import { processExcelUpload } from './utils/excel-uploader';
-import { DashboardHeader } from './components/DashboardHeader';
-import { DashboardSidebar } from './components/DashboardSidebar';
-import { SyncLogWidget } from './components/SyncLogWidget';
-import { SkillDistributionWidget } from './components/SkillDistributionWidget';
-import { DashboardToolbar } from './components/DashboardToolbar';
-import { downloadMasterTemplateExcel } from '@/lib/template-generator';
-import { DashboardFilters } from './components/DashboardFilters';
-import { TechnicianTable } from './components/TechnicianTable';
-import { TechnicianFormModal } from './components/TechnicianFormModal';
-import { LogoutModal } from './components/LogoutModal';
-import { PrintCardArea } from './components/PrintCardArea';
-import { NotificationModal } from '@/components/ui/NotificationModal';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
+} from "@/types";
+import { useDashboardData } from "./hooks/useDashboardData";
+import { processExcelUpload } from "./utils/excel-uploader";
+import { DashboardHeader } from "./components/DashboardHeader";
+import { DashboardSidebar } from "./components/DashboardSidebar";
+import { SyncLogWidget } from "./components/SyncLogWidget";
+import { SkillDistributionWidget } from "./components/SkillDistributionWidget";
+import { DashboardToolbar } from "./components/DashboardToolbar";
+import { downloadMasterTemplateExcel } from "@/lib/template-generator";
+import { DashboardFilters } from "./components/DashboardFilters";
+import { TechnicianTable } from "./components/TechnicianTable";
+import { TechnicianFormModal } from "./components/TechnicianFormModal";
+import { LogoutModal } from "./components/LogoutModal";
+import { PrintCardArea } from "./components/PrintCardArea";
+import { NotificationModal } from "@/components/ui/NotificationModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 function AdminDashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const {
-    technicians,
-    lastSyncLog,
-    loading,
-    fetchData,
-  } = useDashboardData();
+  const { technicians, lastSyncLog, loading, fetchData } = useDashboardData();
 
   // State UI
   const [showForm, setShowForm] = useState(false);
@@ -46,8 +47,8 @@ function AdminDashboard() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [uploadingExcel, setUploadingExcel] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('last_uploaded_file_name');
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("last_uploaded_file_name");
     }
     return null;
   });
@@ -55,15 +56,15 @@ function AdminDashboard() {
   // State Modal Notifikasi & Konfirmasi
   const [notification, setNotification] = useState<NotificationState>({
     show: false,
-    type: 'success',
-    title: '',
-    message: '',
+    type: "success",
+    title: "",
+    message: "",
   });
 
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     show: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
   });
 
@@ -71,7 +72,7 @@ function AdminDashboard() {
     type: NotificationType,
     title: string,
     message: string,
-    onClose?: () => void
+    onClose?: () => void,
   ) => {
     setNotification({ show: true, type, title, message, onClose });
   };
@@ -80,7 +81,7 @@ function AdminDashboard() {
     title: string,
     message: string,
     onConfirm: () => void,
-    onCancel?: () => void
+    onCancel?: () => void,
   ) => {
     setConfirmModal({
       show: true,
@@ -98,17 +99,17 @@ function AdminDashboard() {
   };
 
   // 1. Membaca Parameter Filter Langsung dari URL Query (Deep Linking)
-  const filterBranch = searchParams.get('branch') || '';
-  const filterMonth = searchParams.get('month') || '';
-  const filterYear = searchParams.get('year') || '';
-  const filterLevel = searchParams.get('level') || '';
-  const filterStatus = searchParams.get('status') || '';
+  const filterBranch = searchParams.get("branch") || "";
+  const filterMonth = searchParams.get("month") || "";
+  const filterYear = searchParams.get("year") || "";
+  const filterLevel = searchParams.get("level") || "";
+  const filterStatus = searchParams.get("status") || "";
 
   // Kunci cabang aktif saat ini ('all' untuk semua cabang, atau nama cabang)
-  const currentBranchKey = filterBranch || 'all';
+  const currentBranchKey = filterBranch || "all";
 
   // 2. Local State untuk Search Input agar pengetikan 100% responsif tanpa lag
-  const urlQ = searchParams.get('q') || '';
+  const urlQ = searchParams.get("q") || "";
   const [searchQuery, setSearchQuery] = useState(urlQ);
 
   useEffect(() => {
@@ -125,25 +126,25 @@ function AdminDashboard() {
   }
 
   const DEFAULT_FILTER: BranchFilterState = {
-    searchQuery: '',
-    filterMonth: '',
-    filterYear: '',
-    filterLevel: '',
-    filterStatus: '',
+    searchQuery: "",
+    filterMonth: "",
+    filterYear: "",
+    filterLevel: "",
+    filterStatus: "",
   };
 
   // State memori filter untuk masing-masing cabang agar filter tidak hilang saat pindah cabang
   const [branchFilterMemory, setBranchFilterMemory] = useState<
     Record<string, BranchFilterState>
   >(() => {
-    const initialBranch = searchParams.get('branch') || 'all';
+    const initialBranch = searchParams.get("branch") || "all";
     return {
       [initialBranch]: {
-        searchQuery: searchParams.get('q') || '',
-        filterMonth: searchParams.get('month') || '',
-        filterYear: searchParams.get('year') || '',
-        filterLevel: searchParams.get('level') || '',
-        filterStatus: searchParams.get('status') || '',
+        searchQuery: searchParams.get("q") || "",
+        filterMonth: searchParams.get("month") || "",
+        filterYear: searchParams.get("year") || "",
+        filterLevel: searchParams.get("level") || "",
+        filterStatus: searchParams.get("status") || "",
       },
     };
   });
@@ -188,7 +189,7 @@ function AdminDashboard() {
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams],
   );
 
   // 5. Debounce update query teks pencarian ke URL & memori (300ms) saat user mengetik
@@ -226,7 +227,7 @@ function AdminDashboard() {
       ...prev,
       [currentBranchKey]: DEFAULT_FILTER,
     }));
-    setSearchQuery('');
+    setSearchQuery("");
     updateQueryParams({
       q: null,
       month: null,
@@ -238,7 +239,7 @@ function AdminDashboard() {
 
   // 8. Ganti Cabang dari Sidebar: Pulihkan filter yang pernah disimpan di cabang tersebut!
   const handleSelectBranch = (newBranch: string) => {
-    const nextKey = newBranch || 'all';
+    const nextKey = newBranch || "all";
     // Ambil riwayat filter yang pernah disetel di cabang tujuan (atau default jika belum pernah difilter)
     const saved = branchFilterMemory[nextKey] || DEFAULT_FILTER;
 
@@ -262,18 +263,18 @@ function AdminDashboard() {
   // State Form Teknisi
   const [formId, setFormId] = useState<string | null>(null);
   const [formData, setFormData] = useState<TechnicianFormData>({
-    technician_id: '',
-    employee_number: '',
-    technician_name: '',
-    branch: '',
-    service_center: '',
-    phone: '',
-    email: '',
-    technician_status: 'active',
-    technician_level: 'beginner',
-    card_number: '',
-    card_status: 'active',
-    expiry_date: '',
+    technician_id: "",
+    employee_number: "",
+    technician_name: "",
+    branch: "",
+    service_center: "",
+    phone: "",
+    email: "",
+    technician_status: "active",
+    technician_level: "beginner",
+    card_number: "",
+    card_status: "active",
+    expiry_date: "",
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
@@ -282,7 +283,7 @@ function AdminDashboard() {
 
   const confirmLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/admin/login');
+    router.push("/admin/login");
   };
 
   const openForm = (tech?: Technician) => {
@@ -295,14 +296,14 @@ function AdminDashboard() {
         employee_number: tech.employee_number,
         technician_name: tech.technician_name,
         branch: tech.branch,
-        service_center: tech.service_center || '',
-        phone: tech.phone || '',
-        email: tech.email || '',
+        service_center: tech.service_center || "",
+        phone: tech.phone || "",
+        email: tech.email || "",
         technician_status: tech.technician_status,
         technician_level: tech.technician_level,
-        card_number: card?.card_number || '',
-        card_status: card?.card_status || 'active',
-        expiry_date: card?.expiry_date || '',
+        card_number: card?.card_number || "",
+        card_status: card?.card_status || "active",
+        expiry_date: card?.expiry_date || "",
         tat: perf?.tat,
         rtat: perf?.rtat,
         csat: perf?.csat ?? (perf?.csi_score ? perf.csi_score * 10 : undefined),
@@ -315,20 +316,20 @@ function AdminDashboard() {
       setFormId(null);
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 2);
-      const defaultExpiry = futureDate.toISOString().split('T')[0];
+      const defaultExpiry = futureDate.toISOString().split("T")[0];
 
       setFormData({
-        technician_id: '',
-        employee_number: '',
-        technician_name: '',
-        branch: '',
-        service_center: '',
-        phone: '',
-        email: '',
-        technician_status: 'active',
-        technician_level: 'beginner',
-        card_number: '',
-        card_status: 'active',
+        technician_id: "",
+        employee_number: "",
+        technician_name: "",
+        branch: "",
+        service_center: "",
+        phone: "",
+        email: "",
+        technician_status: "active",
+        technician_level: "beginner",
+        card_number: "",
+        card_status: "active",
         expiry_date: defaultExpiry,
         tat: undefined,
         rtat: undefined,
@@ -344,21 +345,21 @@ function AdminDashboard() {
   };
 
   const uploadPhoto = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `tech-${crypto.randomUUID()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('employee-photos')
+      .from("employee-photos")
       .upload(fileName, file);
 
     if (uploadError) {
-      showCustomAlert('error', 'Gagal Upload Foto', uploadError.message);
+      showCustomAlert("error", "Gagal Upload Foto", uploadError.message);
       return null;
     }
 
     const {
       data: { publicUrl },
-    } = supabase.storage.from('employee-photos').getPublicUrl(fileName);
+    } = supabase.storage.from("employee-photos").getPublicUrl(fileName);
     return publicUrl;
   };
 
@@ -368,7 +369,7 @@ function AdminDashboard() {
 
     let photo_url = formId
       ? technicians.find((t) => t.id === formId)?.photo_url
-      : '';
+      : "";
 
     if (photoFile) {
       const uploadedUrl = await uploadPhoto(photoFile);
@@ -391,14 +392,14 @@ function AdminDashboard() {
 
     try {
       let techId = formId;
-      let qrToken = '';
+      let qrToken = "";
 
       if (formId) {
         const { data, error } = await supabase
-          .from('technicians')
+          .from("technicians")
           .update(techPayload)
-          .eq('id', formId)
-          .select('id, qr_token')
+          .eq("id", formId)
+          .select("id, qr_token")
           .single();
 
         if (error) throw error;
@@ -406,9 +407,9 @@ function AdminDashboard() {
         qrToken = data.qr_token;
       } else {
         const { data, error } = await supabase
-          .from('technicians')
+          .from("technicians")
           .insert([techPayload])
-          .select('id, qr_token')
+          .select("id, qr_token")
           .single();
 
         if (error) throw error;
@@ -426,8 +427,8 @@ function AdminDashboard() {
         };
 
         const { error: cardError } = await supabase
-          .from('technician_id_cards')
-          .upsert(cardPayload, { onConflict: 'card_number' });
+          .from("technician_id_cards")
+          .upsert(cardPayload, { onConflict: "card_number" });
 
         if (cardError) throw cardError;
       }
@@ -444,10 +445,11 @@ function AdminDashboard() {
 
       if (hasPerfData && techId) {
         const existingPerf = formId
-          ? technicians.find((t) => t.id === formId)?.technician_performance?.[0]
+          ? technicians.find((t) => t.id === formId)
+              ?.technician_performance?.[0]
           : null;
         const now = new Date();
-        const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         const period = existingPerf?.period || defaultPeriod;
 
         const finalScore = formData.performance_score ?? 0;
@@ -457,33 +459,9 @@ function AdminDashboard() {
             ? csatVal
             : Math.round((csatVal / 10) * 10) / 10;
 
-        const { error: perfError } = await supabase.from('technician_performance').upsert(
-          {
-            technician_id: techId,
-            period,
-            kpi_score: finalScore,
-            csi_score: csiVal,
-            performance_score: finalScore,
-            performance_level: formData.technician_level,
-            tat: formData.tat ?? null,
-            rtat: formData.rtat ?? null,
-            csat: formData.csat ?? null,
-            grooming_score: formData.grooming_score ?? null,
-            service_score: formData.service_score ?? null,
-            repair_quality_score: formData.repair_quality_score ?? null,
-            data_source: 'web_form',
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'technician_id,period' }
-        );
-
-        // Fallback jika database Supabase belum menjalankan migrasi 6 kolom
-        if (
-          perfError &&
-          (perfError.message?.includes('schema cache') ||
-            perfError.message?.includes('does not exist'))
-        ) {
-          await supabase.from('technician_performance').upsert(
+        const { error: perfError } = await supabase
+          .from("technician_performance")
+          .upsert(
             {
               technician_id: techId,
               period,
@@ -491,10 +469,36 @@ function AdminDashboard() {
               csi_score: csiVal,
               performance_score: finalScore,
               performance_level: formData.technician_level,
-              data_source: 'web_form',
+              tat: formData.tat ?? null,
+              rtat: formData.rtat ?? null,
+              csat: formData.csat ?? null,
+              grooming_score: formData.grooming_score ?? null,
+              service_score: formData.service_score ?? null,
+              repair_quality_score: formData.repair_quality_score ?? null,
+              data_source: "web_form",
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'technician_id,period' }
+            { onConflict: "technician_id,period" },
+          );
+
+        // Fallback jika database Supabase belum menjalankan migrasi 6 kolom
+        if (
+          perfError &&
+          (perfError.message?.includes("schema cache") ||
+            perfError.message?.includes("does not exist"))
+        ) {
+          await supabase.from("technician_performance").upsert(
+            {
+              technician_id: techId,
+              period,
+              kpi_score: finalScore,
+              csi_score: csiVal,
+              performance_score: finalScore,
+              performance_level: formData.technician_level,
+              data_source: "web_form",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "technician_id,period" },
           );
         } else if (perfError) {
           throw perfError;
@@ -504,7 +508,7 @@ function AdminDashboard() {
       setShowForm(false);
       fetchData();
     } catch (err: any) {
-      showCustomAlert('error', 'Gagal Menyimpan Data', err.message);
+      showCustomAlert("error", "Gagal Menyimpan Data", err.message);
     } finally {
       setSaving(false);
     }
@@ -519,94 +523,105 @@ function AdminDashboard() {
     try {
       const result = await processExcelUpload({ file, supabase });
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('last_uploaded_file_name', file.name);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("last_uploaded_file_name", file.name);
         setLastFileName(file.name);
       }
 
-      if (result.status === 'success') {
+      if (result.status === "success") {
         showCustomAlert(
-          'success',
-          'Sinkronisasi Excel Sukses',
-          `File: "${file.name}"\nBerhasil memproses seluruh data: ${result.successCount} teknisi (${result.insertCount} baru, ${result.updateCount} diperbarui).`
+          "success",
+          "Sinkronisasi Excel Sukses",
+          `File: "${file.name}"\nBerhasil memproses seluruh data: ${result.successCount} teknisi (${result.insertCount} baru, ${result.updateCount} diperbarui).`,
         );
       } else {
         const firstError = result.errorDetails[0];
         showCustomAlert(
-          result.errorDetails.length === result.totalRows ? 'error' : 'warning',
+          result.errorDetails.length === result.totalRows ? "error" : "warning",
           result.errorDetails.length === result.totalRows
-            ? 'Gagal Sinkronisasi Excel'
-            : 'Sinkronisasi Excel Selesai Sebagian',
-          `File: "${file.name}"\nBerhasil: ${result.successCount}, Gagal: ${result.errorDetails.length}.\n\nError pertama (Baris ${firstError?.row || '-'}): ${firstError?.error || 'Tidak diketahui'}`
+            ? "Gagal Sinkronisasi Excel"
+            : "Sinkronisasi Excel Selesai Sebagian",
+          `File: "${file.name}"\nBerhasil: ${result.successCount}, Gagal: ${result.errorDetails.length}.\n\nError pertama (Baris ${firstError?.row || "-"}): ${firstError?.error || "Tidak diketahui"}`,
         );
       }
 
       fetchData();
     } catch (err: any) {
-      showCustomAlert('error', 'Gagal Memproses Excel', err.message);
+      showCustomAlert("error", "Gagal Memproses Excel", err.message);
     } finally {
       setUploadingExcel(false);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   // Toggle Status Aktif/Tidak Aktif
   const handleToggleActive = async (
     id: string,
-    currentStatus: TechnicianStatus
+    currentStatus: TechnicianStatus,
   ) => {
     const newStatus: TechnicianStatus =
-      currentStatus === 'active' ? 'inactive' : 'active';
+      currentStatus === "active" ? "inactive" : "active";
     await supabase
-      .from('technicians')
+      .from("technicians")
       .update({ technician_status: newStatus })
-      .eq('id', id);
+      .eq("id", id);
     fetchData();
   };
 
   // Regenerasi QR Token
   const handleRegenerateQR = async (tech: Technician) => {
     showCustomConfirm(
-      'Konfirmasi Regenerasi QR',
+      "Konfirmasi Regenerasi QR",
       `Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`,
       async () => {
         const newToken = crypto.randomUUID();
 
         const { error: techError } = await supabase
-          .from('technicians')
+          .from("technicians")
           .update({ qr_token: newToken })
-          .eq('id', tech.id);
+          .eq("id", tech.id);
 
         if (techError) {
-          showCustomAlert('error', 'Gagal Regenerasi', techError.message);
+          showCustomAlert("error", "Gagal Regenerasi", techError.message);
           return;
         }
 
         await supabase
-          .from('technician_id_cards')
+          .from("technician_id_cards")
           .update({ qr_token: newToken })
-          .eq('technician_id', tech.id);
+          .eq("technician_id", tech.id);
 
-        showCustomAlert('success', 'Berhasil', 'QR Code baru berhasil di-generate!');
+        showCustomAlert(
+          "success",
+          "Berhasil",
+          "QR Code baru berhasil di-generate!",
+        );
         fetchData();
-      }
+      },
     );
   };
 
   // Hapus Teknisi
   const handleDelete = async (id: string) => {
     showCustomConfirm(
-      'Konfirmasi Hapus Teknisi',
-      'Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.',
+      "Konfirmasi Hapus Teknisi",
+      "Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.",
       async () => {
-        const { error } = await supabase.from('technicians').delete().eq('id', id);
+        const { error } = await supabase
+          .from("technicians")
+          .delete()
+          .eq("id", id);
         if (error) {
-          showCustomAlert('error', 'Gagal Menghapus Data', error.message);
+          showCustomAlert("error", "Gagal Menghapus Data", error.message);
         } else {
-          showCustomAlert('success', 'Terhapus', 'Data teknisi berhasil dihapus.');
+          showCustomAlert(
+            "success",
+            "Terhapus",
+            "Data teknisi berhasil dihapus.",
+          );
           fetchData();
         }
-      }
+      },
     );
   };
 
@@ -623,31 +638,33 @@ function AdminDashboard() {
     return technicians.filter((tech) => {
       // 1. Filter Nama Teknisi / ID / Nomor Karyawan (Pencarian Teks Instan)
       const matchesSearch =
-        searchQuery === '' ||
-        tech.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        searchQuery === "" ||
+        tech.technician_name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
         tech.technician_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tech.employee_number.toLowerCase().includes(searchQuery.toLowerCase());
 
       // 2. Filter Cabang DSC
       const matchesBranch =
-        filterBranch === '' ||
+        filterBranch === "" ||
         tech.branch.toLowerCase() === filterBranch.toLowerCase();
 
       // 3. Filter Level & Status
       const matchesLevel =
-        filterLevel === '' || tech.technician_level === filterLevel;
+        filterLevel === "" || tech.technician_level === filterLevel;
       const matchesStatus =
-        filterStatus === '' || tech.technician_status === filterStatus;
+        filterStatus === "" || tech.technician_status === filterStatus;
 
       // 4. Filter Waktu Berbasis Kalender (Month & Year)
       const latestPeriod = tech.technician_performance?.[0]?.period; // contoh: '2026-08'
       const createdDate = tech.created_at ? new Date(tech.created_at) : null;
-      const createdYear = createdDate ? String(createdDate.getFullYear()) : '';
+      const createdYear = createdDate ? String(createdDate.getFullYear()) : "";
       const createdMonth = createdDate
-        ? String(createdDate.getMonth() + 1).padStart(2, '0')
-        : '';
+        ? String(createdDate.getMonth() + 1).padStart(2, "0")
+        : "";
       const createdYearMonth =
-        createdYear && createdMonth ? `${createdYear}-${createdMonth}` : '';
+        createdYear && createdMonth ? `${createdYear}-${createdMonth}` : "";
 
       // Pencocokan Bulan (YYYY-MM)
       let matchesMonth = true;
@@ -659,7 +676,7 @@ function AdminDashboard() {
       // Pencocokan Tahun (YYYY)
       let matchesYear = true;
       if (filterYear) {
-        const periodYear = latestPeriod ? latestPeriod.split('-')[0] : '';
+        const periodYear = latestPeriod ? latestPeriod.split("-")[0] : "";
         matchesYear = periodYear === filterYear || createdYear === filterYear;
       }
 
@@ -681,7 +698,6 @@ function AdminDashboard() {
     filterMonth,
     filterYear,
   ]);
-
 
   const branchCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -705,32 +721,34 @@ function AdminDashboard() {
     let csiCount = 0;
 
     filteredTechnicians.forEach((t) => {
-      if (t.technician_level === 'beginner') beginnerCount++;
-      else if (t.technician_level === 'intermediate') intermediateCount++;
-      else if (t.technician_level === 'advance') advanceCount++;
+      if (t.technician_level === "beginner") beginnerCount++;
+      else if (t.technician_level === "intermediate") intermediateCount++;
+      else if (t.technician_level === "advance") advanceCount++;
 
       const perf = t.technician_performance?.[0];
       if (perf) {
-        if (typeof perf.kpi_score === 'number' && !isNaN(perf.kpi_score)) {
+        if (typeof perf.kpi_score === "number" && !isNaN(perf.kpi_score)) {
           totalKpi += perf.kpi_score;
           kpiCount++;
         }
-        if (typeof perf.csi_score === 'number' && !isNaN(perf.csi_score)) {
+        if (typeof perf.csi_score === "number" && !isNaN(perf.csi_score)) {
           totalCsi += perf.csi_score;
           csiCount++;
         }
       }
     });
 
-    const beginnerPercent = total > 0 ? Math.round((beginnerCount / total) * 100) : 0;
-    const intermediatePercent = total > 0 ? Math.round((intermediateCount / total) * 100) : 0;
+    const beginnerPercent =
+      total > 0 ? Math.round((beginnerCount / total) * 100) : 0;
+    const intermediatePercent =
+      total > 0 ? Math.round((intermediateCount / total) * 100) : 0;
     const advancePercent =
-      total > 0
-        ? Math.max(0, 100 - beginnerPercent - intermediatePercent)
-        : 0;
+      total > 0 ? Math.max(0, 100 - beginnerPercent - intermediatePercent) : 0;
 
-    const avgKpi = kpiCount > 0 ? Math.round((totalKpi / kpiCount) * 10) / 10 : 0;
-    const avgCsi = csiCount > 0 ? Math.round((totalCsi / csiCount) * 10) / 10 : 0;
+    const avgKpi =
+      kpiCount > 0 ? Math.round((totalKpi / kpiCount) * 10) / 10 : 0;
+    const avgCsi =
+      csiCount > 0 ? Math.round((totalCsi / csiCount) * 10) / 10 : 0;
 
     return {
       total,
@@ -748,12 +766,22 @@ function AdminDashboard() {
   // Label Periode YTD Dinamis
   const dynamicPeriodLabel = useMemo(() => {
     const MONTH_NAMES = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
     ];
 
     if (filterYear && filterMonth) {
-      const parts = filterMonth.split('-');
+      const parts = filterMonth.split("-");
       const mIndex = parseInt(parts[1], 10) - 1;
       const mName = MONTH_NAMES[mIndex] || filterMonth;
       return `YTD Jan - ${mName} ${filterYear}`;
@@ -764,18 +792,20 @@ function AdminDashboard() {
     }
 
     if (filterMonth) {
-      const parts = filterMonth.split('-');
+      const parts = filterMonth.split("-");
       const mIndex = parseInt(parts[1], 10) - 1;
       const mName = MONTH_NAMES[mIndex] || filterMonth;
-      return `YTD ${mName} ${parts[0] || ''}`;
+      return `YTD ${mName} ${parts[0] || ""}`;
     }
 
-    return 'YTD Kumulatif (Semua Periode)';
+    return "YTD Kumulatif (Semua Periode)";
   }, [filterYear, filterMonth]);
 
   // Label Cabang Dinamis
   const dynamicBranchLabel = useMemo(() => {
-    return filterBranch ? `DSC ${filterBranch}` : 'Semua Cabang DSC (31 Cabang)';
+    return filterBranch
+      ? `DSC ${filterBranch}`
+      : "Semua Cabang DSC (31 Cabang)";
   }, [filterBranch]);
 
   // Handler Download Master Template (Otomatis Pre-fill Data Teknisi Aktif / Cabang Terpilih)
@@ -790,13 +820,13 @@ function AdminDashboard() {
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh" }}>
       {/* DASHBOARD UTAMA */}
       <div className="no-print">
         <DashboardHeader onLogout={handleLogout} />
 
         {/* Layout 2 Kolom: Sidebar (Lingkup Layanan & Cabang) + Konten Utama */}
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+        <div style={{ display: "flex", alignItems: "stretch" }}>
           <DashboardSidebar
             selectedBranch={filterBranch}
             onSelectBranch={handleSelectBranch}
@@ -808,7 +838,7 @@ function AdminDashboard() {
             style={{
               flex: 1,
               minWidth: 0,
-              padding: '2rem 1.5rem',
+              padding: "1.5rem 2rem",
             }}
           >
             {/* WIDGET SINKRONISASI EXCEL */}
