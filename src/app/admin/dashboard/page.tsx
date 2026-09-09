@@ -20,6 +20,7 @@ import { DashboardSidebar } from './components/DashboardSidebar';
 import { SyncLogWidget } from './components/SyncLogWidget';
 import { SkillDistributionWidget } from './components/SkillDistributionWidget';
 import { DashboardToolbar } from './components/DashboardToolbar';
+import { downloadMasterTemplateExcel } from '@/lib/template-generator';
 import { DashboardFilters } from './components/DashboardFilters';
 import { TechnicianTable } from './components/TechnicianTable';
 import { TechnicianFormModal } from './components/TechnicianFormModal';
@@ -777,6 +778,17 @@ function AdminDashboard() {
     return filterBranch ? `DSC ${filterBranch}` : 'Semua Cabang DSC (31 Cabang)';
   }, [filterBranch]);
 
+  // Handler Download Master Template (Otomatis Pre-fill Data Teknisi Aktif / Cabang Terpilih)
+  const handleDownloadTemplate = () => {
+    downloadMasterTemplateExcel({
+      technicians:
+        filteredTechnicians.length > 0 ? filteredTechnicians : technicians,
+      year: filterYear ? parseInt(filterYear, 10) : undefined,
+      month: filterMonth || undefined,
+      branch: filterBranch || undefined,
+    });
+  };
+
   return (
     <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
       {/* DASHBOARD UTAMA */}
@@ -819,6 +831,7 @@ function AdminDashboard() {
               uploadingExcel={uploadingExcel}
               onExcelUpload={handleExcelUpload}
               onAddTechnician={() => openForm()}
+              onDownloadTemplate={handleDownloadTemplate}
             />
 
             {/* FILTER & SEARCH PANEL (ADVANCED FILTERING) */}

@@ -41,7 +41,9 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="button"
-          onClick={onDownloadTemplate || downloadMasterTemplateExcel}
+          onClick={() =>
+            onDownloadTemplate ? onDownloadTemplate() : downloadMasterTemplateExcel()
+          }
           className="modena-btn-secondary"
           style={{
             display: 'inline-flex',
