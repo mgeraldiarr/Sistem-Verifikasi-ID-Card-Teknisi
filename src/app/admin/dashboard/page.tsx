@@ -21,7 +21,6 @@ import {
 } from "@/types";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { processExcelUpload } from "./utils/excel-uploader";
-import { DashboardHeader } from "./components/DashboardHeader";
 import { DashboardSidebar } from "./components/DashboardSidebar";
 import { SyncLogWidget } from "./components/SyncLogWidget";
 import { SkillDistributionWidget } from "./components/SkillDistributionWidget";
@@ -823,21 +822,20 @@ function AdminDashboard() {
     <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh" }}>
       {/* DASHBOARD UTAMA */}
       <div className="no-print">
-        <DashboardHeader onLogout={handleLogout} />
-
-        {/* Layout 2 Kolom: Sidebar (Lingkup Layanan & Cabang) + Konten Utama */}
-        <div style={{ display: "flex", alignItems: "stretch" }}>
+        {/* Layout 2 Kolom: Sidebar Fixed + Konten Utama */}
+        <div>
           <DashboardSidebar
             selectedBranch={filterBranch}
             onSelectBranch={handleSelectBranch}
             totalTechnicians={technicians.length}
             techniciansBranchCounts={branchCounts}
+            onLogout={handleLogout}
           />
 
           <main
             style={{
-              flex: 1,
-              minWidth: 0,
+              marginLeft: '272px',
+              minHeight: '100vh',
               padding: "1.5rem 2rem",
             }}
           >
