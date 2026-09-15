@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   // A. Autentikasi API Key
   const apiKey = req.headers.get('x-api-key');
-  const validApiKey = process.env.SYNC_API_KEY;
+  const validApiKey = process.env.SYNC_API_KEY || process.env.SYNC_SECRET_TOKEN;
 
   if (!validApiKey || apiKey !== validApiKey) {
     return NextResponse.json(
