@@ -6,11 +6,13 @@ import {
   Edit,
   Image as ImageIcon,
   Info,
+  MessageCircle,
   Printer,
   RefreshCcw,
   Trash2,
 } from 'lucide-react';
 import { Technician, TechnicianStatus } from '@/types';
+import { toWhatsAppNumber } from '@/lib/technician-access';
 
 interface TechnicianTableRowProps {
   tech: Technician;
@@ -19,6 +21,10 @@ interface TechnicianTableRowProps {
   onRegenerateQR: (tech: Technician) => void;
   onEdit: (tech: Technician) => void;
   onDelete: (id: string) => void;
+  /** Terbitkan & kirim kredensial portal teknisi via WhatsApp */
+  onSendAccess: (tech: Technician) => void;
+  /** Admin Cabang tidak memiliki hak hapus data teknisi */
+  canDelete?: boolean;
 }
 
 export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
@@ -28,7 +34,11 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
   onRegenerateQR,
   onEdit,
   onDelete,
+  onSendAccess,
+  canDelete = true,
 }) => {
+  // Tombol WhatsApp hanya aktif bila nomor HP teknisi valid
+  const whatsAppNumber = toWhatsAppNumber(tech.phone);
   const card = tech.technician_id_cards?.[0];
   const perf = tech.technician_performance?.[0];
   const [showPopover, setShowPopover] = useState(false);
@@ -436,6 +446,23 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
           }}
         >
           <button
+            onClick={() => onSendAccess(tech)}
+            disabled={!whatsAppNumber}
+            style={{
+              padding: '6px',
+              background: 'transparent',
+              color: whatsAppNumber ? '#128C7E' : 'var(--text-muted)',
+              cursor: whatsAppNumber ? 'pointer' : 'not-allowed',
+            }}
+            title={
+              whatsAppNumber
+                ? 'Kirim Akses Portal via WhatsApp'
+                : 'Nomor HP teknisi belum terisi'
+            }
+          >
+            <MessageCircle size={18} />
+          </button>
+          <button
             onClick={() => onPrint(tech)}
             style={{
               padding: '6px',
@@ -471,18 +498,20 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
           >
             <Edit size={18} />
           </button>
-          <button
-            onClick={() => onDelete(tech.id)}
-            style={{
-              padding: '6px',
-              background: 'transparent',
-              color: 'var(--accent-red)',
-              cursor: 'pointer',
-            }}
-            title="Hapus Data"
-          >
-            <Trash2 size={18} />
-          </button>
+          {canDelete && (
+            <button
+              onClick={() => onDelete(tech.id)}
+              style={{
+                padding: '6px',
+                background: 'transparent',
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+              }}
+              title="Hapus Data"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
         </div>
       </td>
     </tr>

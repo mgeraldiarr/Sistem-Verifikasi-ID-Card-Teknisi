@@ -14,6 +14,8 @@ interface TechnicianTableProps {
   onRegenerateQR: (tech: Technician) => void;
   onEdit: (tech: Technician) => void;
   onDelete: (id: string) => void;
+  onSendAccess: (tech: Technician) => void;
+  canDelete?: boolean;
 }
 
 export const TechnicianTable: React.FC<TechnicianTableProps> = ({
@@ -24,6 +26,8 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
   onRegenerateQR,
   onEdit,
   onDelete,
+  onSendAccess,
+  canDelete = true,
 }) => {
   return (
     <div className="modena-card" style={{ padding: '0', overflowX: 'auto' }}>
@@ -136,6 +140,8 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
                 onRegenerateQR={onRegenerateQR}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onSendAccess={onSendAccess}
+                canDelete={canDelete}
               />
             ))}
 

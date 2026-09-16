@@ -16,11 +16,23 @@ import { ExcelUploadResult, SyncErrorDetail } from '@/types';
 interface ProcessExcelUploadOptions {
   file: File;
   supabase: SupabaseClient;
+  /**
+   * Isolasi data cabang: bila diisi (Admin Cabang), hanya baris Excel milik cabang
+   * tersebut yang diproses. Baris cabang lain ditolak agar tidak mengotori cabang lain.
+   * null/undefined = akses nasional (Super Admin).
+   */
+  restrictBranch?: string | null;
 }
+
+/** Perbandingan nama cabang yang toleran terhadap beda spasi & huruf besar/kecil */
+const isSameBranch = (a: string, b: string) =>
+  a.trim().replace(/\s+/g, ' ').toLowerCase() ===
+  b.trim().replace(/\s+/g, ' ').toLowerCase();
 
 export async function processExcelUpload({
   file,
   supabase,
+  restrictBranch = null,
 }: ProcessExcelUploadOptions): Promise<ExcelUploadResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -84,6 +96,14 @@ export async function processExcelUpload({
               throw new Error(`Kolom wajib tidak lengkap: ${missing.join(', ')}`);
             }
 
+            // VALIDASI ISOLASI CABANG (Branch Data Scoping)
+            // Admin Cabang hanya boleh mengunggah data cabangnya sendiri.
+            if (restrictBranch && !isSameBranch(branch, restrictBranch)) {
+              throw new Error(
+                `Baris ini milik cabang "${branch}", sedangkan Anda hanya berwenang atas cabang "${restrictBranch}". Data ditolak.`
+              );
+            }
+
             let technician_id = String(
               getRowValue(row, ['technician_id', 'id_teknisi', 'id teknisi', 'id']) || ''
             ).trim();
@@ -104,7 +124,7 @@ export async function processExcelUpload({
             if (technician_id) {
               const { data } = await supabase
                 .from('technicians')
-                .select('id, qr_token, technician_id, employee_number, technician_level')
+                .select('id, qr_token, technician_id, employee_number, technician_level, branch')
                 .eq('technician_id', technician_id)
                 .maybeSingle();
               existingTech = data;
@@ -113,11 +133,23 @@ export async function processExcelUpload({
             if (!existingTech) {
               const { data } = await supabase
                 .from('technicians')
-                .select('id, qr_token, technician_id, employee_number, technician_level')
+                .select('id, qr_token, technician_id, employee_number, technician_level, branch')
                 .ilike('technician_name', technician_name)
                 .ilike('branch', branch)
                 .maybeSingle();
               existingTech = data;
+            }
+
+            // Cegah Admin Cabang memindahkan teknisi milik cabang lain ke cabangnya
+            // dengan cara mencantumkan technician_id cabang lain pada file Excel.
+            if (
+              restrictBranch &&
+              existingTech?.branch &&
+              !isSameBranch(existingTech.branch, restrictBranch)
+            ) {
+              throw new Error(
+                `Teknisi "${technician_name}" sudah terdaftar di cabang "${existingTech.branch}" dan tidak dapat dipindahkan oleh Admin Cabang "${restrictBranch}".`
+              );
             }
 
             // Jika teknisi sudah ada, gunakan ID & NIK terdaftarnya
@@ -431,7 +463,7 @@ export async function processExcelUpload({
               ? 'failed'
               : 'partial';
 
-        await supabase.from('sync_logs').insert({
+        const syncLogPayload = {
           start_time: new Date().toISOString(),
           end_time: new Date().toISOString(),
           status: finalStatus,
@@ -441,7 +473,20 @@ export async function processExcelUpload({
           updated_records: updateCount,
           error_count: errorDetails.length,
           error_details: errorDetails,
-        });
+        };
+
+        const { error: syncLogError } = await supabase
+          .from('sync_logs')
+          .insert({ ...syncLogPayload, branch: restrictBranch });
+
+        // Fallback bila kolom `branch` belum ada di sync_logs (database belum dimigrasi)
+        if (
+          syncLogError &&
+          (syncLogError.message?.includes('schema cache') ||
+            syncLogError.message?.includes('does not exist'))
+        ) {
+          await supabase.from('sync_logs').insert(syncLogPayload);
+        }
 
         resolve({
           status: finalStatus,

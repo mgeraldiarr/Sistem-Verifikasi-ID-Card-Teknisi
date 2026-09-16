@@ -101,7 +101,7 @@ export function calculateHybridKpi(
     }
   }
 
-  // Jika kolom 11 & 12 disediakan oleh klien
+  // Jika Kolom 11 (Skor) disediakan oleh klien, skor Excel selalu diprioritaskan
   if (hasClientScore) {
     const finalScore = Math.min(100, Math.max(0, Math.round(clientScore * 100) / 100));
     const finalLevel = normClientLevel || determineTechnicianLevel(finalScore);
@@ -112,13 +112,14 @@ export function calculateHybridKpi(
     };
   }
 
-  // Jika kolom 11 & 12 kosong, jalankan kalkulasi otomatis
+  // Jika Kolom 11 kosong, skor selalu dihitung otomatis dari 6 indikator terbobot
   const autoScore = calculateWeightedKpi(indicators);
-  const autoLevel = determineTechnicianLevel(autoScore);
 
+  // Kolom 12 (Status/Level) tetap dihormati bila klien mengisinya,
+  // sehingga level hasil penilaian manual klien tidak tertimpa kalkulasi otomatis.
   return {
     score: autoScore,
-    level: autoLevel,
+    level: normClientLevel || determineTechnicianLevel(autoScore),
     isCalculated: true,
   };
 }
