@@ -10,11 +10,22 @@ import {
   ChevronRight,
   X,
   Check,
+  Lock,
+  Building2,
 } from 'lucide-react';
+import { useBranches } from '@/hooks/useBranches';
 
 interface DashboardFiltersProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
+  /** Cabang kerja aktif ('' = seluruh cabang DSC) */
+  filterBranch: string;
+  setFilterBranch: (val: string) => void;
+  /**
+   * Bila diisi (Admin Cabang), dropdown cabang dikunci ke cabang tersebut
+   * sehingga data cabang lain tidak dapat dibuka.
+   */
+  lockedBranch?: string | null;
   filterMonth: string; // Format: 'YYYY-MM' (contoh: '2026-08')
   setFilterMonth: (val: string) => void;
   filterYear: string; // Format: 'YYYY' (contoh: '2026')
@@ -44,6 +55,9 @@ const MONTH_NAMES = [
 export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   searchQuery,
   setSearchQuery,
+  filterBranch,
+  setFilterBranch,
+  lockedBranch = null,
   filterMonth,
   setFilterMonth,
   filterYear,
@@ -138,6 +152,10 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   };
 
   const hasDateFilter = Boolean(filterMonth || filterYear);
+  const isBranchLocked = Boolean(lockedBranch);
+
+  // Master cabang dibaca dari tabel `branches` (fallback ke konstanta bila belum dimigrasi)
+  const { branchNames } = useBranches();
 
   return (
     <div
@@ -205,6 +223,68 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             alignItems: 'center',
           }}
         >
+          {/* PEMILIH CABANG DSC (Terkunci otomatis untuk Admin Cabang) */}
+          <div style={{ minWidth: '210px', position: 'relative' }}>
+            <select
+              id="filter-branch"
+              name="filter_branch"
+              value={isBranchLocked ? lockedBranch ?? '' : filterBranch}
+              disabled={isBranchLocked}
+              onChange={(e) => setFilterBranch(e.target.value)}
+              title={
+                isBranchLocked
+                  ? `Akses Anda terkunci pada cabang ${lockedBranch}`
+                  : 'Pilih cabang DSC'
+              }
+              style={{
+                width: '100%',
+                padding: '8px 10px 8px 32px',
+                borderRadius: '8px',
+                border: isBranchLocked
+                  ? '1px solid #E5E7EB'
+                  : '1px solid var(--border-color, #D1D5DB)',
+                fontSize: '0.825rem',
+                fontWeight: isBranchLocked ? 700 : 500,
+                outline: 'none',
+                backgroundColor: isBranchLocked ? '#F3F4F6' : '#FFFFFF',
+                color: isBranchLocked ? '#6B7280' : '#374151',
+                cursor: isBranchLocked ? 'not-allowed' : 'pointer',
+                appearance: 'auto',
+              }}
+            >
+              {isBranchLocked ? (
+                <option value={lockedBranch ?? ''}>{lockedBranch}</option>
+              ) : (
+                <>
+                  <option value="">Semua Cabang DSC</option>
+                  {branchNames.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+
+            <span
+              style={{
+                position: 'absolute',
+                left: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              {isBranchLocked ? (
+                <Lock size={13} color="#DA291C" />
+              ) : (
+                <Building2 size={13} color="var(--text-muted, #9CA3AF)" />
+              )}
+            </span>
+          </div>
+
           {/* PEMILIH WAKTU BERBASIS KALENDER (Month-Picker & Year-Picker) */}
           <div style={{ position: 'relative' }} ref={calendarRef}>
             <button

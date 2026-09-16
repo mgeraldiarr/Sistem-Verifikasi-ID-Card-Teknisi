@@ -92,6 +92,21 @@ button {
   background: #9CA3AF;
 }
 
+/* Scrollbar gelap (tipis) untuk sidebar */
+aside ::-webkit-scrollbar {
+  width: 4px;
+}
+aside ::-webkit-scrollbar-track {
+  background: transparent;
+}
+aside ::-webkit-scrollbar-thumb {
+  background: rgba(236, 232, 218, 0.12);
+  border-radius: 4px;
+}
+aside ::-webkit-scrollbar-thumb:hover {
+  background: rgba(236, 232, 218, 0.22);
+}
+
 /* Utility Classes */
 .modena-btn-primary {
   background-color: var(--bg-dark);
@@ -142,6 +157,11 @@ button {
   }
   .no-print {
     display: none !important;
+  }
+  /* Area konten portal kehilangan offset sidebar saat dicetak */
+  .portal-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
   }
   .print-area {
     display: block !important;

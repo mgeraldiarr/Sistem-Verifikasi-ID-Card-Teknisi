@@ -6,7 +6,20 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { SyncLog, Technician } from '@/types';
 
-export function useDashboardData() {
+interface UseDashboardDataOptions {
+  /**
+   * Cabang yang dipaksakan pada seluruh query (isolasi data Admin Cabang).
+   * null = akses nasional (Super Admin).
+   */
+  scopedBranch?: string | null;
+  /** Tunda pengambilan data sampai profil peran selesai dimuat */
+  enabled?: boolean;
+}
+
+export function useDashboardData({
+  scopedBranch = null,
+  enabled = true,
+}: UseDashboardDataOptions = {}) {
   const router = useRouter();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [lastSyncLog, setLastSyncLog] = useState<SyncLog | null>(null);
@@ -26,26 +39,41 @@ export function useDashboardData() {
 
   // Mengambil data teknisi & log sinkronisasi terakhir dari database
   const fetchData = useCallback(async () => {
+    if (!enabled) return;
+
     setLoading(true);
     const isAuthenticated = await checkSession();
     if (!isAuthenticated) return;
 
     try {
-      // Fetch log sinkronisasi terakhir
-      const { data: syncData } = await supabase
-        .from('sync_logs')
-        .select('*')
-        .order('start_time', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch log sinkronisasi terakhir (disaring per cabang untuk Admin Cabang)
+      const buildSyncQuery = (withBranchFilter: boolean) => {
+        let q = supabase.from('sync_logs').select('*');
+        if (withBranchFilter && scopedBranch) q = q.eq('branch', scopedBranch);
+        return q.order('start_time', { ascending: false }).limit(1).maybeSingle();
+      };
 
-      if (syncData) setLastSyncLog(syncData as SyncLog);
+      let { data: syncData, error: syncError } = await buildSyncQuery(true);
 
-      // Fetch data teknisi beserta performa terbaru & kartu (dengan fallback query otomatis jika database belum dimigrasi)
-      let { data: techData, error } = await supabase
-        .from('technicians')
-        .select(
-          `
+      // Fallback bila kolom `branch` belum ada di sync_logs (database belum dimigrasi)
+      if (syncError && scopedBranch) {
+        const retry = await buildSyncQuery(false);
+        syncData = retry.data;
+        syncError = retry.error;
+      }
+
+      setLastSyncLog(syncData ? (syncData as SyncLog) : null);
+
+      // Fetch data teknisi beserta performa terbaru & kartu
+      // (dengan fallback query otomatis jika database belum dimigrasi)
+      const buildTechQuery = (selectClause: string) => {
+        let q = supabase.from('technicians').select(selectClause);
+        // Isolasi data cabang: Admin Cabang tidak pernah menarik data cabang lain
+        if (scopedBranch) q = q.eq('branch', scopedBranch);
+        return q.order('created_at', { ascending: false });
+      };
+
+      const FULL_SELECT = `
           *,
           technician_performance (
             period,
@@ -65,16 +93,9 @@ export function useDashboardData() {
             card_status,
             expiry_date
           )
-        `
-        )
-        .order('created_at', { ascending: false });
+        `;
 
-      if (error) {
-        // Jika kolom baru belum ada di Supabase, fallback ke skema dasar agar dashboard tetap berfungsi normal
-        const fallbackRes = await supabase
-          .from('technicians')
-          .select(
-            `
+      const BASIC_SELECT = `
             *,
             technician_performance (
               period,
@@ -88,9 +109,13 @@ export function useDashboardData() {
               card_status,
               expiry_date
             )
-          `
-          )
-          .order('created_at', { ascending: false });
+          `;
+
+      let { data: techData, error } = await buildTechQuery(FULL_SELECT);
+
+      if (error) {
+        // Jika kolom baru belum ada di Supabase, fallback ke skema dasar agar dashboard tetap berfungsi normal
+        const fallbackRes = await buildTechQuery(BASIC_SELECT);
 
         if (!fallbackRes.error) {
           techData = fallbackRes.data;
@@ -106,9 +131,11 @@ export function useDashboardData() {
     } finally {
       setLoading(false);
     }
-  }, [checkSession]);
+  }, [checkSession, enabled, scopedBranch]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     fetchData();
 
     // Subscribe to realtime database changes for synchronization
@@ -132,7 +159,7 @@ export function useDashboardData() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, [enabled, fetchData]);
 
   return {
     technicians,

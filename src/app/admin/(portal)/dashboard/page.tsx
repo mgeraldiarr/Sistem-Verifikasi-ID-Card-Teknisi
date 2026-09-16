@@ -10,7 +10,6 @@ import React, {
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import AuthWrapper from "@/components/AuthWrapper";
 import {
   ConfirmModalState,
   NotificationState,
@@ -19,9 +18,13 @@ import {
   TechnicianFormData,
   TechnicianStatus,
 } from "@/types";
+import {
+  buildTechnicianAccessMessage,
+  toWhatsAppNumber,
+} from "@/lib/technician-access";
+import { usePortal } from "../portal-context";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { processExcelUpload } from "./utils/excel-uploader";
-import { DashboardSidebar } from "./components/DashboardSidebar";
 import { SyncLogWidget } from "./components/SyncLogWidget";
 import { SkillDistributionWidget } from "./components/SkillDistributionWidget";
 import { DashboardToolbar } from "./components/DashboardToolbar";
@@ -29,7 +32,6 @@ import { downloadMasterTemplateExcel } from "@/lib/template-generator";
 import { DashboardFilters } from "./components/DashboardFilters";
 import { TechnicianTable } from "./components/TechnicianTable";
 import { TechnicianFormModal } from "./components/TechnicianFormModal";
-import { LogoutModal } from "./components/LogoutModal";
 import { PrintCardArea } from "./components/PrintCardArea";
 import { NotificationModal } from "@/components/ui/NotificationModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -38,12 +40,18 @@ function AdminDashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { technicians, lastSyncLog, loading, fetchData } = useDashboardData();
+  // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch)
+  const { profile, scopedBranch, selectedBranch, selectBranch } = usePortal();
+  const isBranchAdmin = profile?.role === "branch_admin";
+
+  const { technicians, lastSyncLog, loading, fetchData } = useDashboardData({
+    scopedBranch,
+    enabled: Boolean(profile),
+  });
 
   // State UI
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [uploadingExcel, setUploadingExcel] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
@@ -97,15 +105,13 @@ function AdminDashboard() {
     });
   };
 
-  // 1. Membaca Parameter Filter Langsung dari URL Query (Deep Linking)
-  const filterBranch = searchParams.get("branch") || "";
+  // 1. Membaca Parameter Filter Langsung dari URL Query (Deep Linking).
+  // Cabang kerja berasal dari layout portal, yang juga mengunci Admin Cabang.
+  const filterBranch = selectedBranch;
   const filterMonth = searchParams.get("month") || "";
   const filterYear = searchParams.get("year") || "";
   const filterLevel = searchParams.get("level") || "";
   const filterStatus = searchParams.get("status") || "";
-
-  // Kunci cabang aktif saat ini ('all' untuk semua cabang, atau nama cabang)
-  const currentBranchKey = filterBranch || "all";
 
   // 2. Local State untuk Search Input agar pengetikan 100% responsif tanpa lag
   const urlQ = searchParams.get("q") || "";
@@ -114,53 +120,6 @@ function AdminDashboard() {
   useEffect(() => {
     setSearchQuery(urlQ);
   }, [urlQ]);
-
-  // 3. Struktur Memori Filter Per Cabang (Per-Branch Filter Memory)
-  interface BranchFilterState {
-    searchQuery: string;
-    filterMonth: string;
-    filterYear: string;
-    filterLevel: string;
-    filterStatus: string;
-  }
-
-  const DEFAULT_FILTER: BranchFilterState = {
-    searchQuery: "",
-    filterMonth: "",
-    filterYear: "",
-    filterLevel: "",
-    filterStatus: "",
-  };
-
-  // State memori filter untuk masing-masing cabang agar filter tidak hilang saat pindah cabang
-  const [branchFilterMemory, setBranchFilterMemory] = useState<
-    Record<string, BranchFilterState>
-  >(() => {
-    const initialBranch = searchParams.get("branch") || "all";
-    return {
-      [initialBranch]: {
-        searchQuery: searchParams.get("q") || "",
-        filterMonth: searchParams.get("month") || "",
-        filterYear: searchParams.get("year") || "",
-        filterLevel: searchParams.get("level") || "",
-        filterStatus: searchParams.get("status") || "",
-      },
-    };
-  });
-
-  // Helper untuk menyimpan filter ke memori cabang aktif
-  const saveFilterToMemory = (updates: Partial<BranchFilterState>) => {
-    setBranchFilterMemory((prev) => {
-      const existing = prev[currentBranchKey] || DEFAULT_FILTER;
-      return {
-        ...prev,
-        [currentBranchKey]: {
-          ...existing,
-          ...updates,
-        },
-      };
-    });
-  };
 
   // 4. Helper untuk memperbarui URL Query Parameters tanpa reload halaman
   const updateQueryParams = useCallback(
@@ -195,37 +154,21 @@ function AdminDashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery !== urlQ) {
-        saveFilterToMemory({ searchQuery });
         updateQueryParams({ q: searchQuery || null });
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, urlQ, updateQueryParams, currentBranchKey]);
+  }, [searchQuery, urlQ, updateQueryParams]);
 
-  // 6. Setter untuk filter parameter yang menyinkronkan ke memori cabang dan URL
-  const setFilterMonth = (val: string) => {
-    saveFilterToMemory({ filterMonth: val });
-    updateQueryParams({ month: val || null });
-  };
-  const setFilterYear = (val: string) => {
-    saveFilterToMemory({ filterYear: val });
-    updateQueryParams({ year: val || null });
-  };
-  const setFilterLevel = (val: string) => {
-    saveFilterToMemory({ filterLevel: val });
-    updateQueryParams({ level: val || null });
-  };
-  const setFilterStatus = (val: string) => {
-    saveFilterToMemory({ filterStatus: val });
-    updateQueryParams({ status: val || null });
-  };
+  // 6. Setter filter: URL adalah satu-satunya sumber kebenaran.
+  // Layout portal membaca URL ini saat menyimpan memori filter per cabang.
+  const setFilterMonth = (val: string) => updateQueryParams({ month: val || null });
+  const setFilterYear = (val: string) => updateQueryParams({ year: val || null });
+  const setFilterLevel = (val: string) => updateQueryParams({ level: val || null });
+  const setFilterStatus = (val: string) => updateQueryParams({ status: val || null });
 
   // 7. Reset Filter: Bersihkan parameter filter cabang ini di memori dan URL, tapi PERTAHANKAN cabangnya!
   const handleResetFilters = () => {
-    setBranchFilterMemory((prev) => ({
-      ...prev,
-      [currentBranchKey]: DEFAULT_FILTER,
-    }));
     setSearchQuery("");
     updateQueryParams({
       q: null,
@@ -233,26 +176,6 @@ function AdminDashboard() {
       year: null,
       level: null,
       status: null,
-    });
-  };
-
-  // 8. Ganti Cabang dari Sidebar: Pulihkan filter yang pernah disimpan di cabang tersebut!
-  const handleSelectBranch = (newBranch: string) => {
-    const nextKey = newBranch || "all";
-    // Ambil riwayat filter yang pernah disetel di cabang tujuan (atau default jika belum pernah difilter)
-    const saved = branchFilterMemory[nextKey] || DEFAULT_FILTER;
-
-    // Sinkronkan local search input
-    setSearchQuery(saved.searchQuery);
-
-    // Terapkan filter cabang tersebut ke URL
-    updateQueryParams({
-      branch: newBranch || null,
-      q: saved.searchQuery || null,
-      month: saved.filterMonth || null,
-      year: saved.filterYear || null,
-      level: saved.filterLevel || null,
-      status: saved.filterStatus || null,
     });
   };
 
@@ -278,13 +201,6 @@ function AdminDashboard() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // Handlers
-  const handleLogout = () => setShowLogoutModal(true);
-
-  const confirmLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/admin/login");
-  };
-
   const openForm = (tech?: Technician) => {
     if (tech) {
       const card = tech.technician_id_cards?.[0];
@@ -321,7 +237,8 @@ function AdminDashboard() {
         technician_id: "",
         employee_number: "",
         technician_name: "",
-        branch: "",
+        // Admin Cabang hanya boleh mendaftarkan teknisi di cabangnya sendiri
+        branch: scopedBranch ?? "",
         service_center: "",
         phone: "",
         email: "",
@@ -364,6 +281,17 @@ function AdminDashboard() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Isolasi data cabang: Admin Cabang tidak boleh menulis data cabang lain
+    if (scopedBranch && formData.branch !== scopedBranch) {
+      showCustomAlert(
+        "error",
+        "Akses Ditolak",
+        `Anda hanya berwenang mengelola data cabang ${scopedBranch}. Cabang "${formData.branch || "-"}" tidak diizinkan.`,
+      );
+      return;
+    }
+
     setSaving(true);
 
     let photo_url = formId
@@ -520,7 +448,11 @@ function AdminDashboard() {
 
     setUploadingExcel(true);
     try {
-      const result = await processExcelUpload({ file, supabase });
+      const result = await processExcelUpload({
+        file,
+        supabase,
+        restrictBranch: scopedBranch,
+      });
 
       if (typeof window !== "undefined") {
         localStorage.setItem("last_uploaded_file_name", file.name);
@@ -606,12 +538,22 @@ function AdminDashboard() {
       "Konfirmasi Hapus Teknisi",
       "Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.",
       async () => {
-        const { error } = await supabase
+        // `.select()` wajib: PostgREST mengembalikan sukses tanpa error
+        // walau RLS menolak dan tidak ada baris yang terhapus.
+        const { data, error } = await supabase
           .from("technicians")
           .delete()
-          .eq("id", id);
+          .eq("id", id)
+          .select("id");
+
         if (error) {
           showCustomAlert("error", "Gagal Menghapus Data", error.message);
+        } else if (!data || data.length === 0) {
+          showCustomAlert(
+            "error",
+            "Akses Ditolak",
+            "Data tidak terhapus. Peran akun Anda tidak memiliki izin menghapus teknisi ini.",
+          );
         } else {
           showCustomAlert(
             "success",
@@ -619,6 +561,96 @@ function AdminDashboard() {
             "Data teknisi berhasil dihapus.",
           );
           fetchData();
+        }
+      },
+    );
+  };
+
+  // Terbitkan akun portal teknisi lalu kirim kredensialnya via WhatsApp
+  const handleSendAccess = (tech: Technician) => {
+    const waNumber = toWhatsAppNumber(tech.phone);
+
+    if (!waNumber) {
+      showCustomAlert(
+        "warning",
+        "Nomor WhatsApp Tidak Tersedia",
+        `Nomor HP ${tech.technician_name} belum terisi. Lengkapi data nomor HP terlebih dahulu sebelum mengirim akses portal.`,
+      );
+      return;
+    }
+
+    showCustomConfirm(
+      "Kirim Akses Portal Teknisi",
+      `Terbitkan akun portal untuk ${tech.technician_name} dan siapkan pesan WhatsApp ke ${tech.phone}?`,
+      async () => {
+        // Jendela dibuka sinkron dari klik user agar tidak diblokir popup blocker
+        const waWindow = window.open("about:blank", "_blank", "noopener");
+
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!session) {
+            waWindow?.close();
+            showCustomAlert(
+              "error",
+              "Sesi Berakhir",
+              "Sesi Anda telah berakhir. Silakan masuk kembali.",
+            );
+            return;
+          }
+
+          const res = await fetch("/api/admin/technician-access", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ technician_id: tech.id }),
+          });
+
+          const payload = await res.json();
+
+          if (!res.ok) {
+            waWindow?.close();
+            showCustomAlert(
+              "error",
+              "Gagal Menerbitkan Akses",
+              payload.error || "Terjadi kesalahan saat menerbitkan akun teknisi.",
+            );
+            return;
+          }
+
+          const message = buildTechnicianAccessMessage({
+            technicianName: tech.technician_name,
+            employeeNumber: tech.employee_number,
+            loginUrl: `${window.location.origin}/admin/login`,
+            password: payload.password ?? null,
+          });
+
+          const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+
+          if (waWindow) {
+            waWindow.location.href = waUrl;
+          } else {
+            window.open(waUrl, "_blank", "noopener");
+          }
+
+          showCustomAlert(
+            "success",
+            payload.created ? "Akun Teknisi Diterbitkan" : "Akses Siap Dikirim",
+            payload.created
+              ? `Akun portal untuk ${tech.technician_name} berhasil dibuat. Pesan WhatsApp berisi NIK dan kata sandi awal telah disiapkan.`
+              : `${tech.technician_name} sudah memiliki akun portal. Pesan WhatsApp berisi petunjuk masuk telah disiapkan (kata sandi lama tetap berlaku).`,
+          );
+        } catch {
+          waWindow?.close();
+          showCustomAlert(
+            "error",
+            "Gagal Terhubung",
+            "Tidak dapat menghubungi server. Periksa koneksi internet Anda.",
+          );
         }
       },
     );
@@ -697,16 +729,6 @@ function AdminDashboard() {
     filterMonth,
     filterYear,
   ]);
-
-  const branchCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    technicians.forEach((t) => {
-      if (t.branch) {
-        counts[t.branch] = (counts[t.branch] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [technicians]);
 
   // Perhitungan Agregasi Distribusi Skill Teknisi & Metrik YTD secara dinamis
   const skillDistributionStats = useMemo(() => {
@@ -819,76 +841,62 @@ function AdminDashboard() {
   };
 
   return (
-    <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh" }}>
-      {/* DASHBOARD UTAMA */}
+    <>
+      {/* DASHBOARD UTAMA (sidebar & kerangka halaman disediakan layout portal) */}
       <div className="no-print">
-        {/* Layout 2 Kolom: Sidebar Fixed + Konten Utama */}
-        <div>
-          <DashboardSidebar
-            selectedBranch={filterBranch}
-            onSelectBranch={handleSelectBranch}
-            totalTechnicians={technicians.length}
-            techniciansBranchCounts={branchCounts}
-            onLogout={handleLogout}
-          />
+        {/* WIDGET SINKRONISASI EXCEL */}
+        <SyncLogWidget
+          lastSyncLog={lastSyncLog}
+          lastFileName={lastFileName}
+          onRefresh={fetchData}
+        />
 
-          <main
-            style={{
-              marginLeft: '272px',
-              minHeight: '100vh',
-              padding: "1.5rem 2rem",
-            }}
-          >
-            {/* WIDGET SINKRONISASI EXCEL */}
-            <SyncLogWidget
-              lastSyncLog={lastSyncLog}
-              lastFileName={lastFileName}
-              onRefresh={fetchData}
-            />
+        {/* WIDGET DISTRIBUSI SKILL TEKNISI (PERFORMANCE TRACKING WIDGET) */}
+        <SkillDistributionWidget
+          stats={skillDistributionStats}
+          periodLabel={dynamicPeriodLabel}
+          branchLabel={dynamicBranchLabel}
+          loading={loading}
+        />
 
-            {/* WIDGET DISTRIBUSI SKILL TEKNISI (PERFORMANCE TRACKING WIDGET) */}
-            <SkillDistributionWidget
-              stats={skillDistributionStats}
-              periodLabel={dynamicPeriodLabel}
-              branchLabel={dynamicBranchLabel}
-              loading={loading}
-            />
+        {/* HEADER DAN TOOLBAR */}
+        <DashboardToolbar
+          uploadingExcel={uploadingExcel}
+          onExcelUpload={handleExcelUpload}
+          onAddTechnician={() => openForm()}
+          onDownloadTemplate={handleDownloadTemplate}
+        />
 
-            {/* HEADER DAN TOOLBAR */}
-            <DashboardToolbar
-              uploadingExcel={uploadingExcel}
-              onExcelUpload={handleExcelUpload}
-              onAddTechnician={() => openForm()}
-              onDownloadTemplate={handleDownloadTemplate}
-            />
+        {/* FILTER & SEARCH PANEL (ADVANCED FILTERING) */}
+        <DashboardFilters
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filterBranch={filterBranch}
+          setFilterBranch={selectBranch}
+          lockedBranch={scopedBranch}
+          filterMonth={filterMonth}
+          setFilterMonth={setFilterMonth}
+          filterYear={filterYear}
+          setFilterYear={setFilterYear}
+          filterLevel={filterLevel}
+          setFilterLevel={setFilterLevel}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          onResetFilters={handleResetFilters}
+        />
 
-            {/* FILTER & SEARCH PANEL (ADVANCED FILTERING) */}
-            <DashboardFilters
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filterMonth={filterMonth}
-              setFilterMonth={setFilterMonth}
-              filterYear={filterYear}
-              setFilterYear={setFilterYear}
-              filterLevel={filterLevel}
-              setFilterLevel={setFilterLevel}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              onResetFilters={handleResetFilters}
-            />
-
-            {/* TABLE DATA */}
-            <TechnicianTable
-              loading={loading}
-              technicians={filteredTechnicians}
-              onToggleActive={handleToggleActive}
-              onPrint={triggerPrint}
-              onRegenerateQR={handleRegenerateQR}
-              onEdit={openForm}
-              onDelete={handleDelete}
-            />
-          </main>
-        </div>
+        {/* TABLE DATA */}
+        <TechnicianTable
+          loading={loading}
+          technicians={filteredTechnicians}
+          onToggleActive={handleToggleActive}
+          onPrint={triggerPrint}
+          onRegenerateQR={handleRegenerateQR}
+          onEdit={openForm}
+          onDelete={handleDelete}
+          onSendAccess={handleSendAccess}
+          canDelete={!isBranchAdmin}
+        />
 
         {/* Modal Form Tambah/Edit Teknisi */}
         <TechnicianFormModal
@@ -902,12 +910,6 @@ function AdminDashboard() {
           onSave={handleSave}
         />
 
-        {/* Modal Logout */}
-        <LogoutModal
-          show={showLogoutModal}
-          onClose={() => setShowLogoutModal(false)}
-          onConfirm={confirmLogout}
-        />
       </div>
 
       {/* CETAK KARTU DUA SISI */}
@@ -931,16 +933,15 @@ function AdminDashboard() {
           setConfirmModal((prev) => ({ ...prev, show: false }));
         }}
       />
-    </div>
+    </>
   );
 }
 
 export default function DashboardPage() {
+  // Guard peran & kerangka halaman ditangani layout portal `(portal)/layout.tsx`
   return (
-    <AuthWrapper>
-      <Suspense fallback={null}>
-        <AdminDashboard />
-      </Suspense>
-    </AuthWrapper>
+    <Suspense fallback={null}>
+      <AdminDashboard />
+    </Suspense>
   );
 }
