@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
           const performanceData = {
             technician_id: techId,
             period,
-            kpi_score: parseExcelNumber(kpiRaw),
+             kpi_score: parseExcelNumber(kpiRaw),
             csi_score: parseExcelNumber(csiRaw),
             performance_score: parseExcelNumber(perfRaw),
             performance_level: perfLvlRaw ? mapLevel(perfLvlRaw) : mapLevel(rawLevel),

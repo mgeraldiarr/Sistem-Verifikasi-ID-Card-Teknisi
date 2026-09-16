@@ -78,3 +78,30 @@ export interface TechnicianPublicData {
   technician_level: TechnicianLevel;
   technician_id_cards?: TechnicianIdCard[];
 }
+
+// ============================================================
+// RBAC 3-Tier: Super Admin, Admin Cabang, Teknisi
+// ============================================================
+
+export type UserRole = 'super_admin' | 'branch_admin' | 'technician';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  branch: string | null;
+  technician_id: string | null;
+  is_active: boolean;
+  /** true = kata sandi awal belum diganti, akses ditahan sampai dirotasi */
+  must_change_password: boolean;
+}
+
+export type ServiceTypeCode = 'DSC' | 'ASC' | 'SL';
+
+export interface BranchRecord {
+  id: string;
+  name: string;
+  service_type: ServiceTypeCode;
+  is_active: boolean;
+}
