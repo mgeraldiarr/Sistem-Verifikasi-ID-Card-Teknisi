@@ -344,10 +344,11 @@ function AdminDashboard() {
         qrToken = data.qr_token;
       }
 
-      if (formData.card_number && techId) {
+      const finalCardNumber = formData.card_number || formData.technician_id;
+      if (finalCardNumber && techId) {
         const cardPayload = {
           technician_id: techId,
-          card_number: formData.card_number,
+          card_number: finalCardNumber,
           qr_token: qrToken,
           card_status: formData.card_status,
           expiry_date: formData.expiry_date,
@@ -904,6 +905,7 @@ function AdminDashboard() {
           formId={formId}
           formData={formData}
           setFormData={setFormData}
+          photoFile={photoFile}
           setPhotoFile={setPhotoFile}
           saving={saving}
           onClose={() => setShowForm(false)}

@@ -12,6 +12,7 @@ import {
 } from '@/lib/excel';
 import { calculateHybridKpi } from '@/lib/kpi';
 import { ExcelUploadResult, SyncErrorDetail } from '@/types';
+import { getBranchCode, getNextAvailableSequenceNumber } from '@/constants/branch_codes';
 
 interface ProcessExcelUploadOptions {
   file: File;
@@ -64,6 +65,9 @@ export async function processExcelUpload({
         let updateCount = 0;
         let insertCount = 0;
         const errorDetails: SyncErrorDetail[] = [];
+
+        // In-memory cache nomor ID per kode cabang untuk alokasi nomor urut terurut (First-Available Gap Fill)
+        const branchAllocatedIds = new Map<string, string[]>();
 
         // 2. Proses baris demi baris secara independen
         for (let idx = 0; idx < activeRows.length; idx++) {
@@ -157,16 +161,42 @@ export async function processExcelUpload({
               if (!technician_id) technician_id = existingTech.technician_id;
               if (!employee_number) employee_number = existingTech.employee_number;
             } else {
-              // Jika teknisi baru dan file 12 kolom tidak menyertakan ID/NIK, generate otomatis
+              // Jika teknisi baru dan file tidak menyertakan ID/NIK, generate otomatis terurut (First-Available Gap Fill)
               if (!technician_id) {
-                const branchCode = branch
-                  .replace(/[^a-zA-Z]/g, '')
-                  .slice(0, 3)
-                  .toUpperCase() || 'MOD';
-                technician_id = `MOD-${branchCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+                const branchCode = getBranchCode(branch);
+
+                if (!branchAllocatedIds.has(branchCode)) {
+                  // Ambil daftar seluruh ID yang ada di Supabase untuk cabang / kode ini
+                  const { data: branchTechs } = await supabase
+                    .from('technicians')
+                    .select('technician_id')
+                    .or(
+                      `branch.ilike.%${branch.trim()}%,technician_id.ilike.DSC-${branchCode}-%,technician_id.ilike.MOD-${branchCode}-%`
+                    );
+                  const existingList = (branchTechs || [])
+                    .map((t) => t.technician_id)
+                    .filter(Boolean);
+                  branchAllocatedIds.set(branchCode, existingList);
+                }
+
+                const currentList = branchAllocatedIds.get(branchCode) || [];
+                const nextSeq = getNextAvailableSequenceNumber(currentList, branchCode);
+                technician_id = `DSC-${branchCode}-${nextSeq}`;
+
+                // Simpan ke in-memory cache agar baris baru berikutnya di batch ini berurutan (+1)
+                currentList.push(technician_id);
               }
               if (!employee_number) {
                 employee_number = `10${Math.floor(100000 + Math.random() * 900000)}`;
+              }
+            }
+
+            // Catat ID yang terisi/ditemukan ke cache alokasi cabang agar tidak bentrok
+            const currentBranchCode = getBranchCode(branch);
+            if (branchAllocatedIds.has(currentBranchCode) && technician_id) {
+              const list = branchAllocatedIds.get(currentBranchCode)!;
+              if (!list.includes(technician_id)) {
+                list.push(technician_id);
               }
             }
 
@@ -415,9 +445,9 @@ export async function processExcelUpload({
             ]);
             const expiry_date = parseExcelDate(expiryDateRaw);
 
-            // Default card number jika tidak disediakan di file 12 kolom
+            // Default card number jika tidak disediakan di file: samakan langsung dengan technician_id
             const defaultCardNumber =
-              card_number ? String(card_number).trim() : `CARD-${technician_id.replace(/^MOD-/, '')}`;
+              card_number ? String(card_number).trim() : technician_id;
 
             // Cek apakah sudah ada kartu untuk teknisi ini
             const { data: existingCard } = await supabase

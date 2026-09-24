@@ -91,6 +91,7 @@ export interface UserProfile {
   full_name: string;
   role: UserRole;
   branch: string | null;
+  admin_id?: string | null;
   technician_id: string | null;
   is_active: boolean;
   /** true = kata sandi awal belum diganti, akses ditahan sampai dirotasi */

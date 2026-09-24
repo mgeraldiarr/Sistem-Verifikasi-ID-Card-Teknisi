@@ -70,5 +70,6 @@ export const DSC_BRANCHES = [
   'MSC Bogor',
   'Lampung',
   'Pontianak',
+  'Balikpapan',
 ] as const;
 
