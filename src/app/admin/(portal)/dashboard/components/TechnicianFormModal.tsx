@@ -413,7 +413,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       borderRadius: '4px',
                     }}
                   >
-                    Otomatis & Terkunci
+                    Otomatis
                   </span>
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -1103,7 +1103,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                 gap: '1rem',
               }}
             >
-              {/* LEVEL SERTIFIKASI (TERKUNCI MENGIKUTI SKOR) */}
+              {/* LEVEL (OTOMATIS MENGIKUTI PERUBAHAN SKOR) */}
               <div>
                 <label
                   htmlFor="form-technician-level"
@@ -1117,7 +1117,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                   }}
                 >
                   <Lock size={13} style={{ color: '#64748b' }} />
-                  <span>Level Sertifikasi</span>
+                  <span>Level</span>
                   <span
                     style={{
                       fontSize: '0.725rem',
@@ -1128,7 +1128,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       borderRadius: '4px',
                     }}
                   >
-                    Otomatis Terkunci
+                    Otomatis
                   </span>
                 </label>
                 <select
