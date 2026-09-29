@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/components/LogoutModal.tsx
+// src/app/admin/(portal)/components/LogoutModal.tsx
 'use client';
 
 import React from 'react';

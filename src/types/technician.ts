@@ -29,7 +29,7 @@ export interface TechnicianIdCard {
 
 export interface Technician {
   id: string;
-  technician_id: string; // e.g. MOD-T001
+  technician_id: string; // contoh: DSC-BAL-001
   employee_number: string;
   technician_name: string;
   branch: string;
@@ -91,6 +91,7 @@ export interface UserProfile {
   full_name: string;
   role: UserRole;
   branch: string | null;
+  admin_id?: string | null;
   technician_id: string | null;
   is_active: boolean;
   /** true = kata sandi awal belum diganti, akses ditahan sampai dirotasi */

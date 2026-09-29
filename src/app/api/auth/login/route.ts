@@ -1,7 +1,8 @@
 // src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
+import { createRateLimiter, getClientIp } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,66 +11,76 @@ const supabaseUrl =
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-// Pesan tunggal untuk semua kegagalan agar NIK/email tidak bisa dienumerasi
+// Pesan tunggal untuk semua kegagalan agar ID/email tidak bisa dienumerasi
 const GENERIC_ERROR =
-  'NIK / Email atau kata sandi salah. Periksa kembali kredensial Anda.';
+  'ID Pengguna atau kata sandi salah. Periksa kembali kredensial Anda.';
 
-// Rate limiting sederhana per-IP (5 percobaan / menit)
-const attemptMap = new Map<string, { count: number; lastReset: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_ATTEMPTS_PER_WINDOW = 5;
+// Batasi percobaan masuk per-IP (5 percobaan / menit) untuk menahan tebak kata sandi
+const loginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5 });
 
-const getClientIp = (req: NextRequest) => {
-  const xForwardedFor = req.headers.get('x-forwarded-for');
-  if (xForwardedFor) return xForwardedFor.split(',')[0].trim();
-  return req.headers.get('x-real-ip') || '127.0.0.1';
-};
+type LoginKind = 'technician' | 'branch_admin' | 'super_admin';
+
+interface ResolvedLogin {
+  email: string;
+  /** Peran yang diizinkan untuk jenis ID ini; dicocokkan lagi setelah verifikasi sandi */
+  kind: LoginKind;
+}
+
+// Format ID resmi: DSC-BAL-001 (teknisi) & ADM-BAL-01 (Admin Cabang).
+// Karakter dibatasi agar aman dipakai pada filter PostgREST.
+const TECHNICIAN_ID_PATTERN = /^DSC-[A-Z0-9]{2,6}-\d{1,6}$/;
+const ADMIN_ID_PATTERN = /^ADM-[A-Z0-9]{2,6}-\d{1,6}$/;
 
 /**
- * Memetakan Nomor Karyawan (NIK) atau ID Teknisi ke email akun login-nya.
+ * Memetakan ID Pengguna ke email akun login-nya.
+ * - ADM-...  -> user_profiles.admin_id (Admin Cabang)
+ * - DSC-...  -> technicians.technician_id (Teknisi)
+ * - email    -> khusus Super Admin
  * Dijalankan dengan service role di server sehingga tidak menembus RLS klien.
  */
-async function resolveIdentifierToEmail(identifier: string): Promise<string | null> {
-  // Identifier berbentuk email dipakai apa adanya
-  if (identifier.includes('@')) return identifier.toLowerCase();
+async function resolveIdentifier(identifier: string): Promise<ResolvedLogin | null> {
+  if (identifier.includes('@')) {
+    return { email: identifier.toLowerCase(), kind: 'super_admin' };
+  }
 
-  // Batasi karakter NIK / ID Teknisi agar aman dipakai pada filter PostgREST
-  if (!/^[A-Za-z0-9._-]{1,64}$/.test(identifier)) return null;
+  const id = identifier.toUpperCase();
 
-  const { data: technicians } = await supabaseAdmin
-    .from('technicians')
-    .select('id')
-    .or(`employee_number.eq.${identifier},technician_id.eq.${identifier}`)
-    .limit(2);
+  if (ADMIN_ID_PATTERN.test(id)) {
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email, is_active')
+      .eq('admin_id', id)
+      .maybeSingle();
 
-  // Identifier ambigu (cocok >1 teknisi) ditolak demi keamanan
-  if (!technicians || technicians.length !== 1) return null;
+    if (!profile || !profile.is_active) return null;
+    return { email: profile.email, kind: 'branch_admin' };
+  }
 
-  const { data: profile } = await supabaseAdmin
-    .from('user_profiles')
-    .select('email, is_active')
-    .eq('technician_id', technicians[0].id)
-    .maybeSingle();
+  if (TECHNICIAN_ID_PATTERN.test(id)) {
+    const { data: technician } = await supabaseAdmin
+      .from('technicians')
+      .select('id')
+      .eq('technician_id', id)
+      .maybeSingle();
 
-  if (!profile || !profile.is_active) return null;
-  return profile.email;
+    if (!technician) return null;
+
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email, is_active')
+      .eq('technician_id', technician.id)
+      .maybeSingle();
+
+    if (!profile || !profile.is_active) return null;
+    return { email: profile.email, kind: 'technician' };
+  }
+
+  return null;
 }
 
 export async function POST(req: NextRequest) {
   // 1. Rate limiting
-  const ip = getClientIp(req);
-  const now = Date.now();
-  const record = attemptMap.get(ip) || { count: 0, lastReset: now };
-
-  if (now - record.lastReset > RATE_LIMIT_WINDOW) {
-    record.count = 1;
-    record.lastReset = now;
-  } else {
-    record.count++;
-  }
-  attemptMap.set(ip, record);
-
-  if (record.count > MAX_ATTEMPTS_PER_WINDOW) {
+  if (!loginLimiter.allow(getClientIp(req))) {
     return NextResponse.json(
       {
         error:
@@ -92,16 +103,17 @@ export async function POST(req: NextRequest) {
 
   if (!identifier || !password) {
     return NextResponse.json(
-      { error: 'NIK / Email dan kata sandi wajib diisi.' },
+      { error: 'ID Pengguna dan kata sandi wajib diisi.' },
       { status: 400 }
     );
   }
 
-  // 3. Petakan identifier ke email akun
-  const email = await resolveIdentifierToEmail(identifier);
-  if (!email) {
+  // 3. Petakan ID Pengguna ke email akun
+  const resolved = await resolveIdentifier(identifier);
+  if (!resolved) {
     return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
   }
+  const { email } = resolved;
 
   // 4. Verifikasi kredensial memakai anon key (bukan service role)
   const authClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -129,6 +141,12 @@ export async function POST(req: NextRequest) {
       },
       { status: 403 }
     );
+  }
+
+  // Jenis ID harus sesuai peran akun: email hanya untuk Super Admin,
+  // ADM- hanya untuk Admin Cabang, DSC- hanya untuk Teknisi.
+  if (profile.role !== resolved.kind) {
+    return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
   }
 
   if (!profile.is_active) {

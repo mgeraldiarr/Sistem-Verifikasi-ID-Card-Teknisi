@@ -1,7 +1,7 @@
 // src/app/technician/my-card/page.tsx
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
@@ -14,15 +14,8 @@ import {
 } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
-import { supabase } from '@/lib/supabase';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
-import { Technician } from '@/types';
-
-const LEVEL_LABELS: Record<string, string> = {
-  beginner: 'BEGINNER',
-  intermediate: 'INTERMEDIATE',
-  advance: 'ADVANCED',
-};
+import { useMyTechnicianCard } from './hooks/useMyTechnicianCard';
 
 const CREAM_BG = '#F3F2EC';
 
@@ -30,125 +23,12 @@ function MyCardContent() {
   const router = useRouter();
   const { profile, loading: profileLoading, signOut } = useAuthProfile();
 
-  const [technician, setTechnician] = useState<Technician | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
   const qrWrapperRef = useRef<HTMLDivElement>(null);
 
-  const technicianRowId = profile?.technician_id ?? null;
-
-  useEffect(() => {
-    if (profileLoading) return;
-
-    if (!technicianRowId) {
-      setLoading(false);
-      setError(
-        'Akun Anda belum terhubung ke data teknisi mana pun. Hubungi Admin Cabang untuk menautkan akun Anda.'
-      );
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchTechnician = async () => {
-      setLoading(true);
-
-      // RLS hanya mengizinkan teknisi membaca barisnya sendiri
-      const { data, error: fetchError } = await supabase
-        .from('technicians')
-        .select(
-          `
-          id,
-          technician_id,
-          employee_number,
-          technician_name,
-          branch,
-          service_center,
-          photo_url,
-          phone,
-          email,
-          technician_status,
-          technician_level,
-          qr_token,
-          created_at,
-          technician_id_cards!technician_id_cards_technician_id_fkey (
-            card_number,
-            card_status,
-            expiry_date
-          )
-        `
-        )
-        .eq('id', technicianRowId)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      if (fetchError) {
-        setError(`Gagal memuat kartu digital: ${fetchError.message}`);
-      } else if (!data) {
-        setError('Data teknisi Anda tidak ditemukan dalam sistem.');
-      } else {
-        setTechnician(data as unknown as Technician);
-        setError(null);
-      }
-
-      setLoading(false);
-    };
-
-    fetchTechnician();
-    return () => {
-      cancelled = true;
-    };
-  }, [profileLoading, technicianRowId]);
-
-  const cardInfo = technician?.technician_id_cards?.[0] ?? null;
-
-  const { isValid, formattedExpiryDate, statusLabel } = useMemo(() => {
-    if (!technician) {
-      return { isValid: false, formattedExpiryDate: '-', statusLabel: 'MEMUAT DATA' };
-    }
-
-    const isTechnicianActive = technician.technician_status === 'active';
-    const isCardActive = cardInfo?.card_status === 'active';
-
-    const expiryDate = cardInfo ? new Date(cardInfo.expiry_date) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expired = expiryDate ? expiryDate < today : false;
-
-    const valid = isTechnicianActive && isCardActive && !expired;
-
-    let label = 'KARTU DIGITAL AKTIF';
-    if (!isTechnicianActive) label = 'STATUS TEKNISI NONAKTIF';
-    else if (!cardInfo) label = 'KARTU BELUM DITERBITKAN';
-    else if (!isCardActive) label = 'KARTU DITANGGUHKAN';
-    else if (expired) label = 'KARTU KADALUARSA';
-
-    return {
-      isValid: valid,
-      statusLabel: label,
-      formattedExpiryDate: expiryDate
-        ? expiryDate.toLocaleDateString('id-ID', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })
-        : '-',
-    };
-  }, [technician, cardInfo]);
-
-  const qrToken = technician?.qr_token;
-  const verifyUrl = useMemo(() => {
-    if (!qrToken || typeof window === 'undefined') return undefined;
-    return `${window.location.origin}/verify/${qrToken}`;
-  }, [qrToken]);
-
-  const levelText = technician
-    ? LEVEL_LABELS[technician.technician_level] ||
-      technician.technician_level.toUpperCase()
-    : '';
+  const { technician, loading, error, verifyUrl, isValid, formattedExpiryDate, statusLabel, levelText } =
+    useMyTechnicianCard(profile?.technician_id ?? null, profileLoading);
 
   /** Unduh QR Code verifikasi sebagai file PNG */
   const handleDownloadQr = useCallback(() => {
@@ -279,7 +159,6 @@ function MyCardContent() {
             {/* Kartu 3D Flip-Flop Interaktif */}
             <TechnicianCard3D
               technician={technician}
-              cardInfo={cardInfo}
               levelText={levelText}
               formattedExpiryDate={formattedExpiryDate}
               isValid={isValid}

@@ -1,10 +1,11 @@
-// src/app/admin/dashboard/components/TechnicianTable.tsx
+// src/app/admin/(portal)/dashboard/components/technician-table/TechnicianTable.tsx
 'use client';
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { Technician, TechnicianStatus } from '@/types';
 import { TechnicianTableRow } from './TechnicianTableRow';
+import { KpiWeights } from '@/lib/kpi';
 
 interface TechnicianTableProps {
   loading: boolean;
@@ -16,6 +17,7 @@ interface TechnicianTableProps {
   onDelete: (id: string) => void;
   onSendAccess: (tech: Technician) => void;
   canDelete?: boolean;
+  kpiWeights?: KpiWeights;
 }
 
 export const TechnicianTable: React.FC<TechnicianTableProps> = ({
@@ -28,6 +30,7 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
   onDelete,
   onSendAccess,
   canDelete = true,
+  kpiWeights,
 }) => {
   return (
     <div className="modena-card" style={{ padding: '0', overflowX: 'auto' }}>
@@ -142,6 +145,7 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
                 onDelete={onDelete}
                 onSendAccess={onSendAccess}
                 canDelete={canDelete}
+                kpiWeights={kpiWeights}
               />
             ))}
 

@@ -1,938 +1,152 @@
-// src/app/admin/dashboard/page.tsx
-"use client";
+// src/app/admin/(portal)/dashboard/page.tsx
+'use client';
 
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-  Suspense,
-} from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import {
-  ConfirmModalState,
-  NotificationState,
-  NotificationType,
-  Technician,
-  TechnicianFormData,
-  TechnicianStatus,
-} from "@/types";
-import {
-  buildTechnicianAccessMessage,
-  toWhatsAppNumber,
-} from "@/lib/technician-access";
-import { usePortal } from "../portal-context";
-import { useDashboardData } from "./hooks/useDashboardData";
-import { processExcelUpload } from "./utils/excel-uploader";
-import { SyncLogWidget } from "./components/SyncLogWidget";
-import { SkillDistributionWidget } from "./components/SkillDistributionWidget";
-import { DashboardToolbar } from "./components/DashboardToolbar";
-import { downloadMasterTemplateExcel } from "@/lib/template-generator";
-import { DashboardFilters } from "./components/DashboardFilters";
-import { TechnicianTable } from "./components/TechnicianTable";
-import { TechnicianFormModal } from "./components/TechnicianFormModal";
-import { PrintCardArea } from "./components/PrintCardArea";
-import { NotificationModal } from "@/components/ui/NotificationModal";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import React, { Suspense, useMemo } from 'react';
+import { DSC_BRANCHES } from '@/constants/service-center';
+import { useFeedbackModals } from '@/hooks/useFeedbackModals';
+import { useKpiWeights } from '@/hooks/useKpiWeights';
+import { downloadMasterTemplateExcel } from '@/lib/template-generator';
+import { usePortal } from '../portal-context';
+import { DashboardFilters } from './components/filters/DashboardFilters';
+import { DashboardToolbar } from './components/DashboardToolbar';
+import { PrintCardArea } from './components/PrintCardArea';
+import { SkillDistributionWidget } from './components/skill-distribution/SkillDistributionWidget';
+import { SyncLogWidget } from './components/SyncLogWidget';
+import { TechnicianTable } from './components/technician-table/TechnicianTable';
+import { TechnicianFormModal } from './components/technician-form/TechnicianFormModal';
+import { useDashboardData } from './hooks/useDashboardData';
+import { useDashboardFilters } from './hooks/useDashboardFilters';
+import { useExcelUpload } from './hooks/useExcelUpload';
+import { useTechnicianActions } from './hooks/useTechnicianActions';
+import { useTechnicianForm } from './hooks/useTechnicianForm';
+import { buildBranchLabel, buildPeriodLabel, computeSkillDistribution } from './utils/dashboard-stats';
+import { filterTechnicians } from './utils/technician-filters';
 
 function AdminDashboard() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch)
+  // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch).
+  // Cabang kerja juga mengunci Admin Cabang pada cabangnya sendiri.
   const { profile, scopedBranch, selectedBranch, selectBranch } = usePortal();
-  const isBranchAdmin = profile?.role === "branch_admin";
+  const isBranchAdmin = profile?.role === 'branch_admin';
 
+  const { notify, askConfirm, modals } = useFeedbackModals();
+  const { weights: kpiWeights } = useKpiWeights();
   const { technicians, lastSyncLog, loading, fetchData } = useDashboardData({
     scopedBranch,
     enabled: Boolean(profile),
   });
 
-  // State UI
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [uploadingExcel, setUploadingExcel] = useState(false);
-  const [lastFileName, setLastFileName] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("last_uploaded_file_name");
-    }
-    return null;
-  });
+  const filters = useDashboardFilters();
+  const form = useTechnicianForm({ technicians, scopedBranch, notify, onSaved: fetchData });
+  const actions = useTechnicianActions({ notify, askConfirm, onChanged: fetchData });
+  const excel = useExcelUpload({ scopedBranch, kpiWeights, notify, onUploaded: fetchData });
 
-  // State Modal Notifikasi & Konfirmasi
-  const [notification, setNotification] = useState<NotificationState>({
-    show: false,
-    type: "success",
-    title: "",
-    message: "",
-  });
-
-  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
-    show: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-  });
-
-  const showCustomAlert = (
-    type: NotificationType,
-    title: string,
-    message: string,
-    onClose?: () => void,
-  ) => {
-    setNotification({ show: true, type, title, message, onClose });
-  };
-
-  const showCustomConfirm = (
-    title: string,
-    message: string,
-    onConfirm: () => void,
-    onCancel?: () => void,
-  ) => {
-    setConfirmModal({
-      show: true,
-      title,
-      message,
-      onConfirm: () => {
-        onConfirm();
-        setConfirmModal((prev) => ({ ...prev, show: false }));
-      },
-      onCancel: () => {
-        if (onCancel) onCancel();
-        setConfirmModal((prev) => ({ ...prev, show: false }));
-      },
-    });
-  };
-
-  // 1. Membaca Parameter Filter Langsung dari URL Query (Deep Linking).
-  // Cabang kerja berasal dari layout portal, yang juga mengunci Admin Cabang.
-  const filterBranch = selectedBranch;
-  const filterMonth = searchParams.get("month") || "";
-  const filterYear = searchParams.get("year") || "";
-  const filterLevel = searchParams.get("level") || "";
-  const filterStatus = searchParams.get("status") || "";
-
-  // 2. Local State untuk Search Input agar pengetikan 100% responsif tanpa lag
-  const urlQ = searchParams.get("q") || "";
-  const [searchQuery, setSearchQuery] = useState(urlQ);
-
-  useEffect(() => {
-    setSearchQuery(urlQ);
-  }, [urlQ]);
-
-  // 4. Helper untuk memperbarui URL Query Parameters tanpa reload halaman
-  const updateQueryParams = useCallback(
-    (updates: Record<string, string | null | undefined>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      let hasChanged = false;
-
-      Object.entries(updates).forEach(([key, value]) => {
-        const current = params.get(key);
-        if (value) {
-          if (current !== value) {
-            params.set(key, value);
-            hasChanged = true;
-          }
-        } else {
-          if (current !== null) {
-            params.delete(key);
-            hasChanged = true;
-          }
-        }
-      });
-
-      if (!hasChanged) return;
-
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
+  const filteredTechnicians = useMemo(
+    () =>
+      filterTechnicians(technicians, {
+        search: filters.searchQuery,
+        branch: selectedBranch,
+        level: filters.level,
+        status: filters.status,
+        month: filters.month,
+        year: filters.year,
+      }),
+    [
+      technicians,
+      filters.searchQuery,
+      selectedBranch,
+      filters.level,
+      filters.status,
+      filters.month,
+      filters.year,
+    ]
   );
 
-  // 5. Debounce update query teks pencarian ke URL & memori (300ms) saat user mengetik
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery !== urlQ) {
-        updateQueryParams({ q: searchQuery || null });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, urlQ, updateQueryParams]);
-
-  // 6. Setter filter: URL adalah satu-satunya sumber kebenaran.
-  // Layout portal membaca URL ini saat menyimpan memori filter per cabang.
-  const setFilterMonth = (val: string) => updateQueryParams({ month: val || null });
-  const setFilterYear = (val: string) => updateQueryParams({ year: val || null });
-  const setFilterLevel = (val: string) => updateQueryParams({ level: val || null });
-  const setFilterStatus = (val: string) => updateQueryParams({ status: val || null });
-
-  // 7. Reset Filter: Bersihkan parameter filter cabang ini di memori dan URL, tapi PERTAHANKAN cabangnya!
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    updateQueryParams({
-      q: null,
-      month: null,
-      year: null,
-      level: null,
-      status: null,
-    });
-  };
-
-  // State Cetak Kartu
-  const [printData, setPrintData] = useState<Technician | null>(null);
-
-  // State Form Teknisi
-  const [formId, setFormId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<TechnicianFormData>({
-    technician_id: "",
-    employee_number: "",
-    technician_name: "",
-    branch: "",
-    service_center: "",
-    phone: "",
-    email: "",
-    technician_status: "active",
-    technician_level: "beginner",
-    card_number: "",
-    card_status: "active",
-    expiry_date: "",
-  });
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-
-  // Handlers
-  const openForm = (tech?: Technician) => {
-    if (tech) {
-      const card = tech.technician_id_cards?.[0];
-      const perf = tech.technician_performance?.[0];
-      setFormId(tech.id);
-      setFormData({
-        technician_id: tech.technician_id,
-        employee_number: tech.employee_number,
-        technician_name: tech.technician_name,
-        branch: tech.branch,
-        service_center: tech.service_center || "",
-        phone: tech.phone || "",
-        email: tech.email || "",
-        technician_status: tech.technician_status,
-        technician_level: tech.technician_level,
-        card_number: card?.card_number || "",
-        card_status: card?.card_status || "active",
-        expiry_date: card?.expiry_date || "",
-        tat: perf?.tat,
-        rtat: perf?.rtat,
-        csat: perf?.csat ?? (perf?.csi_score ? perf.csi_score * 10 : undefined),
-        grooming_score: perf?.grooming_score,
-        service_score: perf?.service_score,
-        repair_quality_score: perf?.repair_quality_score,
-        performance_score: perf?.kpi_score ?? perf?.performance_score,
-      });
-    } else {
-      setFormId(null);
-      const futureDate = new Date();
-      futureDate.setFullYear(futureDate.getFullYear() + 2);
-      const defaultExpiry = futureDate.toISOString().split("T")[0];
-
-      setFormData({
-        technician_id: "",
-        employee_number: "",
-        technician_name: "",
-        // Admin Cabang hanya boleh mendaftarkan teknisi di cabangnya sendiri
-        branch: scopedBranch ?? "",
-        service_center: "",
-        phone: "",
-        email: "",
-        technician_status: "active",
-        technician_level: "beginner",
-        card_number: "",
-        card_status: "active",
-        expiry_date: defaultExpiry,
-        tat: undefined,
-        rtat: undefined,
-        csat: undefined,
-        grooming_score: undefined,
-        service_score: undefined,
-        repair_quality_score: undefined,
-        performance_score: undefined,
-      });
-    }
-    setPhotoFile(null);
-    setShowForm(true);
-  };
-
-  const uploadPhoto = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `tech-${crypto.randomUUID()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("employee-photos")
-      .upload(fileName, file);
-
-    if (uploadError) {
-      showCustomAlert("error", "Gagal Upload Foto", uploadError.message);
-      return null;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("employee-photos").getPublicUrl(fileName);
-    return publicUrl;
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Isolasi data cabang: Admin Cabang tidak boleh menulis data cabang lain
-    if (scopedBranch && formData.branch !== scopedBranch) {
-      showCustomAlert(
-        "error",
-        "Akses Ditolak",
-        `Anda hanya berwenang mengelola data cabang ${scopedBranch}. Cabang "${formData.branch || "-"}" tidak diizinkan.`,
-      );
-      return;
-    }
-
-    setSaving(true);
-
-    let photo_url = formId
-      ? technicians.find((t) => t.id === formId)?.photo_url
-      : "";
-
-    if (photoFile) {
-      const uploadedUrl = await uploadPhoto(photoFile);
-      if (uploadedUrl) photo_url = uploadedUrl;
-    }
-
-    const techPayload = {
-      technician_id: formData.technician_id,
-      employee_number: formData.employee_number,
-      technician_name: formData.technician_name,
-      branch: formData.branch,
-      service_center: formData.service_center || null,
-      phone: formData.phone || null,
-      email: formData.email || null,
-      technician_status: formData.technician_status,
-      technician_level: formData.technician_level,
-      photo_url: photo_url || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    try {
-      let techId = formId;
-      let qrToken = "";
-
-      if (formId) {
-        const { data, error } = await supabase
-          .from("technicians")
-          .update(techPayload)
-          .eq("id", formId)
-          .select("id, qr_token")
-          .single();
-
-        if (error) throw error;
-        techId = data.id;
-        qrToken = data.qr_token;
-      } else {
-        const { data, error } = await supabase
-          .from("technicians")
-          .insert([techPayload])
-          .select("id, qr_token")
-          .single();
-
-        if (error) throw error;
-        techId = data.id;
-        qrToken = data.qr_token;
-      }
-
-      if (formData.card_number && techId) {
-        const cardPayload = {
-          technician_id: techId,
-          card_number: formData.card_number,
-          qr_token: qrToken,
-          card_status: formData.card_status,
-          expiry_date: formData.expiry_date,
-        };
-
-        const { error: cardError } = await supabase
-          .from("technician_id_cards")
-          .upsert(cardPayload, { onConflict: "card_number" });
-
-        if (cardError) throw cardError;
-      }
-
-      // Simpan data performa (6 indikator KPI) jika tersedia
-      const hasPerfData =
-        formData.tat !== undefined ||
-        formData.rtat !== undefined ||
-        formData.csat !== undefined ||
-        formData.grooming_score !== undefined ||
-        formData.service_score !== undefined ||
-        formData.repair_quality_score !== undefined ||
-        formData.performance_score !== undefined;
-
-      if (hasPerfData && techId) {
-        const existingPerf = formId
-          ? technicians.find((t) => t.id === formId)
-              ?.technician_performance?.[0]
-          : null;
-        const now = new Date();
-        const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const period = existingPerf?.period || defaultPeriod;
-
-        const finalScore = formData.performance_score ?? 0;
-        const csatVal = formData.csat ?? 0;
-        const csiVal =
-          csatVal > 0 && csatVal <= 10
-            ? csatVal
-            : Math.round((csatVal / 10) * 10) / 10;
-
-        const { error: perfError } = await supabase
-          .from("technician_performance")
-          .upsert(
-            {
-              technician_id: techId,
-              period,
-              kpi_score: finalScore,
-              csi_score: csiVal,
-              performance_score: finalScore,
-              performance_level: formData.technician_level,
-              tat: formData.tat ?? null,
-              rtat: formData.rtat ?? null,
-              csat: formData.csat ?? null,
-              grooming_score: formData.grooming_score ?? null,
-              service_score: formData.service_score ?? null,
-              repair_quality_score: formData.repair_quality_score ?? null,
-              data_source: "web_form",
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "technician_id,period" },
-          );
-
-        // Fallback jika database Supabase belum menjalankan migrasi 6 kolom
-        if (
-          perfError &&
-          (perfError.message?.includes("schema cache") ||
-            perfError.message?.includes("does not exist"))
-        ) {
-          await supabase.from("technician_performance").upsert(
-            {
-              technician_id: techId,
-              period,
-              kpi_score: finalScore,
-              csi_score: csiVal,
-              performance_score: finalScore,
-              performance_level: formData.technician_level,
-              data_source: "web_form",
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "technician_id,period" },
-          );
-        } else if (perfError) {
-          throw perfError;
-        }
-      }
-
-      setShowForm(false);
-      fetchData();
-    } catch (err: any) {
-      showCustomAlert("error", "Gagal Menyimpan Data", err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Handler Upload Excel
-  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingExcel(true);
-    try {
-      const result = await processExcelUpload({
-        file,
-        supabase,
-        restrictBranch: scopedBranch,
-      });
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("last_uploaded_file_name", file.name);
-        setLastFileName(file.name);
-      }
-
-      if (result.status === "success") {
-        showCustomAlert(
-          "success",
-          "Sinkronisasi Excel Sukses",
-          `File: "${file.name}"\nBerhasil memproses seluruh data: ${result.successCount} teknisi (${result.insertCount} baru, ${result.updateCount} diperbarui).`,
-        );
-      } else {
-        const firstError = result.errorDetails[0];
-        showCustomAlert(
-          result.errorDetails.length === result.totalRows ? "error" : "warning",
-          result.errorDetails.length === result.totalRows
-            ? "Gagal Sinkronisasi Excel"
-            : "Sinkronisasi Excel Selesai Sebagian",
-          `File: "${file.name}"\nBerhasil: ${result.successCount}, Gagal: ${result.errorDetails.length}.\n\nError pertama (Baris ${firstError?.row || "-"}): ${firstError?.error || "Tidak diketahui"}`,
-        );
-      }
-
-      fetchData();
-    } catch (err: any) {
-      showCustomAlert("error", "Gagal Memproses Excel", err.message);
-    } finally {
-      setUploadingExcel(false);
-      e.target.value = "";
-    }
-  };
-
-  // Toggle Status Aktif/Tidak Aktif
-  const handleToggleActive = async (
-    id: string,
-    currentStatus: TechnicianStatus,
-  ) => {
-    const newStatus: TechnicianStatus =
-      currentStatus === "active" ? "inactive" : "active";
-    await supabase
-      .from("technicians")
-      .update({ technician_status: newStatus })
-      .eq("id", id);
-    fetchData();
-  };
-
-  // Regenerasi QR Token
-  const handleRegenerateQR = async (tech: Technician) => {
-    showCustomConfirm(
-      "Konfirmasi Regenerasi QR",
-      `Peringatan: Regenerasi QR Code untuk ${tech.technician_name} akan membuat kartu fisik lama hangus dan tidak dapat dipindai. Lanjutkan?`,
-      async () => {
-        const newToken = crypto.randomUUID();
-
-        const { error: techError } = await supabase
-          .from("technicians")
-          .update({ qr_token: newToken })
-          .eq("id", tech.id);
-
-        if (techError) {
-          showCustomAlert("error", "Gagal Regenerasi", techError.message);
-          return;
-        }
-
-        await supabase
-          .from("technician_id_cards")
-          .update({ qr_token: newToken })
-          .eq("technician_id", tech.id);
-
-        showCustomAlert(
-          "success",
-          "Berhasil",
-          "QR Code baru berhasil di-generate!",
-        );
-        fetchData();
-      },
-    );
-  };
-
-  // Hapus Teknisi
-  const handleDelete = async (id: string) => {
-    showCustomConfirm(
-      "Konfirmasi Hapus Teknisi",
-      "Yakin ingin menghapus teknisi ini secara permanen? Data performa dan ID Card terkait juga akan dihapus.",
-      async () => {
-        // `.select()` wajib: PostgREST mengembalikan sukses tanpa error
-        // walau RLS menolak dan tidak ada baris yang terhapus.
-        const { data, error } = await supabase
-          .from("technicians")
-          .delete()
-          .eq("id", id)
-          .select("id");
-
-        if (error) {
-          showCustomAlert("error", "Gagal Menghapus Data", error.message);
-        } else if (!data || data.length === 0) {
-          showCustomAlert(
-            "error",
-            "Akses Ditolak",
-            "Data tidak terhapus. Peran akun Anda tidak memiliki izin menghapus teknisi ini.",
-          );
-        } else {
-          showCustomAlert(
-            "success",
-            "Terhapus",
-            "Data teknisi berhasil dihapus.",
-          );
-          fetchData();
-        }
-      },
-    );
-  };
-
-  // Terbitkan akun portal teknisi lalu kirim kredensialnya via WhatsApp
-  const handleSendAccess = (tech: Technician) => {
-    const waNumber = toWhatsAppNumber(tech.phone);
-
-    if (!waNumber) {
-      showCustomAlert(
-        "warning",
-        "Nomor WhatsApp Tidak Tersedia",
-        `Nomor HP ${tech.technician_name} belum terisi. Lengkapi data nomor HP terlebih dahulu sebelum mengirim akses portal.`,
-      );
-      return;
-    }
-
-    showCustomConfirm(
-      "Kirim Akses Portal Teknisi",
-      `Terbitkan akun portal untuk ${tech.technician_name} dan siapkan pesan WhatsApp ke ${tech.phone}?`,
-      async () => {
-        // Jendela dibuka sinkron dari klik user agar tidak diblokir popup blocker
-        const waWindow = window.open("about:blank", "_blank", "noopener");
-
-        try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          if (!session) {
-            waWindow?.close();
-            showCustomAlert(
-              "error",
-              "Sesi Berakhir",
-              "Sesi Anda telah berakhir. Silakan masuk kembali.",
-            );
-            return;
-          }
-
-          const res = await fetch("/api/admin/technician-access", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ technician_id: tech.id }),
-          });
-
-          const payload = await res.json();
-
-          if (!res.ok) {
-            waWindow?.close();
-            showCustomAlert(
-              "error",
-              "Gagal Menerbitkan Akses",
-              payload.error || "Terjadi kesalahan saat menerbitkan akun teknisi.",
-            );
-            return;
-          }
-
-          const message = buildTechnicianAccessMessage({
-            technicianName: tech.technician_name,
-            employeeNumber: tech.employee_number,
-            loginUrl: `${window.location.origin}/admin/login`,
-            password: payload.password ?? null,
-          });
-
-          const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
-
-          if (waWindow) {
-            waWindow.location.href = waUrl;
-          } else {
-            window.open(waUrl, "_blank", "noopener");
-          }
-
-          showCustomAlert(
-            "success",
-            payload.created ? "Akun Teknisi Diterbitkan" : "Akses Siap Dikirim",
-            payload.created
-              ? `Akun portal untuk ${tech.technician_name} berhasil dibuat. Pesan WhatsApp berisi NIK dan kata sandi awal telah disiapkan.`
-              : `${tech.technician_name} sudah memiliki akun portal. Pesan WhatsApp berisi petunjuk masuk telah disiapkan (kata sandi lama tetap berlaku).`,
-          );
-        } catch {
-          waWindow?.close();
-          showCustomAlert(
-            "error",
-            "Gagal Terhubung",
-            "Tidak dapat menghubungi server. Periksa koneksi internet Anda.",
-          );
-        }
-      },
-    );
-  };
-
-  // Trigger Print ID Card
-  const triggerPrint = (tech: Technician) => {
-    setPrintData(tech);
-    setTimeout(() => {
-      window.print();
-    }, 500);
-  };
-
-  // Filter client-side
-  const filteredTechnicians = useMemo(() => {
-    return technicians.filter((tech) => {
-      // 1. Filter Nama Teknisi / ID / Nomor Karyawan (Pencarian Teks Instan)
-      const matchesSearch =
-        searchQuery === "" ||
-        tech.technician_name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        tech.technician_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tech.employee_number.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // 2. Filter Cabang DSC
-      const matchesBranch =
-        filterBranch === "" ||
-        tech.branch.toLowerCase() === filterBranch.toLowerCase();
-
-      // 3. Filter Level & Status
-      const matchesLevel =
-        filterLevel === "" || tech.technician_level === filterLevel;
-      const matchesStatus =
-        filterStatus === "" || tech.technician_status === filterStatus;
-
-      // 4. Filter Waktu Berbasis Kalender (Month & Year)
-      const latestPeriod = tech.technician_performance?.[0]?.period; // contoh: '2026-08'
-      const createdDate = tech.created_at ? new Date(tech.created_at) : null;
-      const createdYear = createdDate ? String(createdDate.getFullYear()) : "";
-      const createdMonth = createdDate
-        ? String(createdDate.getMonth() + 1).padStart(2, "0")
-        : "";
-      const createdYearMonth =
-        createdYear && createdMonth ? `${createdYear}-${createdMonth}` : "";
-
-      // Pencocokan Bulan (YYYY-MM)
-      let matchesMonth = true;
-      if (filterMonth) {
-        matchesMonth =
-          latestPeriod === filterMonth || createdYearMonth === filterMonth;
-      }
-
-      // Pencocokan Tahun (YYYY)
-      let matchesYear = true;
-      if (filterYear) {
-        const periodYear = latestPeriod ? latestPeriod.split("-")[0] : "";
-        matchesYear = periodYear === filterYear || createdYear === filterYear;
-      }
-
-      return (
-        matchesSearch &&
-        matchesBranch &&
-        matchesLevel &&
-        matchesStatus &&
-        matchesMonth &&
-        matchesYear
-      );
-    });
-  }, [
-    technicians,
-    searchQuery,
-    filterBranch,
-    filterLevel,
-    filterStatus,
-    filterMonth,
-    filterYear,
-  ]);
-
-  // Perhitungan Agregasi Distribusi Skill Teknisi & Metrik YTD secara dinamis
-  const skillDistributionStats = useMemo(() => {
-    const total = filteredTechnicians.length;
-    let beginnerCount = 0;
-    let intermediateCount = 0;
-    let advanceCount = 0;
-    let totalKpi = 0;
-    let totalCsi = 0;
-    let kpiCount = 0;
-    let csiCount = 0;
-
-    filteredTechnicians.forEach((t) => {
-      if (t.technician_level === "beginner") beginnerCount++;
-      else if (t.technician_level === "intermediate") intermediateCount++;
-      else if (t.technician_level === "advance") advanceCount++;
-
-      const perf = t.technician_performance?.[0];
-      if (perf) {
-        if (typeof perf.kpi_score === "number" && !isNaN(perf.kpi_score)) {
-          totalKpi += perf.kpi_score;
-          kpiCount++;
-        }
-        if (typeof perf.csi_score === "number" && !isNaN(perf.csi_score)) {
-          totalCsi += perf.csi_score;
-          csiCount++;
-        }
-      }
-    });
-
-    const beginnerPercent =
-      total > 0 ? Math.round((beginnerCount / total) * 100) : 0;
-    const intermediatePercent =
-      total > 0 ? Math.round((intermediateCount / total) * 100) : 0;
-    const advancePercent =
-      total > 0 ? Math.max(0, 100 - beginnerPercent - intermediatePercent) : 0;
-
-    const avgKpi =
-      kpiCount > 0 ? Math.round((totalKpi / kpiCount) * 10) / 10 : 0;
-    const avgCsi =
-      csiCount > 0 ? Math.round((totalCsi / csiCount) * 10) / 10 : 0;
-
-    return {
-      total,
-      beginnerCount,
-      beginnerPercent,
-      intermediateCount,
-      intermediatePercent,
-      advanceCount,
-      advancePercent,
-      avgKpi,
-      avgCsi,
-    };
-  }, [filteredTechnicians]);
-
-  // Label Periode YTD Dinamis
-  const dynamicPeriodLabel = useMemo(() => {
-    const MONTH_NAMES = [
-      "Januari",
-      "Februari",
-      "Maret",
-      "April",
-      "Mei",
-      "Juni",
-      "Juli",
-      "Agustus",
-      "September",
-      "Oktober",
-      "November",
-      "Desember",
-    ];
-
-    if (filterYear && filterMonth) {
-      const parts = filterMonth.split("-");
-      const mIndex = parseInt(parts[1], 10) - 1;
-      const mName = MONTH_NAMES[mIndex] || filterMonth;
-      return `YTD Jan - ${mName} ${filterYear}`;
-    }
-
-    if (filterYear) {
-      return `YTD ${filterYear} (Jan - Des)`;
-    }
-
-    if (filterMonth) {
-      const parts = filterMonth.split("-");
-      const mIndex = parseInt(parts[1], 10) - 1;
-      const mName = MONTH_NAMES[mIndex] || filterMonth;
-      return `YTD ${mName} ${parts[0] || ""}`;
-    }
-
-    return "YTD Kumulatif (Semua Periode)";
-  }, [filterYear, filterMonth]);
-
-  // Label Cabang Dinamis
-  const dynamicBranchLabel = useMemo(() => {
-    return filterBranch
-      ? `DSC ${filterBranch}`
-      : "Semua Cabang DSC (31 Cabang)";
-  }, [filterBranch]);
-
-  // Handler Download Master Template (Otomatis Pre-fill Data Teknisi Aktif / Cabang Terpilih)
-  const handleDownloadTemplate = () => {
+  const skillStats = useMemo(
+    () => computeSkillDistribution(filteredTechnicians),
+    [filteredTechnicians]
+  );
+
+  // Template diisi otomatis dengan teknisi yang sedang tampil (atau semua bila filter kosong)
+  const handleDownloadTemplate = () =>
     downloadMasterTemplateExcel({
-      technicians:
-        filteredTechnicians.length > 0 ? filteredTechnicians : technicians,
-      year: filterYear ? parseInt(filterYear, 10) : undefined,
-      month: filterMonth || undefined,
-      branch: filterBranch || undefined,
+      technicians: filteredTechnicians.length > 0 ? filteredTechnicians : technicians,
+      year: filters.year ? parseInt(filters.year, 10) : undefined,
+      month: filters.month || undefined,
+      branch: selectedBranch || undefined,
     });
-  };
 
   return (
     <>
-      {/* DASHBOARD UTAMA (sidebar & kerangka halaman disediakan layout portal) */}
+      {/* Sidebar & kerangka halaman disediakan layout portal */}
       <div className="no-print">
-        {/* WIDGET SINKRONISASI EXCEL */}
         <SyncLogWidget
           lastSyncLog={lastSyncLog}
-          lastFileName={lastFileName}
+          lastFileName={excel.lastFileName}
           onRefresh={fetchData}
         />
 
-        {/* WIDGET DISTRIBUSI SKILL TEKNISI (PERFORMANCE TRACKING WIDGET) */}
         <SkillDistributionWidget
-          stats={skillDistributionStats}
-          periodLabel={dynamicPeriodLabel}
-          branchLabel={dynamicBranchLabel}
+          stats={skillStats}
+          periodLabel={buildPeriodLabel(filters.year, filters.month)}
+          branchLabel={buildBranchLabel(selectedBranch, DSC_BRANCHES.length)}
           loading={loading}
         />
 
-        {/* HEADER DAN TOOLBAR */}
         <DashboardToolbar
-          uploadingExcel={uploadingExcel}
-          onExcelUpload={handleExcelUpload}
-          onAddTechnician={() => openForm()}
+          uploadingExcel={excel.uploadingExcel}
+          onExcelUpload={excel.handleExcelUpload}
+          onAddTechnician={() => form.openForm()}
           onDownloadTemplate={handleDownloadTemplate}
         />
 
-        {/* FILTER & SEARCH PANEL (ADVANCED FILTERING) */}
         <DashboardFilters
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filterBranch={filterBranch}
+          searchQuery={filters.searchQuery}
+          setSearchQuery={filters.setSearchQuery}
+          filterBranch={selectedBranch}
           setFilterBranch={selectBranch}
           lockedBranch={scopedBranch}
-          filterMonth={filterMonth}
-          setFilterMonth={setFilterMonth}
-          filterYear={filterYear}
-          setFilterYear={setFilterYear}
-          filterLevel={filterLevel}
-          setFilterLevel={setFilterLevel}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          onResetFilters={handleResetFilters}
+          filterMonth={filters.month}
+          setFilterMonth={filters.setMonth}
+          filterYear={filters.year}
+          setFilterYear={filters.setYear}
+          filterLevel={filters.level}
+          setFilterLevel={filters.setLevel}
+          filterStatus={filters.status}
+          setFilterStatus={filters.setStatus}
+          onResetFilters={filters.resetFilters}
         />
 
-        {/* TABLE DATA */}
         <TechnicianTable
           loading={loading}
           technicians={filteredTechnicians}
-          onToggleActive={handleToggleActive}
-          onPrint={triggerPrint}
-          onRegenerateQR={handleRegenerateQR}
-          onEdit={openForm}
-          onDelete={handleDelete}
-          onSendAccess={handleSendAccess}
+          onToggleActive={actions.toggleActive}
+          onPrint={actions.printCard}
+          onRegenerateQR={actions.regenerateQr}
+          onEdit={form.openForm}
+          onDelete={actions.deleteTechnician}
+          onSendAccess={actions.sendAccess}
           canDelete={!isBranchAdmin}
+          kpiWeights={kpiWeights}
         />
 
-        {/* Modal Form Tambah/Edit Teknisi */}
         <TechnicianFormModal
-          show={showForm}
-          formId={formId}
-          formData={formData}
-          setFormData={setFormData}
-          setPhotoFile={setPhotoFile}
-          saving={saving}
-          onClose={() => setShowForm(false)}
-          onSave={handleSave}
+          show={form.showForm}
+          formId={form.formId}
+          formData={form.formData}
+          setFormData={form.setFormData}
+          photoFile={form.photoFile}
+          setPhotoFile={form.setPhotoFile}
+          saving={form.saving}
+          onClose={form.closeForm}
+          onSave={form.handleSave}
+          kpiWeights={kpiWeights}
         />
-
       </div>
 
       {/* CETAK KARTU DUA SISI */}
-      <PrintCardArea printData={printData} />
+      <PrintCardArea printData={actions.printData} />
 
-      {/* Custom Alert Modal */}
-      <NotificationModal
-        notification={notification}
-        onClose={() => {
-          setNotification((prev) => ({ ...prev, show: false }));
-          if (notification.onClose) notification.onClose();
-        }}
-      />
-
-      {/* Custom Confirm Modal */}
-      <ConfirmModal
-        modal={confirmModal}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => {
-          if (confirmModal.onCancel) confirmModal.onCancel();
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-        }}
-      />
+      {modals}
     </>
   );
 }

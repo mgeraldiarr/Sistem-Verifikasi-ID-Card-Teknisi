@@ -1,5 +1,6 @@
 // src/app/verify/[token]/page.tsx
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
+import { evaluateCardStatus, getLevelCardLabel } from '@/lib/card-status';
 import { notFound } from 'next/navigation';
 import { CheckCircle, XCircle, Lock } from 'lucide-react';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
@@ -144,20 +145,9 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
     );
   }
 
-  const cardList = technician.technician_id_cards as any[];
-  const cardInfo = cardList && cardList.length > 0 ? cardList[0] : null;
-
-  const isTechnicianActive = technician.technician_status === 'active';
-  const isCardActive = cardInfo?.card_status === 'active';
-
-  // Periksa apakah kartu kadaluarsa
-  const expiryDate = cardInfo ? new Date(cardInfo.expiry_date) : null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const isExpired = expiryDate ? expiryDate < today : false;
-
-  // Status validasi akhir
-  const isValid = isTechnicianActive && isCardActive && !isExpired;
+  const cardInfo = technician.technician_id_cards?.[0] ?? null;
+  const { isValid, isTechnicianActive, isCardActive, isExpired, formattedExpiryDate } =
+    evaluateCardStatus(technician.technician_status, cardInfo);
 
   // Waktu verifikasi real-time (WIB)
   const timestamp = new Date().toLocaleString('id-ID', {
@@ -166,20 +156,7 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
     timeStyle: 'medium',
   });
 
-  // Level Teks
-  const levelLabels: Record<string, string> = {
-    beginner: 'BEGINNER',
-    intermediate: 'INTERMEDIATE',
-    advance: 'ADVANCED'
-  };
-  const levelText = levelLabels[technician.technician_level] || technician.technician_level.toUpperCase();
-
-  // Format Tanggal Kadaluarsa
-  const formattedExpiryDate = expiryDate ? expiryDate.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  }) : '-';
+  const levelText = getLevelCardLabel(technician.technician_level);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2.5rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
@@ -206,7 +183,6 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
       <div style={{ marginBottom: '2rem' }}>
         <TechnicianCard3D
           technician={technician}
-          cardInfo={cardInfo}
           levelText={levelText}
           formattedExpiryDate={formattedExpiryDate}
           isValid={isValid}

@@ -1,7 +1,8 @@
 // src/app/api/admin/technician-access/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { buildDefaultTechnicianPassword, buildTechnicianLoginEmail } from '@/lib/technician-access';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
+import { authenticateCaller, isUuid, jsonError, readJsonBody } from '@/lib/server/api-auth';
+import { buildDefaultTechnicianPassword, normalizePersonalEmail } from '@/lib/technician-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,64 +15,21 @@ export const dynamic = 'force-dynamic';
  *   - branch_admin : hanya untuk teknisi di cabangnya sendiri
  */
 export async function POST(req: NextRequest) {
-  // 1. Ambil token sesi pemanggil
-  const authHeader = req.headers.get('authorization') || '';
-  const token = authHeader.toLowerCase().startsWith('bearer ')
-    ? authHeader.slice(7).trim()
-    : '';
-
-  if (!token) {
-    return NextResponse.json(
-      { error: 'Sesi tidak ditemukan. Silakan masuk kembali.' },
-      { status: 401 }
-    );
-  }
-
-  const {
-    data: { user: caller },
-    error: callerError,
-  } = await supabaseAdmin.auth.getUser(token);
-
-  if (callerError || !caller) {
-    return NextResponse.json({ error: 'Sesi tidak valid atau telah berakhir.' }, { status: 401 });
-  }
-
-  // 2. Verifikasi peran pemanggil
-  const { data: callerProfile } = await supabaseAdmin
-    .from('user_profiles')
-    .select('role, branch, is_active')
-    .eq('id', caller.id)
-    .maybeSingle();
-
-  if (!callerProfile || !callerProfile.is_active) {
-    return NextResponse.json(
-      { error: 'Akun Anda tidak aktif atau belum memiliki profil peran resmi.' },
-      { status: 403 }
-    );
-  }
-
-  if (callerProfile.role !== 'super_admin' && callerProfile.role !== 'branch_admin') {
-    return NextResponse.json(
-      { error: 'Peran Anda tidak berwenang menerbitkan akses teknisi.' },
-      { status: 403 }
-    );
-  }
+  // 1-2. Verifikasi sesi & peran pemanggil
+  const auth = await authenticateCaller(
+    req,
+    ['super_admin', 'branch_admin'],
+    'Peran Anda tidak berwenang menerbitkan akses teknisi.'
+  );
+  if ('error' in auth) return auth.error;
+  const callerProfile = auth.caller;
 
   // 3. Validasi payload
-  let body: { technician_id?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Format permintaan tidak valid.' }, { status: 400 });
-  }
+  const body = await readJsonBody<{ technician_id?: unknown }>(req);
+  if (!body) return jsonError('Format permintaan tidak valid.', 400);
 
   const technicianRowId = String(body.technician_id ?? '').trim();
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidRegex.test(technicianRowId)) {
-    return NextResponse.json({ error: 'ID teknisi tidak valid.' }, { status: 400 });
-  }
+  if (!isUuid(technicianRowId)) return jsonError('ID teknisi tidak valid.', 400);
 
   // 4. Ambil data teknisi
   const { data: technician } = await supabaseAdmin
@@ -127,7 +85,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const loginEmail = buildTechnicianLoginEmail(technician.email, technician.employee_number);
+  // Akun teknisi memakai email pribadinya sendiri (untuk Lupa Kata Sandi)
+  const loginEmail = normalizePersonalEmail(technician.email);
+  if (!loginEmail) {
+    return NextResponse.json(
+      {
+        error:
+          'Email pribadi teknisi belum diisi atau tidak valid. Lengkapi email pada data teknisi terlebih dahulu sebelum menerbitkan akses.',
+      },
+      { status: 422 }
+    );
+  }
 
   // 8. Buat akun auth + profil peran teknisi
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({

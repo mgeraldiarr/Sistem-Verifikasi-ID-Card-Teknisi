@@ -162,13 +162,34 @@ aside ::-webkit-scrollbar-thumb:hover {
   .portal-main {
     margin-left: 0 !important;
     padding: 0 !important;
+    min-height: 0 !important;
+  }
+  .portal-shell {
+    min-height: 0 !important;
   }
   .print-area {
     display: block !important;
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
-    page-break-inside: avoid;
   }
+  /* Kartu CR80 dua sisi: tiap sisi dicetak pada halamannya sendiri seukuran kartu,
+     sehingga printer kartu (duplex) menaruh depan & belakang tepat di satu kartu. */
+  .print-card-sheet {
+    display: block !important;
+    padding: 0 !important;
+  }
+  .print-card-side {
+    page: cr80;
+    break-after: page;
+    break-inside: avoid;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  .print-card-side:last-child {
+    break-after: auto;
+  }
+}
+
+@page cr80 {
+  size: 53.98mm 85.6mm;
+  margin: 0;
 }

@@ -1,10 +1,12 @@
-// src/app/admin/dashboard/components/PrintCardArea.tsx
+// src/app/admin/(portal)/dashboard/components/PrintCardArea.tsx
 'use client';
 
 import React from 'react';
 import { Image as ImageIcon, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Technician } from '@/types';
+import { getServiceCenterCardLabel } from '@/constants/service-center';
+import { getLevelCardLabel } from '@/lib/card-status';
 
 interface PrintCardAreaProps {
   printData: Technician | null;
@@ -14,6 +16,26 @@ const CARD_W = '53.98mm'; // Standar kartu PVC CR80
 const CARD_H = '85.60mm';
 const CREAM = '#ECE8DA';
 const DARK = '#1C1C1A';
+const ACCENT_RED = '#DA291C';
+
+/** Footer label resmi service center, menempel di tepi bawah kedua sisi kartu */
+const ServiceCenterFooter: React.FC<{ branch: string }> = ({ branch }) => (
+  <div
+    style={{
+      backgroundColor: ACCENT_RED,
+      color: '#FFFFFF',
+      padding: '1.3mm 3mm',
+      fontSize: '5pt',
+      fontWeight: 800,
+      letterSpacing: '0.4px',
+      lineHeight: 1.25,
+      textAlign: 'center',
+      flexShrink: 0,
+    }}
+  >
+    {getServiceCenterCardLabel(branch)}
+  </div>
+);
 
 const Logo: React.FC = () => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
@@ -61,22 +83,16 @@ const Logo: React.FC = () => (
   </div>
 );
 
-const LEVEL_LABELS: Record<string, string> = {
-  beginner: 'BEGINNER',
-  intermediate: 'INTERMEDIATE',
-  advance: 'ADVANCED',
-};
 
 export const PrintCardArea: React.FC<PrintCardAreaProps> = ({ printData }) => {
   if (!printData) return null;
 
-  const levelText =
-    LEVEL_LABELS[printData.technician_level] ||
-    printData.technician_level.toUpperCase();
+  const levelText = getLevelCardLabel(printData.technician_level);
 
   return (
     <div className="print-area" style={{ display: 'none' }}>
       <div
+        className="print-card-sheet"
         style={{
           display: 'flex',
           gap: '10mm',
@@ -86,6 +102,7 @@ export const PrintCardArea: React.FC<PrintCardAreaProps> = ({ printData }) => {
       >
         {/* ============ KARTU DEPAN ============ */}
         <div
+          className="print-card-side"
           style={{
             width: CARD_W,
             height: CARD_H,
@@ -190,10 +207,13 @@ export const PrintCardArea: React.FC<PrintCardAreaProps> = ({ printData }) => {
               AUTHORIZED TECHNICIAN
             </div>
           </div>
+
+          <ServiceCenterFooter branch={printData.branch} />
         </div>
 
         {/* ============ KARTU BELAKANG ============ */}
         <div
+          className="print-card-side"
           style={{
             width: CARD_W,
             height: CARD_H,
@@ -203,117 +223,120 @@ export const PrintCardArea: React.FC<PrintCardAreaProps> = ({ printData }) => {
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            padding: '4mm',
             fontFamily: 'var(--font-sans, Arial, sans-serif)',
             border: '1px solid #D6D2C2',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Logo />
-            <Shield size={16} style={{ color: '#DA291C' }} />
-          </div>
-
-          {/* QR Code */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              margin: '4mm 0',
-            }}
-          >
-            <QRCodeSVG
-              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.qr_token}`}
-              size={100}
-              style={{ width: '22mm', height: '22mm' }}
-              level="M"
-            />
-          </div>
-
-          {/* Detail ID */}
-          <div
-            style={{
-              marginTop: '2mm',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2mm',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: '5.5pt',
-                  fontWeight: 800,
-                  color: '#707070',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                ID TEKNISI
-              </div>
-              <div
-                style={{
-                  fontSize: '7pt',
-                  fontWeight: 700,
-                  color: DARK,
-                }}
-              >
-                {printData.technician_id}
-              </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '4mm', minHeight: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Logo />
+              <Shield size={16} style={{ color: '#DA291C' }} />
             </div>
 
-            <div>
-              <div
-                style={{
-                  fontSize: '5.5pt',
-                  fontWeight: 800,
-                  color: '#707070',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                CABANG / WILAYAH
-              </div>
-              <div
-                style={{
-                  fontSize: '7pt',
-                  fontWeight: 700,
-                  color: DARK,
-                }}
-              >
-                {printData.branch}
-              </div>
+            {/* QR Code */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                margin: '4mm 0',
+              }}
+            >
+              <QRCodeSVG
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify/${printData.qr_token}`}
+                size={100}
+                style={{ width: '22mm', height: '22mm' }}
+                level="M"
+              />
             </div>
 
-            <div>
-              <div
-                style={{
-                  fontSize: '5.5pt',
-                  fontWeight: 800,
-                  color: '#707070',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                KONTAK LAYANAN
+            {/* Detail ID */}
+            <div
+              style={{
+                marginTop: '2mm',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2mm',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: '5.5pt',
+                    fontWeight: 800,
+                    color: '#707070',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  ID TEKNISI
+                </div>
+                <div
+                  style={{
+                    fontSize: '7pt',
+                    fontWeight: 700,
+                    color: DARK,
+                  }}
+                >
+                  {printData.technician_id}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: '6.5pt',
-                  fontWeight: 600,
-                  color: '#4A4A4A',
-                  lineHeight: '1.2',
-                  marginTop: '0.5mm',
-                }}
-              >
-                PT MODENA INDONESIA
-                <br />
-                Call Center: 1500715
+
+              <div>
+                <div
+                  style={{
+                    fontSize: '5.5pt',
+                    fontWeight: 800,
+                    color: '#707070',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  CABANG / WILAYAH
+                </div>
+                <div
+                  style={{
+                    fontSize: '7pt',
+                    fontWeight: 700,
+                    color: DARK,
+                  }}
+                >
+                  {printData.branch}
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: '5.5pt',
+                    fontWeight: 800,
+                    color: '#707070',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  KONTAK LAYANAN
+                </div>
+                <div
+                  style={{
+                    fontSize: '6.5pt',
+                    fontWeight: 600,
+                    color: '#4A4A4A',
+                    lineHeight: '1.2',
+                    marginTop: '0.5mm',
+                  }}
+                >
+                  PT MODENA INDONESIA
+                  <br />
+                  Call Center: 1500715
+                </div>
               </div>
             </div>
           </div>
+
+          <ServiceCenterFooter branch={printData.branch} />
         </div>
       </div>
     </div>

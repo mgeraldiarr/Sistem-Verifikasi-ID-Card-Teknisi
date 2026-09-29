@@ -1,6 +1,8 @@
 // src/app/api/sync/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
+import { createRateLimiter, getClientIp } from '@/lib/server/rate-limit';
+import { safeEqual } from '@/lib/server/api-auth';
 import {
   getRowValue,
   mapCardStatus,
@@ -12,36 +14,17 @@ import {
 } from '@/lib/excel';
 import { SyncErrorDetail, SyncRecord } from '@/types';
 
-// Rate limiting configuration
-const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per minute
+// Maksimal 10 permintaan sinkronisasi per menit per IP
+const syncLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 10 });
 
-const getClientIp = (req: NextRequest) => {
-  const xForwardedFor = req.headers.get('x-forwarded-for');
-  if (xForwardedFor) {
-    return xForwardedFor.split(',')[0].trim();
-  }
-  return (req as any).ip || '127.0.0.1';
-};
+// Batas jumlah data per permintaan agar satu request tidak membebani server
+const MAX_RECORDS_PER_REQUEST = 2000;
 
 export async function POST(req: NextRequest) {
   const startTime = new Date().toISOString();
   
   // 1. Rate Limiting Check
-  const ip = getClientIp(req);
-  const now = Date.now();
-  const rateData = rateLimitMap.get(ip) || { count: 0, lastReset: now };
-
-  if (now - rateData.lastReset > RATE_LIMIT_WINDOW) {
-    rateData.count = 1;
-    rateData.lastReset = now;
-  } else {
-    rateData.count++;
-  }
-  rateLimitMap.set(ip, rateData);
-
-  if (rateData.count > MAX_REQUESTS_PER_WINDOW) {
+  if (!syncLimiter.allow(getClientIp(req))) {
     return NextResponse.json(
       { error: 'Too Many Requests: Batas laju permintaan terlampaui. Silakan coba lagi nanti.' },
       { status: 429 }
@@ -61,7 +44,7 @@ export async function POST(req: NextRequest) {
   const apiKey = req.headers.get('x-api-key');
   const validApiKey = process.env.SYNC_API_KEY || process.env.SYNC_SECRET_TOKEN;
 
-  if (!validApiKey || apiKey !== validApiKey) {
+  if (!validApiKey || !apiKey || !safeEqual(apiKey, validApiKey)) {
     return NextResponse.json(
       { error: 'Unauthorized: Akses ditolak. API Key tidak valid.' },
       { status: 401 }
@@ -82,6 +65,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Bad Request: Payload harus berupa array berisi data teknisi.' },
         { status: 400 }
+      );
+    }
+
+    if (payload.length > MAX_RECORDS_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          error: `Payload Too Large: maksimal ${MAX_RECORDS_PER_REQUEST} data per permintaan. Kirim secara bertahap.`,
+        },
+        { status: 413 }
       );
     }
 
