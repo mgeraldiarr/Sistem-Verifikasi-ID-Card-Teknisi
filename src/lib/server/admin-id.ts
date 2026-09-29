@@ -1,6 +1,6 @@
-// src/lib/admin-id.ts
-// HANYA untuk server (memakai service role).
-import { supabaseAdmin } from '@/lib/supabase-admin';
+// src/lib/server/admin-id.ts
+import 'server-only';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
 import { generateAdminId, getBranchCode } from '@/constants/branch-codes';
 
 const MAX_ATTEMPTS = 3;

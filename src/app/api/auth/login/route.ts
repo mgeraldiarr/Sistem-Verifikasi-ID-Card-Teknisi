@@ -1,7 +1,8 @@
 // src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/server/supabase-admin';
+import { createRateLimiter, getClientIp } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,16 +15,8 @@ const supabaseAnonKey =
 const GENERIC_ERROR =
   'ID Pengguna atau kata sandi salah. Periksa kembali kredensial Anda.';
 
-// Rate limiting sederhana per-IP (5 percobaan / menit)
-const attemptMap = new Map<string, { count: number; lastReset: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_ATTEMPTS_PER_WINDOW = 5;
-
-const getClientIp = (req: NextRequest) => {
-  const xForwardedFor = req.headers.get('x-forwarded-for');
-  if (xForwardedFor) return xForwardedFor.split(',')[0].trim();
-  return req.headers.get('x-real-ip') || '127.0.0.1';
-};
+// Batasi percobaan masuk per-IP (5 percobaan / menit) untuk menahan tebak kata sandi
+const loginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5 });
 
 type LoginKind = 'technician' | 'branch_admin' | 'super_admin';
 
@@ -87,19 +80,7 @@ async function resolveIdentifier(identifier: string): Promise<ResolvedLogin | nu
 
 export async function POST(req: NextRequest) {
   // 1. Rate limiting
-  const ip = getClientIp(req);
-  const now = Date.now();
-  const record = attemptMap.get(ip) || { count: 0, lastReset: now };
-
-  if (now - record.lastReset > RATE_LIMIT_WINDOW) {
-    record.count = 1;
-    record.lastReset = now;
-  } else {
-    record.count++;
-  }
-  attemptMap.set(ip, record);
-
-  if (record.count > MAX_ATTEMPTS_PER_WINDOW) {
+  if (!loginLimiter.allow(getClientIp(req))) {
     return NextResponse.json(
       {
         error:
