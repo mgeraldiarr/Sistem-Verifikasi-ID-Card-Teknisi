@@ -5,7 +5,8 @@ import React, { useState } from 'react';
 import { ShieldCheck, QrCode as QrIcon, Award, RotateCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
-import { CardStatus, TechnicianLevel, TechnicianStatus } from '@/types';
+import { TechnicianLevel, TechnicianStatus } from '@/types';
+import { getServiceCenterCardLabel } from '@/constants/service-center';
 
 interface TechnicianData {
   technician_id: string;
@@ -17,15 +18,8 @@ interface TechnicianData {
   technician_level: TechnicianLevel;
 }
 
-interface CardInfoData {
-  card_number: string;
-  card_status: CardStatus;
-  expiry_date: string;
-}
-
 interface TechnicianCard3DProps {
   technician: TechnicianData;
-  cardInfo: CardInfoData | null;
   levelText: string;
   formattedExpiryDate: string;
   isValid: boolean;
@@ -34,7 +28,6 @@ interface TechnicianCard3DProps {
 
 export default function TechnicianCard3D({
   technician,
-  cardInfo,
   levelText,
   formattedExpiryDate,
   isValid,
@@ -52,6 +45,27 @@ export default function TechnicianCard3D({
   const CREAM = '#ECE8DA';
   const DARK = '#1C1C1A';
   const ACCENT_RED = '#DA291C';
+
+  const serviceCenterLabel = getServiceCenterCardLabel(technician.branch);
+
+  // Footer label resmi service center — menempel di tepi paling bawah kedua sisi kartu
+  const serviceCenterFooter = (
+    <div
+      style={{
+        backgroundColor: ACCENT_RED,
+        color: '#FFFFFF',
+        padding: '6px 12px',
+        fontSize: '7.5px',
+        fontWeight: 800,
+        letterSpacing: '0.8px',
+        lineHeight: 1.3,
+        textAlign: 'center',
+        flexShrink: 0,
+      }}
+    >
+      {serviceCenterLabel}
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
@@ -206,6 +220,8 @@ export default function TechnicianCard3D({
                 <span style={{ color: '#AAA' }}>{technician.branch}</span>
               </div>
             </div>
+
+            {serviceCenterFooter}
           </div>
 
           {/* ==================== SISI BELAKANG KARTU ==================== */}
@@ -221,8 +237,6 @@ export default function TechnicianCard3D({
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between',
-              padding: '16px',
               border: '1px solid #333330',
               boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.4)',
               transform: 'rotateY(180deg)',
@@ -230,71 +244,83 @@ export default function TechnicianCard3D({
               WebkitBackfaceVisibility: 'hidden',
             }}
           >
-            {/* Header Belakang */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333330', paddingBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ACCENT_RED }} />
-                <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', color: '#ECE8DA' }}>
-                  MODENA OFFICIAL ID
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                padding: '16px 16px 12px',
+                minHeight: 0,
+              }}
+            >
+              {/* Header Belakang */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333330', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ACCENT_RED }} />
+                  <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', color: '#ECE8DA' }}>
+                    MODENA OFFICIAL ID
+                  </span>
+                </div>
+                <span style={{ fontSize: '8px', fontWeight: 700, color: '#888888', letterSpacing: '0.5px' }}>
+                  SERI: {technician.technician_id || '-'}
                 </span>
               </div>
-              <span style={{ fontSize: '8px', fontWeight: 700, color: '#888888', letterSpacing: '0.5px' }}>
-                SERI: {cardInfo?.card_number || '-'}
-              </span>
-            </div>
 
-            {/* Area QR Code */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0', gap: '10px' }}>
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  padding: '10px',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                {verifyUrl ? (
-                  <QRCodeSVG value={verifyUrl} size={110} level="M" />
-                ) : (
-                  <QrIcon size={100} color={DARK} />
-                )}
+              {/* Area QR Code */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0', gap: '10px' }}>
+                <div
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    padding: '10px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  {verifyUrl ? (
+                    <QRCodeSVG value={verifyUrl} size={110} level="M" />
+                  ) : (
+                    <QrIcon size={100} color={DARK} />
+                  )}
+                </div>
+                <span style={{ fontSize: '8px', color: '#AAAAAA', textAlign: 'center', letterSpacing: '0.5px' }}>
+                  Pindai QR Code untuk verifikasi status real-time
+                </span>
               </div>
-              <span style={{ fontSize: '8px', color: '#AAAAAA', textAlign: 'center', letterSpacing: '0.5px' }}>
-                Pindai QR Code untuk verifikasi status real-time
-              </span>
-            </div>
 
-            {/* Detail ID & Cabang */}
-            <div style={{ backgroundColor: '#262624', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '9px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>ID Karyawan:</span>
-                <span style={{ fontWeight: 700, color: '#ECE8DA' }}>{technician.technician_id}</span>
+              {/* Detail ID & Cabang */}
+              <div style={{ backgroundColor: '#262624', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '9px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#888' }}>ID Teknisi:</span>
+                  <span style={{ fontWeight: 700, color: '#ECE8DA' }}>{technician.technician_id}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#888' }}>Cabang / Wilayah:</span>
+                  <span style={{ fontWeight: 700, color: '#ECE8DA' }}>{technician.branch}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#888' }}>Masa Berlaku:</span>
+                  <span style={{ fontWeight: 700, color: isValid ? '#22C55E' : ACCENT_RED }}>{formattedExpiryDate}</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>Cabang / Wilayah:</span>
-                <span style={{ fontWeight: 700, color: '#ECE8DA' }}>{technician.branch}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>Masa Berlaku:</span>
-                <span style={{ fontWeight: 700, color: isValid ? '#22C55E' : ACCENT_RED }}>{formattedExpiryDate}</span>
-              </div>
-            </div>
 
-            {/* Ketentuan & Call Center */}
-            <div style={{ borderTop: '1px solid #333330', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '7.5px', color: '#777777', lineHeight: 1.3 }}>
-              <div>
-                Kartu ini milik PT MODENA Indonesia.<br />
-                Jika ditemukan, harap kembalikan ke cabang terdekat.
-              </div>
-              <div style={{ textAlign: 'right', fontWeight: 700, color: '#AAAAAA' }}>
-                Call Center:<br />
-                <span style={{ color: ACCENT_RED }}>1500-715</span>
+              {/* Ketentuan & Call Center */}
+              <div style={{ borderTop: '1px solid #333330', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '7.5px', color: '#777777', lineHeight: 1.3 }}>
+                <div>
+                  Kartu ini milik PT MODENA Indonesia.<br />
+                  Jika ditemukan, harap kembalikan ke cabang terdekat.
+                </div>
+                <div style={{ textAlign: 'right', fontWeight: 700, color: '#AAAAAA' }}>
+                  Call Center:<br />
+                  <span style={{ color: ACCENT_RED }}>1500-715</span>
+                </div>
               </div>
             </div>
 
+            {serviceCenterFooter}
           </div>
 
         </div>

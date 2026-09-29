@@ -279,7 +279,6 @@ function MyCardContent() {
             {/* Kartu 3D Flip-Flop Interaktif */}
             <TechnicianCard3D
               technician={technician}
-              cardInfo={cardInfo}
               levelText={levelText}
               formattedExpiryDate={formattedExpiryDate}
               isValid={isValid}

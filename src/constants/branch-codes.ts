@@ -136,3 +136,21 @@ export function generateSequentialTechnicianId(
     return `${prefix}-${code}-${seq}`;
 }
 
+
+/**
+ * 7. FUNGSI GENERATOR ID ADMIN CABANG (LOGIN ID)
+ * Format resmi: ADM-[KODE]-[2 DIGIT URUT] (contoh: ADM-BAL-01)
+ * Memakai nomor tertinggi + 1 agar ID admin yang sudah dihapus tidak dipakai ulang.
+ */
+export function generateAdminId(branchName: string, existingAdminIds: string[]): string {
+    const code = getBranchCode(branchName);
+    const pattern = new RegExp(`^ADM-${code}-(\d+)$`, 'i');
+
+    let highest = 0;
+    for (const id of existingAdminIds) {
+        const match = id?.trim().match(pattern);
+        if (match) highest = Math.max(highest, parseInt(match[1], 10) || 0);
+    }
+
+    return `ADM-${code}-${String(highest + 1).padStart(2, '0')}`;
+}

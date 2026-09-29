@@ -1,18 +1,136 @@
 // src/app/admin/login/components/TechnicianGuideModal.tsx
 'use client';
 
-import React, { useEffect } from 'react';
-import { X, HelpCircle, BadgeCheck, KeyRound, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, HelpCircle, BadgeCheck, KeyRound, ShieldCheck, Mail } from 'lucide-react';
 
 interface TechnicianGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type GuideRole = 'technician' | 'branch_admin';
+
+const codeStyle: React.CSSProperties = {
+  color: '#ECE8DA',
+  backgroundColor: 'rgba(255,255,255,0.08)',
+  padding: '1px 5px',
+  borderRadius: '4px',
+  fontFamily: 'monospace',
+};
+
+const highlightStyle: React.CSSProperties = {
+  display: 'inline-block',
+  backgroundColor: 'rgba(218, 41, 28, 0.18)',
+  border: '1px solid rgba(218, 41, 28, 0.4)',
+  color: '#FF8A80',
+  padding: '2px 8px',
+  borderRadius: '6px',
+  fontWeight: 700,
+  fontSize: '0.75rem',
+  fontFamily: 'monospace',
+};
+
+interface GuideStep {
+  icon: React.ReactNode;
+  accent?: 'red' | 'teal';
+  title: string;
+  body: React.ReactNode;
+}
+
+const GUIDE: Record<GuideRole, { label: string; steps: GuideStep[]; help: React.ReactNode }> = {
+  technician: {
+    label: 'Teknisi',
+    steps: [
+      {
+        icon: <BadgeCheck size={16} color="#DA291C" />,
+        title: 'ID Pengguna = ID Teknisi',
+        body: (
+          <>
+            Ketik ID Teknisi yang tercetak di kartu Anda, contoh{' '}
+            <code style={codeStyle}>DSC-BAL-001</code>. Bukan NIK dan bukan email.
+          </>
+        ),
+      },
+      {
+        icon: <KeyRound size={16} color="#DA291C" />,
+        title: 'Kata Sandi Awal',
+        body: (
+          <>
+            Dikirim Admin Cabang lewat WhatsApp, dengan format:
+            <div style={{ marginTop: '4px' }}>
+              <span style={highlightStyle}>Modena@{'{4 digit terakhir No HP}'}</span>
+            </div>
+          </>
+        ),
+      },
+      {
+        icon: <ShieldCheck size={16} color="#0D9488" />,
+        accent: 'teal',
+        title: 'Buat Kata Sandi Baru',
+        body: 'Saat pertama kali masuk, sistem meminta Anda membuat kata sandi pribadi baru sebelum kartu digital dapat dibuka.',
+      },
+      {
+        icon: <Mail size={16} color="#0D9488" />,
+        accent: 'teal',
+        title: 'Lupa Kata Sandi',
+        body: 'Klik "Lupa Kata Sandi?" lalu masukkan email pribadi yang Anda daftarkan ke Admin Cabang. Tautan atur ulang dikirim ke email tersebut.',
+      },
+    ],
+    help: (
+      <>
+        💡 ID Teknisi tidak dikenali, belum menerima kata sandi, atau email belum terdaftar?
+        Hubungi <strong style={{ color: '#FFFFFF' }}>Admin Cabang</strong> Anda.
+      </>
+    ),
+  },
+  branch_admin: {
+    label: 'Admin Cabang',
+    steps: [
+      {
+        icon: <BadgeCheck size={16} color="#DA291C" />,
+        title: 'ID Pengguna = ID Admin',
+        body: (
+          <>
+            Ketik ID Admin yang diberikan Super Admin, contoh{' '}
+            <code style={codeStyle}>ADM-BAL-01</code>. Admin Cabang tidak masuk memakai email.
+          </>
+        ),
+      },
+      {
+        icon: <KeyRound size={16} color="#DA291C" />,
+        title: 'Kata Sandi Awal',
+        body: 'Diberikan langsung oleh Super Admin bersama ID Admin Anda.',
+      },
+      {
+        icon: <ShieldCheck size={16} color="#0D9488" />,
+        accent: 'teal',
+        title: 'Buat Kata Sandi Baru',
+        body: 'Saat pertama kali masuk, sistem meminta Anda membuat kata sandi pribadi baru.',
+      },
+      {
+        icon: <Mail size={16} color="#0D9488" />,
+        accent: 'teal',
+        title: 'Lupa Kata Sandi',
+        body: 'Klik "Lupa Kata Sandi?" lalu masukkan email pribadi yang didaftarkan Super Admin untuk akun Anda.',
+      },
+    ],
+    help: (
+      <>
+        💡 Belum memiliki ID Admin atau akun dinonaktifkan? Hubungi{' '}
+        <strong style={{ color: '#FFFFFF' }}>Super Admin MODENA</strong>.
+      </>
+    ),
+  },
+};
+
 export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [role, setRole] = useState<GuideRole>('technician');
+  const guide = GUIDE[role];
+
   // Tutup modal saat tombol Escape ditekan
   useEffect(() => {
     if (!isOpen) return;
@@ -98,7 +216,7 @@ export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
                   lineHeight: 1.3,
                 }}
               >
-                Panduan Akses Teknisi
+                Panduan Masuk
               </h3>
               <p
                 style={{
@@ -107,7 +225,7 @@ export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
                   margin: '2px 0 0',
                 }}
               >
-                Petunjuk masuk perdana portal mandiri teknisi
+                Cara masuk untuk Teknisi & Admin Cabang
               </p>
             </div>
           </div>
@@ -140,8 +258,49 @@ export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
           </button>
         </div>
 
+        {/* Pilihan Peran */}
+        <div
+          role="tablist"
+          aria-label="Pilih peran"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '4px',
+            padding: '4px',
+            borderRadius: '10px',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+          }}
+        >
+          {(Object.keys(GUIDE) as GuideRole[]).map((key) => {
+            const active = key === role;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setRole(key)}
+                style={{
+                  padding: '0.5rem',
+                  borderRadius: '7px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  backgroundColor: active ? '#DA291C' : 'transparent',
+                  color: active ? '#FFFFFF' : 'rgba(236, 232, 218, 0.65)',
+                  transition: 'background-color 0.15s ease',
+                }}
+              >
+                {GUIDE[key].label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Daftar Petunjuk */}
         <div
+          role="tabpanel"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -149,139 +308,49 @@ export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
             padding: '0.25rem 0',
           }}
         >
-          {/* Poin 1: Identitas */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+          {guide.steps.map((step, index) => (
             <div
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(218, 41, 28, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: '1px',
-              }}
+              key={step.title}
+              style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}
             >
-              <BadgeCheck size={16} color="#DA291C" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#FFFFFF' }}>
-                1. Identitas Masuk (NIK)
-              </div>
               <div
                 style={{
-                  fontSize: '0.75rem',
-                  color: 'rgba(236, 232, 218, 0.7)',
-                  lineHeight: 1.5,
-                  marginTop: '2px',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  backgroundColor:
+                    step.accent === 'teal'
+                      ? 'rgba(13, 148, 136, 0.15)'
+                      : 'rgba(218, 41, 28, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: '1px',
                 }}
               >
-                Gunakan <strong>Nomor Induk Karyawan (NIK)</strong> resmi Anda (contoh:{' '}
-                <code
+                {step.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#FFFFFF' }}>
+                  {index + 1}. {step.title}
+                </div>
+                <div
                   style={{
-                    color: '#ECE8DA',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    padding: '1px 5px',
-                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    color: 'rgba(236, 232, 218, 0.7)',
+                    lineHeight: 1.5,
+                    marginTop: '2px',
                   }}
                 >
-                  10123456
-                </code>
-                ). Bagi Administrator, silakan gunakan email resmi.
-              </div>
-            </div>
-          </div>
-
-          {/* Poin 2: Kata Sandi Awal */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-            <div
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(218, 41, 28, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: '1px',
-              }}
-            >
-              <KeyRound size={16} color="#DA291C" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#FFFFFF' }}>
-                2. Format Kata Sandi Awal
-              </div>
-              <div
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'rgba(236, 232, 218, 0.7)',
-                  lineHeight: 1.5,
-                  marginTop: '2px',
-                }}
-              >
-                Gunakan formula standar:
-                <div style={{ marginTop: '4px' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      backgroundColor: 'rgba(218, 41, 28, 0.18)',
-                      border: '1px solid rgba(218, 41, 28, 0.4)',
-                      color: '#FF8A80',
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    Modena@{'{4 digit terakhir No HP}'}
-                  </span>
+                  {step.body}
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Poin 3: Keamanan */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-            <div
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(13, 148, 136, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: '1px',
-              }}
-            >
-              <ShieldCheck size={16} color="#0D9488" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#FFFFFF' }}>
-                3. Aktivasi Kata Sandi Baru
-              </div>
-              <div
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'rgba(236, 232, 218, 0.7)',
-                  lineHeight: 1.5,
-                  marginTop: '2px',
-                }}
-              >
-                Setelah berhasil masuk untuk pertama kali, sistem akan langsung meminta Anda
-                membuat kata sandi pribadi baru demi keamanan data.
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Footer Bantuan Cabang */}
+        {/* Footer Bantuan */}
         <div
           style={{
             borderTop: '1px solid rgba(236, 232, 218, 0.1)',
@@ -291,8 +360,7 @@ export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
             lineHeight: 1.5,
           }}
         >
-          💡 Kendala masuk atau nomor HP belum terdaftar di sistem cabang? Silakan hubungi{' '}
-          <strong style={{ color: '#FFFFFF' }}>Admin Cabang</strong> atau PIC Service Center Anda.
+          {guide.help}
         </div>
       </div>
     </div>

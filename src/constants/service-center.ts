@@ -73,3 +73,14 @@ export const DSC_BRANCHES = [
   'Balikpapan',
 ] as const;
 
+
+/**
+ * Label resmi service center untuk footer kartu digital & cetak.
+ * Contoh: "DIRECT SERVICE CENTER (DSC) - BALI"
+ */
+export function getServiceCenterCardLabel(branch: string | null | undefined): string {
+    const scope = SERVICE_SCOPES.find((s) => s.code === 'DSC');
+    const prefix = `${(scope?.fullName ?? 'Direct Service Center').toUpperCase()} (DSC)`;
+    const cleanBranch = (branch ?? '').trim().toUpperCase();
+    return cleanBranch ? `${prefix} - ${cleanBranch}` : prefix;
+}

@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { buildDefaultTechnicianPassword } from '@/lib/technician-access';
+import { buildDefaultTechnicianPassword, normalizePersonalEmail } from '@/lib/technician-access';
+import { ACCOUNT_PROFILE_COLUMNS, assignAdminId } from '@/lib/admin-id';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,13 +93,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Format permintaan tidak valid.' }, { status: 400 });
   }
 
-  const email = String(body.email ?? '').trim().toLowerCase();
+  const email = normalizePersonalEmail(String(body.email ?? ''));
   const fullName = String(body.full_name ?? '').trim();
   const role = String(body.role ?? '').trim();
   const branch = body.branch ? String(body.branch).trim() : null;
   const password = String(body.password ?? '');
 
-  if (!email || !email.includes('@')) {
+  if (!email) {
     return NextResponse.json({ error: 'Email tidak valid.' }, { status: 400 });
   }
   if (!fullName) {
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
       // Kata sandi awal yang dibuat admin wajib dirotasi pada login pertama
       must_change_password: true,
     })
-    .select('id, email, full_name, role, branch, technician_id, is_active, must_change_password')
+    .select(ACCOUNT_PROFILE_COLUMNS)
     .single();
 
   if (profileError) {
@@ -180,7 +181,76 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Admin Cabang login memakai ID (ADM-[KODE]-[NN]); email pribadinya untuk Lupa Kata Sandi
+  if (role === 'branch_admin' && branch) {
+    const assigned = await assignAdminId(created.user.id, branch);
+    if ('error' in assigned) {
+      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+      return NextResponse.json(
+        { error: `Gagal menerbitkan ID admin: ${assigned.error}` },
+        { status: 500 }
+      );
+    }
+    profile.admin_id = assigned.adminId;
+  }
+
   return NextResponse.json({ profile });
+}
+
+// =============================================================
+// PUT — Menerbitkan ID login untuk Admin Cabang yang belum memilikinya
+// =============================================================
+export async function PUT(req: NextRequest) {
+  const auth = await authenticateCaller(req);
+  if ('error' in auth) return auth.error;
+
+  if (auth.caller.role !== 'super_admin') {
+    return NextResponse.json(
+      { error: 'Hanya Super Admin yang berwenang menerbitkan ID admin.' },
+      { status: 403 }
+    );
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Format permintaan tidak valid.' }, { status: 400 });
+  }
+
+  const targetId = String(body.id ?? '').trim();
+  if (!targetId) {
+    return NextResponse.json({ error: 'ID akun wajib diisi.' }, { status: 400 });
+  }
+
+  const { data: target } = await supabaseAdmin
+    .from('user_profiles')
+    .select('id, role, branch, admin_id')
+    .eq('id', targetId)
+    .maybeSingle();
+
+  if (!target) {
+    return NextResponse.json({ error: 'Akun tidak ditemukan.' }, { status: 404 });
+  }
+  if (target.role !== 'branch_admin' || !target.branch) {
+    return NextResponse.json(
+      { error: 'ID admin hanya diterbitkan untuk Admin Cabang yang memiliki cabang penugasan.' },
+      { status: 400 }
+    );
+  }
+  if (target.admin_id) {
+    return NextResponse.json({ admin_id: target.admin_id });
+  }
+
+  const assigned = await assignAdminId(target.id, target.branch);
+  if ('error' in assigned) {
+    return NextResponse.json(
+      { error: `Gagal menerbitkan ID admin: ${assigned.error}` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ admin_id: assigned.adminId });
 }
 
 // =============================================================

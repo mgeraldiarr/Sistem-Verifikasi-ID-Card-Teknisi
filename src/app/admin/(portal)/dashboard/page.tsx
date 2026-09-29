@@ -630,7 +630,7 @@ function AdminDashboard() {
 
           const message = buildTechnicianAccessMessage({
             technicianName: tech.technician_name,
-            employeeNumber: tech.employee_number,
+            technicianId: tech.technician_id,
             loginUrl: `${window.location.origin}/admin/login`,
             password: payload.password ?? null,
           });

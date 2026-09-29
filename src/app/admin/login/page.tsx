@@ -83,8 +83,8 @@ export default function AdminLogin() {
   }, [router]);
 
   /**
-   * Login Dual Identifier: menerima Email ATAU Nomor Karyawan (NIK).
-   * Pemetaan NIK -> email akun dilakukan di server (/api/auth/login).
+   * Login berbasis ID Pengguna: DSC-... (Teknisi), ADM-... (Admin Cabang),
+   * atau email (khusus Super Admin). Pemetaan ID -> akun dilakukan di server.
    */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,18 +268,20 @@ export default function AdminLogin() {
             >
               <div>
                 <label htmlFor="login-identifier" style={labelStyle}>
-                  Email
+                  Login
                 </label>
                 <input
                   id="login-identifier"
                   name="login_identifier"
                   type="text"
                   autoComplete="username"
+                  autoCapitalize="characters"
+                  spellCheck={false}
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   style={inputStyle}
-                  placeholder="admin@modena.com"
+                  placeholder="Email atau ID Pengguna"
                 />
               </div>
 
@@ -387,7 +389,7 @@ export default function AdminLogin() {
               Lupa Kata Sandi?
             </button>
 
-            {/* Tombol Panduan Akses Teknisi */}
+            {/* Tombol Panduan Masuk (Teknisi & Admin Cabang) */}
             <div
               style={{
                 marginTop: "1.25rem",
@@ -424,7 +426,7 @@ export default function AdminLogin() {
                 }}
               >
                 <HelpCircle size={15} color="var(--accent-red)" />
-                <span>Panduan Masuk Teknisi</span>
+                <span>Panduan Masuk</span>
               </button>
             </div>
           </>
@@ -513,7 +515,7 @@ export default function AdminLogin() {
         )}
       </div>
 
-      {/* Dialog Modal Panduan Akses Teknisi */}
+      {/* Dialog Modal Panduan Masuk */}
       <TechnicianGuideModal
         isOpen={showGuideModal}
         onClose={() => setShowGuideModal(false)}

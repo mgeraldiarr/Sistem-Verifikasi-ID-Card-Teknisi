@@ -1,7 +1,7 @@
 // src/app/api/admin/technician-access/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { buildDefaultTechnicianPassword, buildTechnicianLoginEmail } from '@/lib/technician-access';
+import { buildDefaultTechnicianPassword, normalizePersonalEmail } from '@/lib/technician-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,7 +127,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const loginEmail = buildTechnicianLoginEmail(technician.email, technician.employee_number);
+  // Akun teknisi memakai email pribadinya sendiri (untuk Lupa Kata Sandi)
+  const loginEmail = normalizePersonalEmail(technician.email);
+  if (!loginEmail) {
+    return NextResponse.json(
+      {
+        error:
+          'Email pribadi teknisi belum diisi atau tidak valid. Lengkapi email pada data teknisi terlebih dahulu sebelum menerbitkan akses.',
+      },
+      { status: 422 }
+    );
+  }
 
   // 8. Buat akun auth + profil peran teknisi
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({

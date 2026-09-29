@@ -90,7 +90,10 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     <PortalProvider
       value={{ profile, scopedBranch, selectedBranch, selectBranch, refreshProfile }}
     >
-      <div style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>
+      <div
+        className="portal-shell"
+        style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}
+      >
         {/* Sidebar persisten — tidak ikut remount saat berpindah halaman */}
         <div className="no-print">
           <DashboardSidebar

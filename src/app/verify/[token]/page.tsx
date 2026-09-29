@@ -206,7 +206,6 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
       <div style={{ marginBottom: '2rem' }}>
         <TechnicianCard3D
           technician={technician}
-          cardInfo={cardInfo}
           levelText={levelText}
           formattedExpiryDate={formattedExpiryDate}
           isValid={isValid}

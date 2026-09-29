@@ -1261,7 +1261,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                     marginBottom: '0.4rem',
                   }}
                 >
-                  Email Korporat (Sensitif)
+                  Email Pribadi (Sensitif)
                 </label>
                 <input
                   id="form-email"
@@ -1279,8 +1279,18 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                     outline: 'none',
                     fontSize: '0.875rem',
                   }}
-                  placeholder="budi@modena.com"
+                  placeholder="budi.santoso@gmail.com"
                 />
+                <p
+                  style={{
+                    fontSize: '0.72rem',
+                    color: 'var(--text-secondary)',
+                    margin: '0.35rem 0 0',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Wajib diisi sebelum Kirim Akses portal. Dipakai untuk Lupa Kata Sandi.
+                </p>
               </div>
             </div>
 

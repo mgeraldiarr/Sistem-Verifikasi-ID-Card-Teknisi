@@ -19,6 +19,7 @@ import { NotificationModal } from '@/components/ui/NotificationModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { supabase } from '@/lib/supabase';
 import { useBranches } from '@/hooks/useBranches';
+import { getBranchCode } from '@/constants/branch-codes';
 import { SuperAdminOnly, usePortal } from '../portal-context';
 import {
   ConfirmModalState,
@@ -159,7 +160,7 @@ function ManageAccountsContent() {
     setLoading(true);
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('id, email, full_name, role, branch, technician_id, is_active, must_change_password')
+      .select('id, email, full_name, role, branch, technician_id, is_active, must_change_password, admin_id')
       .order('role', { ascending: true })
       .order('full_name', { ascending: true });
 
@@ -182,6 +183,7 @@ function ManageAccountsContent() {
         q === '' ||
         acc.full_name.toLowerCase().includes(q) ||
         acc.email.toLowerCase().includes(q) ||
+        (acc.admin_id ?? '').toLowerCase().includes(q) ||
         (acc.branch ?? '').toLowerCase().includes(q);
       const matchesRole = roleFilter === '' || acc.role === roleFilter;
       return matchesSearch && matchesRole;
@@ -295,10 +297,54 @@ function ManageAccountsContent() {
     );
   };
 
+  /** Menerbitkan ID login (ADM-[KODE]-[NN]) untuk Admin Cabang lama yang belum memilikinya */
+  const handleIssueAdminId = async (account: UserProfile) => {
+    setSavingId(account.id);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const res = await fetch('/api/admin/accounts', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ id: account.id }),
+      });
+
+      const payload = await res.json();
+      if (!res.ok) {
+        notify('error', 'Gagal Menerbitkan ID', payload.error ?? 'Terjadi kesalahan.');
+        return;
+      }
+
+      setAccounts((prev) =>
+        prev.map((item) =>
+          item.id === account.id ? { ...item, admin_id: payload.admin_id } : item
+        )
+      );
+      notify(
+        'success',
+        'ID Admin Diterbitkan',
+        `ID login untuk ${account.full_name}:
+
+${payload.admin_id}
+
+Sampaikan ID ini kepada admin yang bersangkutan untuk masuk ke portal.`
+      );
+    } catch {
+      notify('error', 'Gagal Terhubung', 'Tidak dapat menghubungi server.');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const handleDelete = (account: UserProfile) => {
     askConfirm(
       'Hapus Akun Permanen',
-      `Hapus akun ${account.full_name} (${account.email}) secara permanen? Tindakan ini tidak dapat dibatalkan.`,
+      `Hapus akun ${account.full_name} (${account.admin_id || account.email}) secara permanen? Tindakan ini tidak dapat dibatalkan.`,
       async () => {
         setSavingId(account.id);
         try {
@@ -378,7 +424,13 @@ function ManageAccountsContent() {
       notify(
         'success',
         'Akun Dibuat',
-        `${payload.profile.full_name} berhasil dibuat. Akun wajib mengganti kata sandi awal saat login pertama.`
+        payload.profile.admin_id
+          ? `${payload.profile.full_name} berhasil dibuat.
+
+ID login: ${payload.profile.admin_id}
+
+Sampaikan ID ini bersama kata sandi awal. Akun wajib mengganti kata sandi saat login pertama.`
+          : `${payload.profile.full_name} berhasil dibuat. Super Admin masuk memakai email MODENA. Akun wajib mengganti kata sandi awal saat login pertama.`
       );
     } catch {
       setFormError('Tidak dapat menghubungi server.');
@@ -479,7 +531,7 @@ function ManageAccountsContent() {
               id="account-search"
               name="account_search"
               type="text"
-              placeholder="Cari nama, email, atau cabang..."
+              placeholder="Cari nama, email, ID admin, atau cabang..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ ...inputStyle, paddingLeft: '32px' }}
@@ -558,6 +610,46 @@ function ManageAccountsContent() {
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {account.email}
                       </div>
+                      {account.role === 'branch_admin' &&
+                        (account.admin_id ? (
+                          <div
+                            style={{
+                              marginTop: '3px',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              fontFamily: 'monospace',
+                              color: 'var(--text-primary)',
+                            }}
+                            title="ID login Admin Cabang"
+                          >
+                            {account.admin_id}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleIssueAdminId(account)}
+                            disabled={busy || !account.branch}
+                            title={
+                              account.branch
+                                ? 'Admin Cabang belum memiliki ID login'
+                                : 'Tetapkan cabang terlebih dahulu'
+                            }
+                            style={{
+                              display: 'block',
+                              marginTop: '4px',
+                              padding: '2px 8px',
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              borderRadius: '6px',
+                              border: '1px dashed var(--accent-red)',
+                              background: 'transparent',
+                              color: 'var(--accent-red)',
+                              cursor: busy || !account.branch ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            Terbitkan ID Login
+                          </button>
+                        ))}
                       {account.must_change_password && (
                         <span
                           style={{
@@ -800,22 +892,6 @@ function ManageAccountsContent() {
               </div>
 
               <div>
-                <label htmlFor="new-email" style={labelStyle}>
-                  Email
-                </label>
-                <input
-                  id="new-email"
-                  name="new_email"
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                  style={inputStyle}
-                  placeholder="admin.bali@modena.com"
-                />
-              </div>
-
-              <div>
                 <label htmlFor="new-role" style={labelStyle}>
                   Peran
                 </label>
@@ -834,6 +910,24 @@ function ManageAccountsContent() {
                   <option value="branch_admin">Admin Cabang</option>
                   <option value="super_admin">Super Admin (Nasional)</option>
                 </select>
+              </div>
+
+              <div>
+                <label htmlFor="new-email" style={labelStyle}>
+                  {form.role === 'super_admin' ? 'Email MODENA' : 'Email Pribadi'}
+                </label>
+                <input
+                  id="new-email"
+                  name="new_email"
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  style={inputStyle}
+                  placeholder={
+                    form.role === 'super_admin' ? 'nama@modena.com' : 'nama.pribadi@gmail.com'
+                  }
+                />
               </div>
 
               {form.role === 'branch_admin' && (
@@ -856,6 +950,27 @@ function ManageAccountsContent() {
                       </option>
                     ))}
                   </select>
+                  <p
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--text-secondary)',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    ID login dibuat otomatis
+                    {form.branch ? (
+                      <>
+                        {' '}
+                        dengan format{' '}
+                        <strong style={{ fontFamily: 'monospace' }}>
+                          ADM-{getBranchCode(form.branch)}-NN
+                        </strong>
+                      </>
+                    ) : null}{' '}
+                    dan ditampilkan setelah akun dibuat. Email pribadi dipakai untuk Lupa
+                    Kata Sandi.
+                  </p>
                 </div>
               )}
 
