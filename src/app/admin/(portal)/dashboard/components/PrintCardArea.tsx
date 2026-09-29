@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/components/PrintCardArea.tsx
+// src/app/admin/(portal)/dashboard/components/PrintCardArea.tsx
 'use client';
 
 import React from 'react';
@@ -6,6 +6,7 @@ import { Image as ImageIcon, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Technician } from '@/types';
 import { getServiceCenterCardLabel } from '@/constants/service-center';
+import { getLevelCardLabel } from '@/lib/card-status';
 
 interface PrintCardAreaProps {
   printData: Technician | null;
@@ -82,18 +83,11 @@ const Logo: React.FC = () => (
   </div>
 );
 
-const LEVEL_LABELS: Record<string, string> = {
-  beginner: 'BEGINNER',
-  intermediate: 'INTERMEDIATE',
-  advance: 'ADVANCED',
-};
 
 export const PrintCardArea: React.FC<PrintCardAreaProps> = ({ printData }) => {
   if (!printData) return null;
 
-  const levelText =
-    LEVEL_LABELS[printData.technician_level] ||
-    printData.technician_level.toUpperCase();
+  const levelText = getLevelCardLabel(printData.technician_level);
 
   return (
     <div className="print-area" style={{ display: 'none' }}>

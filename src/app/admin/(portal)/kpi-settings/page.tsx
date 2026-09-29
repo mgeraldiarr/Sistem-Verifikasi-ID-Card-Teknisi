@@ -1,4 +1,4 @@
-// src/app/admin/kpi-settings/page.tsx
+// src/app/admin/(portal)/kpi-settings/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';

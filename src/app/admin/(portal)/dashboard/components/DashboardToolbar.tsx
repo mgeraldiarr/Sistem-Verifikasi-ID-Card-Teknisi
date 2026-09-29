@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/components/DashboardToolbar.tsx
+// src/app/admin/(portal)/dashboard/components/DashboardToolbar.tsx
 'use client';
 
 import React from 'react';

@@ -29,7 +29,7 @@ export interface TechnicianIdCard {
 
 export interface Technician {
   id: string;
-  technician_id: string; // e.g. MOD-T001
+  technician_id: string; // contoh: DSC-BAL-001
   employee_number: string;
   technician_name: string;
   branch: string;

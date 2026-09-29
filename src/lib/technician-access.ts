@@ -1,9 +1,5 @@
 // src/lib/technician-access.ts
 
-/** Teks petunjuk resmi yang ditampilkan pada halaman login. */
-export const TECHNICIAN_PASSWORD_HINT =
-  'Petunjuk Teknisi: Masuk menggunakan ID Teknisi pada kartu Anda (contoh: DSC-BAL-001). Password awal resmi: Modena@{4 digit terakhir No HP}.';
-
 /**
  * Kata sandi awal resmi teknisi: `Modena@{4 digit terakhir nomor HP}`.
  * Mengembalikan null bila nomor HP tidak memiliki minimal 4 digit.

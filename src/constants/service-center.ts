@@ -36,7 +36,7 @@ ServiceScopeItem[] = [
     },
 ];
 
-// Daftar 31 Cabang Resmi DSC MODENA
+// Daftar Cabang Resmi DSC MODENA (bawaan bila tabel branches belum dimigrasi)
 
 export const DSC_BRANCHES = [
     'Makassar',
@@ -83,4 +83,25 @@ export function getServiceCenterCardLabel(branch: string | null | undefined): st
     const prefix = `${(scope?.fullName ?? 'Direct Service Center').toUpperCase()} (DSC)`;
     const cleanBranch = (branch ?? '').trim().toUpperCase();
     return cleanBranch ? `${prefix} - ${cleanBranch}` : prefix;
+}
+
+/**
+ * Daftar pilihan Service Center untuk sebuah cabang DSC.
+ * Opsi utama "DSC [Cabang]", ditambah MSC flagship di kota yang sama.
+ */
+export function getDscServiceCenterOptions(branch: string): string[] {
+    if (!branch || !branch.trim()) return [];
+    const clean = branch.trim();
+
+    const stripped = clean.replace(/^(DSC|MSC)\s+/i, '');
+    const options = [`DSC ${stripped}`];
+
+    const lower = clean.toLowerCase();
+    if (lower.includes('bandung')) options.push('MSC KBP Bandung');
+    if (lower.includes('surabaya')) options.push('MSC Surabaya Mayjend Sungkono', 'MSC Surabaya GWalk');
+    if (lower.includes('jakarta')) options.push('MSC Suryo', 'MSC Kemang', 'MSC Greenlake');
+    if (lower.includes('bogor')) options.push('MSC Bogor');
+    if (clean.startsWith('MSC ') && !options.includes(clean)) options.unshift(clean);
+
+    return Array.from(new Set(options));
 }

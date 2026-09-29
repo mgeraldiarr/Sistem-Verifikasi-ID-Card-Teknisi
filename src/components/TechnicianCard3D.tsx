@@ -352,7 +352,7 @@ export default function TechnicianCard3D({
 
       {/* Petunjuk Tambahan */}
       <span style={{ fontSize: '0.75rem', color: '#888888', fontStyle: 'italic' }}>
-        💡 Ketuk kartu atau klik tombol di atas untuk membalik kartu
+        Ketuk kartu atau klik tombol di atas untuk membalik kartu
       </span>
     </div>
   );

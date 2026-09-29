@@ -1,10 +1,10 @@
-// src/app/admin/login/components/TechnicianGuideModal.tsx
+// src/app/admin/login/components/LoginGuideModal.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { X, HelpCircle, BadgeCheck, KeyRound, ShieldCheck, Mail } from 'lucide-react';
 
-interface TechnicianGuideModalProps {
+interface LoginGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
@@ -124,7 +124,7 @@ const GUIDE: Record<GuideRole, { label: string; steps: GuideStep[]; help: React.
   },
 };
 
-export const TechnicianGuideModal: React.FC<TechnicianGuideModalProps> = ({
+export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
   isOpen,
   onClose,
 }) => {

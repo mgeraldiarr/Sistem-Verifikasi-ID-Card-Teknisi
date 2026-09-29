@@ -8,8 +8,8 @@ import AuthWrapper from '@/components/AuthWrapper';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
 import { useTechnicianBranchCounts } from '@/hooks/useTechnicianBranchCounts';
 import { supabase } from '@/lib/supabase';
-import { DashboardSidebar } from './dashboard/components/DashboardSidebar';
-import { LogoutModal } from './dashboard/components/LogoutModal';
+import { PortalSidebar } from './components/sidebar/PortalSidebar';
+import { LogoutModal } from './components/LogoutModal';
 import { PortalProvider } from './portal-context';
 
 const SIDEBAR_WIDTH = '272px';
@@ -96,7 +96,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       >
         {/* Sidebar persisten — tidak ikut remount saat berpindah halaman */}
         <div className="no-print">
-          <DashboardSidebar
+          <PortalSidebar
             selectedBranch={selectedBranch}
             onSelectBranch={selectBranch}
             totalTechnicians={total}

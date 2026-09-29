@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/components/TechnicianTable.tsx
+// src/app/admin/(portal)/dashboard/components/technician-table/TechnicianTable.tsx
 'use client';
 
 import React from 'react';

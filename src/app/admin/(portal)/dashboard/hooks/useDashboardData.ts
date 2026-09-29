@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/hooks/useDashboardData.ts
+// src/app/admin/(portal)/dashboard/hooks/useDashboardData.ts
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';

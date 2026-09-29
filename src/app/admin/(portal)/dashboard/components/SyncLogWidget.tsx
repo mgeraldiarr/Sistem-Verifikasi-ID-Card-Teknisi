@@ -1,4 +1,4 @@
-// src/app/admin/dashboard/components/SyncLogWidget.tsx
+// src/app/admin/(portal)/dashboard/components/SyncLogWidget.tsx
 'use client';
 
 import React from 'react';
