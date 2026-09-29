@@ -96,34 +96,30 @@ export function generateCardNumber(technicianId: string): string {
 }
 
 /**
- * 5. FUNGSI ALGORITMA: getNextAvailableSequenceNumber
- * Mencari nomor urut positif terkecil yang belum terpakai (First-Available Gap Fill).
- * - Jika cabang baru / semua teknisi terhapus -> menghasilkan '001'.
- * - Jika ada nomor [1, 3] (nomor 2 terhapus/kosong) -> menghasilkan '002' untuk menutup lubang.
- * - Jika nomor lengkap [1, 2, 3] -> menghasilkan '004'.
+ * 5. FUNGSI ALGORITMA: getNextSequenceNumber
+ * Mengambil nomor urut tertinggi yang ada lalu menambah 1 (Max + 1).
+ * Nomor milik teknisi yang sudah dihapus TIDAK dipakai ulang, agar kartu fisik lama
+ * tidak pernah tertukar identitasnya dengan teknisi baru.
+ * - Jika cabang baru -> menghasilkan '001'.
+ * - Jika ada nomor [1, 3] -> menghasilkan '004'.
  */
-export function getNextAvailableSequenceNumber(existingIds: string[], code: string): string {
-    const usedNumbers = new Set<number>();
+export function getNextSequenceNumber(existingIds: string[], code: string): string {
+    let highest = 0;
+    const pattern = new RegExp(`^(?:DSC|MOD|ASC|SL)-${code}-(\\d+)$`, 'i');
 
     for (const id of existingIds) {
         if (!id) continue;
         // Deteksi pola akhiran angka: misal DSC-BAL-001, MOD-BAL-001, dsb.
-        const match = id.match(new RegExp(`(?:DSC|MOD|ASC|SL)-${code}-(\\d+)`, 'i'));
+        const match = id.trim().match(pattern);
         if (match) {
             const num = parseInt(match[1], 10);
-            if (!isNaN(num) && num > 0) {
-                usedNumbers.add(num);
+            if (!isNaN(num) && num > highest) {
+                highest = num;
             }
         }
     }
 
-    // Cari angka bulat positif terkecil yang belum terpakai (mulai dari 1)
-    let candidate = 1;
-    while (usedNumbers.has(candidate)) {
-        candidate++;
-    }
-
-    return String(candidate).padStart(3, '0');
+    return String(highest + 1).padStart(3, '0');
 }
 
 /**
@@ -136,7 +132,7 @@ export function generateSequentialTechnicianId(
     prefix: 'DSC' | 'ASC' | 'SL' = 'DSC'
 ): string {
     const code = getBranchCode(branchName);
-    const seq = getNextAvailableSequenceNumber(existingIds, code);
+    const seq = getNextSequenceNumber(existingIds, code);
     return `${prefix}-${code}-${seq}`;
 }
 

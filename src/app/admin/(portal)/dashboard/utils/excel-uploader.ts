@@ -10,9 +10,9 @@ import {
   parseExcelPeriod,
   parseMonthNameToPeriod,
 } from '@/lib/excel';
-import { calculateHybridKpi } from '@/lib/kpi';
+import { calculateHybridKpi, KpiWeights } from '@/lib/kpi';
 import { ExcelUploadResult, SyncErrorDetail } from '@/types';
-import { getBranchCode, getNextAvailableSequenceNumber } from '@/constants/branch_codes';
+import { getBranchCode, getNextSequenceNumber } from '@/constants/branch-codes';
 
 interface ProcessExcelUploadOptions {
   file: File;
@@ -23,6 +23,8 @@ interface ProcessExcelUploadOptions {
    * null/undefined = akses nasional (Super Admin).
    */
   restrictBranch?: string | null;
+  /** Bobot KPI aktif dari pengaturan sistem; kosong = bobot tersimpan lokal / bawaan */
+  kpiWeights?: KpiWeights;
 }
 
 /** Perbandingan nama cabang yang toleran terhadap beda spasi & huruf besar/kecil */
@@ -34,6 +36,7 @@ export async function processExcelUpload({
   file,
   supabase,
   restrictBranch = null,
+  kpiWeights,
 }: ProcessExcelUploadOptions): Promise<ExcelUploadResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -180,7 +183,7 @@ export async function processExcelUpload({
                 }
 
                 const currentList = branchAllocatedIds.get(branchCode) || [];
-                const nextSeq = getNextAvailableSequenceNumber(currentList, branchCode);
+                const nextSeq = getNextSequenceNumber(currentList, branchCode);
                 technician_id = `DSC-${branchCode}-${nextSeq}`;
 
                 // Simpan ke in-memory cache agar baris baru berikutnya di batch ini berurutan (+1)
@@ -288,7 +291,8 @@ export async function processExcelUpload({
                 repair_quality_score: repairQualityNum,
               },
               clientScoreParsed,
-              clientStatusRaw ? String(clientStatusRaw) : null
+              clientStatusRaw ? String(clientStatusRaw) : null,
+              kpiWeights
             );
 
             // E. Ekstraksi Informasi Tambahan Profil

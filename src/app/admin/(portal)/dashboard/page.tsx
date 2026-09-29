@@ -23,6 +23,7 @@ import {
   toWhatsAppNumber,
 } from "@/lib/technician-access";
 import { usePortal } from "../portal-context";
+import { useKpiWeights } from "@/hooks/useKpiWeights";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { processExcelUpload } from "./utils/excel-uploader";
 import { SyncLogWidget } from "./components/SyncLogWidget";
@@ -43,6 +44,9 @@ function AdminDashboard() {
   // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch)
   const { profile, scopedBranch, selectedBranch, selectBranch } = usePortal();
   const isBranchAdmin = profile?.role === "branch_admin";
+
+  // Bobot KPI sistem (tabel kpi_settings) untuk form & upload Excel
+  const { weights: kpiWeights } = useKpiWeights();
 
   const { technicians, lastSyncLog, loading, fetchData } = useDashboardData({
     scopedBranch,
@@ -453,6 +457,7 @@ function AdminDashboard() {
         file,
         supabase,
         restrictBranch: scopedBranch,
+        kpiWeights,
       });
 
       if (typeof window !== "undefined") {
@@ -897,6 +902,7 @@ function AdminDashboard() {
           onDelete={handleDelete}
           onSendAccess={handleSendAccess}
           canDelete={!isBranchAdmin}
+          kpiWeights={kpiWeights}
         />
 
         {/* Modal Form Tambah/Edit Teknisi */}
@@ -910,6 +916,7 @@ function AdminDashboard() {
           saving={saving}
           onClose={() => setShowForm(false)}
           onSave={handleSave}
+          kpiWeights={kpiWeights}
         />
 
       </div>

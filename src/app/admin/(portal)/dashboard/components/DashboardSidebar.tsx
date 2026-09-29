@@ -19,6 +19,7 @@ import {
   Crown,
   UserCog,
   LayoutDashboard,
+  SlidersHorizontal,
   User,
 } from 'lucide-react';
 import { SERVICE_SCOPES } from '@/constants/service-center';
@@ -271,6 +272,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               },
               { href: '/admin/accounts', label: 'Kelola Akun', icon: <UserCog size={15} /> },
               { href: '/admin/branches', label: 'Kelola Cabang', icon: <Building2 size={15} /> },
+              { href: '/admin/kpi-settings', label: 'Bobot KPI', icon: <SlidersHorizontal size={15} /> },
             ].map((item) => (
               <NavLink
                 key={item.href}

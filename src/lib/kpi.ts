@@ -43,6 +43,41 @@ export const KPI_WEIGHTS = {
 
 export const STORAGE_KEY_KPI_WEIGHTS = 'modena_kpi_weights_v1';
 
+/** Kunci baris pengaturan bobot sistem di tabel `kpi_settings` */
+export const KPI_SETTINGS_KEY = 'default_weights';
+
+/** Bentuk baris tabel `kpi_settings` (kolom numeric bisa tiba sebagai string) */
+export interface KpiSettingsRow {
+  tat_weight: number | string;
+  rtat_weight: number | string;
+  csat_weight: number | string;
+  grooming_weight: number | string;
+  service_weight: number | string;
+  repair_quality_weight: number | string;
+}
+
+export function kpiWeightsFromRow(row: KpiSettingsRow): KpiWeights {
+  return {
+    tat: Number(row.tat_weight),
+    rtat: Number(row.rtat_weight),
+    csat: Number(row.csat_weight),
+    grooming: Number(row.grooming_weight),
+    service: Number(row.service_weight),
+    repair_quality: Number(row.repair_quality_weight),
+  };
+}
+
+export function kpiWeightsToRow(weights: KpiWeights): KpiSettingsRow {
+  return {
+    tat_weight: weights.tat,
+    rtat_weight: weights.rtat,
+    csat_weight: weights.csat,
+    grooming_weight: weights.grooming,
+    service_weight: weights.service,
+    repair_quality_weight: weights.repair_quality,
+  };
+}
+
 /**
  * 2. VALIDATOR BOBOT KPI
  * Memastikan total 6 indikator persis 100%.

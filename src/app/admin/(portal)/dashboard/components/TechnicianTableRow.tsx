@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Technician, TechnicianStatus } from '@/types';
+import { DEFAULT_KPI_WEIGHTS, KpiWeights } from '@/lib/kpi';
 import { toWhatsAppNumber } from '@/lib/technician-access';
 
 interface TechnicianTableRowProps {
@@ -25,6 +26,8 @@ interface TechnicianTableRowProps {
   onSendAccess: (tech: Technician) => void;
   /** Admin Cabang tidak memiliki hak hapus data teknisi */
   canDelete?: boolean;
+  /** Bobot KPI aktif untuk label indikator */
+  kpiWeights?: KpiWeights;
 }
 
 export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
@@ -36,6 +39,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
   onDelete,
   onSendAccess,
   canDelete = true,
+  kpiWeights = DEFAULT_KPI_WEIGHTS,
 }) => {
   // Tombol WhatsApp hanya aktif bila nomor HP teknisi valid
   const whatsAppNumber = toWhatsAppNumber(tech.phone);
@@ -292,7 +296,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      TAT <span style={{ fontSize: '0.7rem' }}>(20%)</span>
+                      TAT <span style={{ fontSize: '0.7rem' }}>({kpiWeights.tat}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.tat ?? perf.kpi_score ?? '-'}
@@ -300,7 +304,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      RTAT <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                      RTAT <span style={{ fontSize: '0.7rem' }}>({kpiWeights.rtat}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.rtat ?? '-'}
@@ -308,7 +312,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      CSAT <span style={{ fontSize: '0.7rem' }}>(25%)</span>
+                      CSAT <span style={{ fontSize: '0.7rem' }}>({kpiWeights.csat}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.csat ?? (perf.csi_score ? perf.csi_score * 10 : '-')}
@@ -316,7 +320,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      Penampilan <span style={{ fontSize: '0.7rem' }}>(10%)</span>
+                      Penampilan <span style={{ fontSize: '0.7rem' }}>({kpiWeights.grooming}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.grooming_score ?? '-'}
@@ -324,7 +328,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      Pelayanan <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                      Pelayanan <span style={{ fontSize: '0.7rem' }}>({kpiWeights.service}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.service_score ?? '-'}
@@ -332,7 +336,7 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      Hasil Perbaikan <span style={{ fontSize: '0.7rem' }}>(15%)</span>
+                      Hasil Perbaikan <span style={{ fontSize: '0.7rem' }}>({kpiWeights.repair_quality}%)</span>
                     </span>
                     <strong style={{ color: 'var(--text-primary)' }}>
                       {perf.repair_quality_score ?? '-'}

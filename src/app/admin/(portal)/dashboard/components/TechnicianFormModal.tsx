@@ -14,8 +14,13 @@ import {
 } from 'lucide-react';
 import { TechnicianFormData, TechnicianStatus } from '@/types';
 import { DSC_BRANCHES } from '@/constants/service-center';
-import { getBranchCode, getNextAvailableSequenceNumber } from '@/constants/branch_codes';
-import { calculateWeightedKpi, determineTechnicianLevel } from '@/lib/kpi';
+import { getBranchCode, getNextSequenceNumber } from '@/constants/branch-codes';
+import {
+  calculateWeightedKpi,
+  DEFAULT_KPI_WEIGHTS,
+  determineTechnicianLevel,
+  KpiWeights,
+} from '@/lib/kpi';
 import { supabase } from '@/lib/supabase';
 
 interface TechnicianFormModalProps {
@@ -28,6 +33,8 @@ interface TechnicianFormModalProps {
   saving: boolean;
   onClose: () => void;
   onSave: (e: React.FormEvent) => void;
+  /** Bobot KPI aktif dari pengaturan sistem (tabel `kpi_settings`) */
+  kpiWeights?: KpiWeights;
 }
 
 /**
@@ -73,6 +80,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
   saving,
   onClose,
   onSave,
+  kpiWeights = DEFAULT_KPI_WEIGHTS,
 }) => {
   // State validasi ketat & feedback
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -89,8 +97,9 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
       grooming_score: formData.grooming_score,
       service_score: formData.service_score,
       repair_quality_score: formData.repair_quality_score,
-    });
+    }, kpiWeights);
   }, [
+    kpiWeights,
     formData.tat,
     formData.rtat,
     formData.csat,
@@ -104,16 +113,26 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
     return determineTechnicianLevel(liveKpiScore);
   }, [liveKpiScore]);
 
-  // Sinkronkan level sertifikasi otomatis & terkunci
+  // Sinkronkan level sertifikasi & skor otomatis (terkunci). Skor dicek terpisah karena
+  // skor bisa berubah tanpa berpindah level (misal 72 -> 80 tetap intermediate).
   useEffect(() => {
-    if (formData.technician_level !== liveCalculatedLevel) {
+    if (
+      formData.technician_level !== liveCalculatedLevel ||
+      formData.performance_score !== liveKpiScore
+    ) {
       setFormData((prev) => ({
         ...prev,
         technician_level: liveCalculatedLevel,
         performance_score: liveKpiScore,
       }));
     }
-  }, [liveCalculatedLevel, liveKpiScore, formData.technician_level, setFormData]);
+  }, [
+    liveCalculatedLevel,
+    liveKpiScore,
+    formData.technician_level,
+    formData.performance_score,
+    setFormData,
+  ]);
 
   // 3. FUNGSI AUTO-GENERATE ID TEKNISI DARI NOMOR URUT TERTINGGI DATABASE (misal: DSC-BAL-001)
   const generateBranchTechnicianId = useCallback(
@@ -134,7 +153,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
 
         const existingIds =
           !error && data ? data.map((r) => r.technician_id).filter(Boolean) : [];
-        const nextSeq = getNextAvailableSequenceNumber(existingIds, code);
+        const nextSeq = getNextSequenceNumber(existingIds, code);
         const formattedId = `DSC-${code}-${nextSeq}`;
 
         setFormData((prev) => ({
@@ -738,7 +757,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    TAT (20%) <span style={{ color: '#ef4444' }}>*</span>
+                    TAT ({kpiWeights.tat}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-tat"
@@ -785,7 +804,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    RTAT (15%) <span style={{ color: '#ef4444' }}>*</span>
+                    RTAT ({kpiWeights.rtat}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-rtat"
@@ -832,7 +851,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    CSAT (25%) <span style={{ color: '#ef4444' }}>*</span>
+                    CSAT ({kpiWeights.csat}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-csat"
@@ -888,7 +907,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    Penampilan (10%) <span style={{ color: '#ef4444' }}>*</span>
+                    Penampilan ({kpiWeights.grooming}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-grooming"
@@ -935,7 +954,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    Pelayanan (15%) <span style={{ color: '#ef4444' }}>*</span>
+                    Pelayanan ({kpiWeights.service}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-service"
@@ -982,7 +1001,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                       marginBottom: '0.25rem',
                     }}
                   >
-                    Hasil Perbaikan (15%) <span style={{ color: '#ef4444' }}>*</span>
+                    Hasil Perbaikan ({kpiWeights.repair_quality}%) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     id="form-repair"
