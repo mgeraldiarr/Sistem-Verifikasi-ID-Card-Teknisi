@@ -1281,16 +1281,6 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
                   }}
                   placeholder="budi.santoso@gmail.com"
                 />
-                <p
-                  style={{
-                    fontSize: '0.72rem',
-                    color: 'var(--text-secondary)',
-                    margin: '0.35rem 0 0',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Wajib diisi sebelum Kirim Akses portal. Dipakai untuk Lupa Kata Sandi.
-                </p>
               </div>
             </div>
 
