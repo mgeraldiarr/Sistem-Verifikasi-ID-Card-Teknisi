@@ -2,10 +2,9 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Building2, MapPin, Plus, Search, Users } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { PageHeading } from '@/components/PageHeading';
-import { inputStyle } from '@/components/ui/admin-styles';
-import { StatCard, statGridStyle } from '@/components/ui/StatCard';
+import { StatCard, StatRow } from '@/components/ui/StatCard';
 import { useFeedbackModals } from '@/hooks/useFeedbackModals';
 import { SuperAdminOnly } from '../portal-context';
 import { BranchesTable } from './components/BranchesTable';
@@ -37,61 +36,36 @@ function ManageBranchesContent() {
   return (
     <>
       <PageHeading
-        title="Kelola Cabang"
-        subtitle="Master cabang DSC / ASC / SL"
-        icon={<Building2 size={19} />}
+        title="Kelola cabang"
+        subtitle="Master cabang DSC, ASC, dan SL yang dipakai untuk data teknisi dan akun admin."
+        actions={
+          <button type="button" onClick={() => setShowCreate(true)} className="btn btn-primary">
+            <Plus size={16} />
+            Tambah cabang
+          </button>
+        }
       />
 
-      <div style={statGridStyle}>
-        <StatCard icon={<MapPin size={14} />} value={stats.total} label="Total Cabang" />
-        <StatCard icon={<Building2 size={14} />} value={stats.active} label="Cabang Aktif" />
-        <StatCard icon={<Users size={14} />} value={stats.assigned} label="Sudah Ada Admin" />
-      </div>
+      <StatRow>
+        <StatCard value={stats.total} label="Total cabang" />
+        <StatCard value={stats.active} label="Cabang aktif" />
+        <StatCard value={stats.assigned} label="Sudah punya admin" />
+      </StatRow>
 
-      {/* TOOLBAR */}
-      <div
-        className="modena-card"
-        style={{
-          padding: '0.9rem 1rem',
-          marginBottom: '1.25rem',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-          <Search
-            size={15}
-            style={{
-              position: 'absolute',
-              left: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
-            }}
-          />
+      <div className="toolbar" role="search">
+        <div className="input-wrap grow">
+          <Search size={16} className="input-icon" />
           <input
             id="branch-search"
             name="branch_search"
-            type="text"
+            type="search"
+            className="input"
             aria-label="Cari cabang"
-            placeholder="Cari nama cabang..."
+            placeholder="Cari nama cabang"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ ...inputStyle, paddingLeft: '32px' }}
           />
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="modena-btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
-        >
-          <Plus size={16} /> Tambah Cabang
-        </button>
       </div>
 
       <BranchesTable
@@ -104,17 +78,9 @@ function ManageBranchesContent() {
         onDelete={deleteBranch}
       />
 
-      <p
-        style={{
-          marginTop: '1rem',
-          fontSize: '0.75rem',
-          color: 'var(--text-secondary)',
-          lineHeight: 1.6,
-        }}
-      >
-        Nama cabang dipakai sebagai kunci isolasi data pada tabel teknisi dan akun. Penggantian
-        nama cabang belum didukung dari halaman ini karena akan memutus keterkaitan data yang
-        sudah ada — gunakan nonaktifkan lalu tambah cabang baru bila diperlukan.
+      <p className="footnote">
+        Nama cabang menjadi kunci pemisah data teknisi dan akun, sehingga belum bisa diganti dari
+        halaman ini. Untuk mengganti nama, nonaktifkan cabang lama lalu tambahkan cabang baru.
       </p>
 
       {showCreate && (

@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { thStyle } from '@/components/ui/admin-styles';
 import { UserProfile } from '@/types';
 import { AccountRow, AccountRowActions } from './AccountRow';
 
@@ -23,20 +22,27 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   branchNames,
   ...actions
 }) => (
-  <div className="modena-card" style={{ padding: 0, overflowX: 'auto' }}>
+  <div className="table-panel">
     {loading ? (
-      <div style={{ padding: '3.5rem', display: 'flex', justifyContent: 'center' }}>
-        <Loader2 size={32} color="var(--bg-dark)" className="animate-spin-custom" />
+      <div className="table-loading" aria-label="Memuat akun">
+        <Loader2 size={24} className="spin" />
+      </div>
+    ) : accounts.length === 0 ? (
+      <div className="table-empty">
+        <strong>Tidak ada akun yang cocok</strong>
+        Ubah kata kunci atau pilih peran lain.
       </div>
     ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+      <table className="data-table">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: '#F9FAFB' }}>
-            <th style={thStyle}>Pengguna</th>
-            <th style={thStyle}>Peran</th>
-            <th style={thStyle}>Cabang</th>
-            <th style={thStyle}>Status</th>
-            <th style={{ ...thStyle, textAlign: 'right' }}>Aksi</th>
+          <tr>
+            <th scope="col">Pengguna</th>
+            <th scope="col">Peran</th>
+            <th scope="col">Cabang</th>
+            <th scope="col">Status</th>
+            <th scope="col" className="col-actions">
+              <span className="sr-only">Aksi</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -50,22 +56,6 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
               {...actions}
             />
           ))}
-
-          {accounts.length === 0 && (
-            <tr>
-              <td
-                colSpan={5}
-                style={{
-                  textAlign: 'center',
-                  padding: '3rem',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Tidak ada akun yang cocok dengan pencarian.
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
     )}

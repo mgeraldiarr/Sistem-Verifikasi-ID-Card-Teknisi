@@ -2,13 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, X } from 'lucide-react';
-import {
-  formErrorStyle,
-  inputStyle,
-  labelStyle,
-  modalOverlayStyle,
-} from '@/components/ui/admin-styles';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { SERVICE_SCOPES } from '@/constants/service-center';
 import { ServiceTypeCode } from '@/types';
 
@@ -17,6 +12,8 @@ interface CreateBranchModalProps {
   /** Mengembalikan pesan error, atau null bila cabang berhasil ditambahkan */
   onCreate: (name: string, serviceType: ServiceTypeCode) => Promise<string | null>;
 }
+
+const FORM_ID = 'create-branch-form';
 
 export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, onCreate }) => {
   const [name, setName] = useState('');
@@ -39,90 +36,72 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, o
   };
 
   return (
-    <div style={modalOverlayStyle}>
-      <div
-        className="modena-card"
-        role="dialog"
-        aria-labelledby="create-branch-title"
-        style={{ width: '100%', maxWidth: '420px' }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.25rem',
-          }}
-        >
-          <h2 id="create-branch-title" style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>
-            Tambah Cabang
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            style={{ background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}
-          >
-            <X size={20} />
+    <Modal
+      width={420}
+      onClose={onClose}
+      dismissible={!creating}
+      title="Tambah cabang"
+      footer={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={creating}>
+            Batal
           </button>
+          <button type="submit" form={FORM_ID} disabled={creating} className="btn btn-primary">
+            {creating && <Loader2 size={16} className="spin" />}
+            Simpan cabang
+          </button>
+        </>
+      }
+    >
+      <form
+        id={FORM_ID}
+        onSubmit={handleSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+      >
+        {error && (
+          <div className="alert alert-error" role="alert">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="field">
+          <label htmlFor="branch-name" className="label">
+            Nama cabang
+          </label>
+          <input
+            id="branch-name"
+            name="branch_name"
+            type="text"
+            required
+            maxLength={100}
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Cirebon"
+          />
         </div>
 
-        {error && <div style={formErrorStyle}>{error}</div>}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label htmlFor="branch-name" style={labelStyle}>
-              Nama Cabang
-            </label>
-            <input
-              id="branch-name"
-              name="branch_name"
-              type="text"
-              required
-              maxLength={100}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={inputStyle}
-              placeholder="Contoh: Cirebon"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="branch-type" style={labelStyle}>
-              Ruang Lingkup Layanan
-            </label>
-            <select
-              id="branch-type"
-              name="branch_type"
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value as ServiceTypeCode)}
-              style={{ ...inputStyle, cursor: 'pointer' }}
-            >
-              {SERVICE_SCOPES.map((scope) => (
-                <option key={scope.code} value={scope.code}>
-                  {scope.code} — {scope.fullName}
-                  {scope.isActive ? '' : ' (Belum Aktif)'}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            disabled={creating}
-            className="modena-btn-primary"
-            style={{
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
+        <div className="field">
+          <label htmlFor="branch-type" className="label">
+            Lingkup layanan
+          </label>
+          <select
+            id="branch-type"
+            name="branch_type"
+            className="select"
+            value={serviceType}
+            onChange={(e) => setServiceType(e.target.value as ServiceTypeCode)}
           >
-            {creating ? <Loader2 size={17} className="animate-spin-custom" /> : 'SIMPAN CABANG'}
-          </button>
-        </form>
-      </div>
-    </div>
+            {SERVICE_SCOPES.map((scope) => (
+              <option key={scope.code} value={scope.code}>
+                {scope.code}, {scope.fullName}
+                {scope.isActive ? '' : ' (belum aktif)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      </form>
+    </Modal>
   );
 };
