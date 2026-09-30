@@ -7,7 +7,6 @@ import { Eye, EyeOff, HelpCircle, Loader2 } from 'lucide-react';
 import { getRoleHomeRoute } from '@/hooks/useAuthProfile';
 import { supabase } from '@/lib/supabase';
 import { UserRole } from '@/types';
-import { inputStyle, labelStyle, linkButtonStyle, submitButtonStyle } from './login-styles';
 
 interface LoginFormProps {
   onError: (message: string | null) => void;
@@ -70,13 +69,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword,
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
-      >
-        <div>
-          <label htmlFor="login-identifier" style={labelStyle}>
-            Login
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="field">
+          <label htmlFor="login-identifier" className="label">
+            ID pengguna atau email
           </label>
           <input
             id="login-identifier"
@@ -86,51 +82,42 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword,
             autoCapitalize="characters"
             spellCheck={false}
             required
+            className="input"
+            style={{ minHeight: '44px' }}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            style={inputStyle}
-            placeholder="Email atau ID Pengguna"
+            placeholder="DSC-BAL-001"
           />
         </div>
 
-        <div>
-          <label htmlFor="login-password" style={labelStyle}>
-            Kata Sandi
+        <div className="field">
+          <label htmlFor="login-password" className="label">
+            Kata sandi
+            <button
+              type="button"
+              className="btn-link label-aside"
+              onClick={() => onForgotPassword(identifier.includes('@') ? identifier.trim() : '')}
+            >
+              Lupa kata sandi?
+            </button>
           </label>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="input-wrap">
             <input
               id="login-password"
               name="login_password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               required
+              className="input"
+              style={{ minHeight: '44px', paddingRight: '44px' }}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ ...inputStyle, paddingRight: '2.5rem' }}
-              placeholder="••••••••"
             />
             <button
               type="button"
+              className="icon-btn input-trail"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-              style={{
-                position: 'absolute',
-                right: '0.75rem',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '4px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -140,61 +127,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword,
         <button
           type="submit"
           disabled={loading}
-          className="modena-btn-primary"
-          style={{ ...submitButtonStyle, marginTop: '0.5rem' }}
+          className="btn btn-primary btn-block"
+          style={{ minHeight: '46px', marginTop: '4px' }}
         >
-          {loading ? <Loader2 size={18} className="animate-spin-custom" /> : 'Masuk'}
+          {loading && <Loader2 size={18} className="spin" />}
+          {loading ? 'Memeriksa…' : 'Masuk'}
         </button>
       </form>
 
       <button
         type="button"
-        onClick={() => onForgotPassword(identifier.includes('@') ? identifier.trim() : '')}
-        style={{ ...linkButtonStyle, textDecoration: 'underline' }}
+        onClick={onOpenGuide}
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: '12px' }}
       >
-        Lupa Kata Sandi?
+        <HelpCircle size={16} />
+        Belum tahu ID atau kata sandi Anda?
       </button>
-
-      {/* Panduan masuk untuk Teknisi & Admin Cabang */}
-      <div
-        style={{
-          marginTop: '1.25rem',
-          paddingTop: '1rem',
-          borderTop: '1px solid var(--border-color)',
-        }}
-      >
-        <button
-          type="button"
-          onClick={onOpenGuide}
-          style={{
-            width: '100%',
-            padding: '0.65rem 0.85rem',
-            borderRadius: '8px',
-            backgroundColor: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-secondary)',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.45rem',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--text-primary)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-color)';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-          }}
-        >
-          <HelpCircle size={15} color="var(--accent-red)" />
-          <span>Panduan Masuk</span>
-        </button>
-      </div>
     </>
   );
 };

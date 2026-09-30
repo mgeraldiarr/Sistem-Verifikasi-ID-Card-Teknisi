@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { inputStyle, labelStyle, linkButtonStyle, submitButtonStyle } from './login-styles';
 
 interface ForgotPasswordFormProps {
   initialEmail: string;
@@ -46,13 +45,10 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
-      >
-        <div>
-          <label htmlFor="reset-email" style={labelStyle}>
-            Email Terdaftar
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="field">
+          <label htmlFor="reset-email" className="label">
+            Email terdaftar
           </label>
           <input
             id="reset-email"
@@ -60,46 +56,37 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
             type="email"
             autoComplete="email"
             required
+            className="input"
+            style={{ minHeight: '44px' }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
-            placeholder="nama@modena.com"
+            placeholder="nama@gmail.com"
           />
-          <p
-            style={{
-              fontSize: '0.75rem',
-              color: 'var(--text-secondary)',
-              marginTop: '0.5rem',
-              lineHeight: 1.5,
-            }}
-          >
-            Tautan pengaturan ulang hanya dapat dikirim ke email. Teknisi tanpa email terdaftar
-            harap menghubungi Admin Cabang.
+          <p className="hint">
+            Tautan hanya dapat dikirim ke email. Teknisi tanpa email terdaftar dapat menghubungi
+            Admin Cabang.
           </p>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="modena-btn-primary"
-          style={submitButtonStyle}
+          className="btn btn-primary btn-block"
+          style={{ minHeight: '46px' }}
         >
-          {loading ? <Loader2 size={18} className="animate-spin-custom" /> : 'KIRIM TAUTAN RESET'}
+          {loading && <Loader2 size={18} className="spin" />}
+          Kirim tautan
         </button>
       </form>
 
       <button
         type="button"
         onClick={onBack}
-        style={{
-          ...linkButtonStyle,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.35rem',
-        }}
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: '12px' }}
       >
-        <ArrowLeft size={14} /> Kembali ke Halaman Masuk
+        <ArrowLeft size={16} />
+        Kembali ke halaman masuk
       </button>
     </>
   );
