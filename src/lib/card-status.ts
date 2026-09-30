@@ -2,14 +2,14 @@
 import { TechnicianIdCard, TechnicianLevel, TechnicianStatus } from '@/types';
 
 const LEVEL_CARD_LABELS: Record<TechnicianLevel, string> = {
-  beginner: 'BEGINNER',
-  intermediate: 'INTERMEDIATE',
-  advance: 'ADVANCED',
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advance: 'Advanced',
 };
 
 /** Label level yang tercetak di kartu (digital & fisik). */
 export function getLevelCardLabel(level: TechnicianLevel | string): string {
-  return LEVEL_CARD_LABELS[level as TechnicianLevel] || String(level).toUpperCase();
+  return LEVEL_CARD_LABELS[level as TechnicianLevel] || String(level);
 }
 
 export interface CardStatusResult {
