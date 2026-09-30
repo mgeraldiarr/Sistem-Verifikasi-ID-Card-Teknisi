@@ -78,17 +78,17 @@ export function useMyTechnicianCard(technicianRowId: string | null, profileLoadi
 
   const card = useMemo(() => {
     if (!technician) {
-      return { isValid: false, formattedExpiryDate: '-', statusLabel: 'MEMUAT DATA', levelText: '' };
+      return { isValid: false, formattedExpiryDate: '-', statusLabel: 'Memuat data', levelText: '' };
     }
 
     const cardInfo = technician.technician_id_cards?.[0] ?? null;
     const status = evaluateCardStatus(technician.technician_status, cardInfo);
 
-    let statusLabel = 'KARTU DIGITAL AKTIF';
-    if (!status.isTechnicianActive) statusLabel = 'STATUS TEKNISI NONAKTIF';
-    else if (!status.hasCard) statusLabel = 'KARTU BELUM DITERBITKAN';
-    else if (!status.isCardActive) statusLabel = 'KARTU DITANGGUHKAN';
-    else if (status.isExpired) statusLabel = 'KARTU KADALUARSA';
+    let statusLabel = 'Kartu digital aktif';
+    if (!status.isTechnicianActive) statusLabel = 'Status teknisi nonaktif';
+    else if (!status.hasCard) statusLabel = 'Kartu belum diterbitkan';
+    else if (!status.isCardActive) statusLabel = 'Kartu ditangguhkan';
+    else if (status.isExpired) statusLabel = 'Kartu kedaluwarsa';
 
     return {
       isValid: status.isValid,
