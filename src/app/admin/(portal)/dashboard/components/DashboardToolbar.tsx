@@ -2,86 +2,50 @@
 'use client';
 
 import React from 'react';
-import { Calendar, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
+import { FileDown, FileUp, Loader2, Plus } from 'lucide-react';
+import { PageHeading } from '@/components/PageHeading';
 import { downloadMasterTemplateExcel } from '@/lib/template-generator';
 
 interface DashboardToolbarProps {
+  /** Konteks data yang sedang tampil, misal "DSC Bandung · YTD 2026" */
+  subtitle: React.ReactNode;
   uploadingExcel: boolean;
   onExcelUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAddTechnician: () => void;
   onDownloadTemplate?: () => void;
 }
 
+/** Judul halaman dashboard beserta aksi utama: template, upload Excel, tambah teknisi. */
 export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
+  subtitle,
   uploadingExcel,
   onExcelUpload,
   onAddTechnician,
   onDownloadTemplate,
-}) => {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap',
-        gap: '1rem',
-      }}
-    >
-      <h2
-        style={{
-          fontSize: '1.5rem',
-          fontWeight: 800,
-          color: 'var(--text-primary)',
-        }}
-      >
-        Daftar Teknisi
-      </h2>
-      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+}) => (
+  <PageHeading
+    title="Daftar teknisi"
+    subtitle={subtitle}
+    actions={
+      <>
         <button
           type="button"
-          onClick={() =>
-            onDownloadTemplate ? onDownloadTemplate() : downloadMasterTemplateExcel()
-          }
-          className="modena-btn-secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            borderRadius: '4px',
-            padding: '10px 16px',
-            fontSize: '0.825rem',
-            cursor: 'pointer',
-          }}
-          title="Download Master Template Excel 12 Kolom Evaluasi Teknisi MODENA"
+          onClick={() => (onDownloadTemplate ? onDownloadTemplate() : downloadMasterTemplateExcel())}
+          className="btn btn-secondary"
+          title="Unduh template Excel evaluasi teknisi, terisi teknisi yang sedang tampil"
         >
-          <FileSpreadsheet size={16} color="var(--accent-red)" />
-          <span>Download Template</span>
+          <FileDown size={16} />
+          <span>Template</span>
         </button>
 
         <label
           htmlFor="excel-file-input"
-          className="modena-btn-secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            borderRadius: '4px',
-            padding: '10px 18px',
-            fontSize: '0.825rem',
-            cursor: 'pointer',
-          }}
+          className="btn btn-secondary"
+          aria-disabled={uploadingExcel}
+          style={uploadingExcel ? { opacity: 0.6, cursor: 'progress' } : undefined}
         >
-          {uploadingExcel ? (
-            <>
-              <Loader2 size={16} className="animate-spin-custom" /> Memproses...
-            </>
-          ) : (
-            <>
-              <Calendar size={16} /> Upload Excel
-            </>
-          )}
+          {uploadingExcel ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}
+          <span>{uploadingExcel ? 'Memproses…' : 'Upload Excel'}</span>
           <input
             id="excel-file-input"
             name="excel_file_input"
@@ -89,24 +53,15 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
             accept=".xlsx, .xls"
             onChange={onExcelUpload}
             disabled={uploadingExcel}
-            style={{ display: 'none' }}
+            className="sr-only"
           />
         </label>
-        <button
-          onClick={onAddTechnician}
-          className="modena-btn-primary"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            borderRadius: '4px',
-            padding: '10px 18px',
-            fontSize: '0.825rem',
-          }}
-        >
-          <Plus size={16} /> Tambah Teknisi
+
+        <button type="button" onClick={onAddTechnician} className="btn btn-primary">
+          <Plus size={16} />
+          <span>Tambah teknisi</span>
         </button>
-      </div>
-    </div>
-  );
-};
+      </>
+    }
+  />
+);

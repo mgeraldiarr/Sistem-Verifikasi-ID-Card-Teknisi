@@ -79,24 +79,20 @@ function AdminDashboard() {
     <>
       {/* Sidebar & kerangka halaman disediakan layout portal */}
       <div className="no-print">
-        <SyncLogWidget
-          lastSyncLog={lastSyncLog}
-          lastFileName={excel.lastFileName}
-          onRefresh={fetchData}
-        />
-
-        <SkillDistributionWidget
-          stats={skillStats}
-          periodLabel={buildPeriodLabel(filters.year, filters.month)}
-          branchLabel={buildBranchLabel(selectedBranch, DSC_BRANCHES.length)}
-          loading={loading}
-        />
-
         <DashboardToolbar
+          subtitle={`${buildBranchLabel(selectedBranch, DSC_BRANCHES.length)}, ${buildPeriodLabel(filters.year, filters.month)}`}
           uploadingExcel={excel.uploadingExcel}
           onExcelUpload={excel.handleExcelUpload}
           onAddTechnician={() => form.openForm()}
           onDownloadTemplate={handleDownloadTemplate}
+        />
+
+        <SkillDistributionWidget stats={skillStats} loading={loading} />
+
+        <SyncLogWidget
+          lastSyncLog={lastSyncLog}
+          lastFileName={excel.lastFileName}
+          onRefresh={fetchData}
         />
 
         <DashboardFilters
@@ -114,6 +110,7 @@ function AdminDashboard() {
           filterStatus={filters.status}
           setFilterStatus={filters.setStatus}
           onResetFilters={filters.resetFilters}
+          resultCount={filteredTechnicians.length}
         />
 
         <TechnicianTable

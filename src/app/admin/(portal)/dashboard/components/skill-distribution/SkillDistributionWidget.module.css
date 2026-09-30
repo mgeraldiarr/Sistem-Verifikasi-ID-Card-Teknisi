@@ -1,0 +1,159 @@
+.widget {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .widget {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+}
+
+.distribution {
+  padding: 18px 16px;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .distribution {
+    padding: 22px 24px;
+  }
+}
+
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.total {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalLabel {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.bar {
+  display: flex;
+  height: 10px;
+  margin: 16px 0 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--surface-sunk);
+  box-shadow: inset 0 0 0 1px var(--line);
+  gap: 2px;
+}
+
+.segment {
+  height: 100%;
+  transition: width 0.4s ease-out;
+}
+.beginner {
+  background: var(--lvl-beginner);
+}
+.intermediate {
+  background: var(--lvl-intermediate);
+}
+.advance {
+  background: var(--lvl-advance);
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.legendItem dd {
+  margin: 0;
+}
+
+.count {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+
+.percent {
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.range {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 479px) {
+  .range {
+    display: none;
+  }
+  .count {
+    font-size: 20px;
+  }
+}
+
+.averages {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunk);
+}
+
+.averages > div {
+  padding: 16px;
+}
+
+.averages > div + div {
+  border-left: 1px solid var(--line);
+}
+
+@media (min-width: 900px) {
+  .averages {
+    grid-template-columns: 1fr;
+    border-top: none;
+    border-left: 1px solid var(--line);
+  }
+  .averages > div {
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .averages > div + div {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}
+
+.averages dt {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.metric {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric small {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 2px;
+}

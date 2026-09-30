@@ -65,14 +65,14 @@ function monthName(yearMonth: string): string {
   return MONTH_NAMES[monthIndex] || yearMonth;
 }
 
-/** Label periode YTD untuk widget, mengikuti filter bulan/tahun aktif. */
+/** Label periode kumulatif (YTD) untuk konteks dashboard, mengikuti filter bulan/tahun aktif. */
 export function buildPeriodLabel(year: string, month: string): string {
-  if (year && month) return `YTD Jan - ${monthName(month)} ${year}`;
-  if (year) return `YTD ${year} (Jan - Des)`;
-  if (month) return `YTD ${monthName(month)} ${month.split('-')[0] || ''}`;
-  return 'YTD Kumulatif (Semua Periode)';
+  if (year && month) return `kumulatif Januari–${monthName(month)} ${year}`;
+  if (year) return `kumulatif sepanjang ${year}`;
+  if (month) return `${monthName(month)} ${month.split('-')[0] || ''}`.trim();
+  return 'semua periode';
 }
 
 export function buildBranchLabel(branch: string, totalBranches: number): string {
-  return branch ? `DSC ${branch}` : `Semua Cabang DSC (${totalBranches} Cabang)`;
+  return branch ? `DSC ${branch}` : `Semua ${totalBranches} cabang DSC`;
 }

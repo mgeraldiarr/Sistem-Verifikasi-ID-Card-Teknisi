@@ -2,20 +2,11 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getBranchCode } from '@/constants/branch-codes';
 import { DSC_BRANCHES, getDscServiceCenterOptions } from '@/constants/service-center';
 import { TechnicianFormData } from '@/types';
-import {
-  iconLabelStyle,
-  inputStyle,
-  LabelBadge,
-  labelStyle,
-  lockedInputStyle,
-  RequiredMark,
-  splitLabelStyle,
-  twoColumnGrid,
-} from '../form-styles';
+import { fieldClass, FormSection, LabelAside, RequiredMark } from '../form-styles';
 
 interface IdentitySectionProps {
   formData: TechnicianFormData;
@@ -24,7 +15,7 @@ interface IdentitySectionProps {
   onFieldChange: (field: 'employee_number' | 'technician_name', value: string) => void;
   onBranchChange: (branch: string) => void;
   onServiceCenterChange: (serviceCenter: string) => void;
-  errorStyle: (field: string) => React.CSSProperties;
+  hasError: (field: string) => boolean;
 }
 
 /** ID teknisi (otomatis), NIK, nama, cabang, dan Service Center. */
@@ -34,97 +25,34 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
   onFieldChange,
   onBranchChange,
   onServiceCenterChange,
-  errorStyle,
+  hasError,
 }) => {
   const branchCode = formData.branch ? getBranchCode(formData.branch) : null;
   const serviceCenters = getDscServiceCenterOptions(formData.branch);
 
   return (
-    <>
-      <div style={twoColumnGrid}>
-        {/* ID TEKNISI (AUTO-GENERATE & TERKUNCI) */}
-        <div>
-          <label htmlFor="form-technician-id" style={iconLabelStyle}>
-            <Lock size={13} style={{ color: '#64748b' }} />
-            <span>ID Teknisi</span>
-            <LabelBadge>Otomatis</LabelBadge>
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              id="form-technician-id"
-              name="technician_id"
-              type="text"
-              readOnly
-              value={formData.technician_id}
-              style={{
-                ...lockedInputStyle,
-                fontWeight: 700,
-                color: formData.technician_id ? '#0f172a' : '#94a3b8',
-              }}
-              placeholder={
-                generatingId ? 'Membuat ID otomatis...' : 'Pilih cabang untuk generate ID...'
-              }
-            />
-            {generatingId && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-              >
-                <Loader2 size={16} className="animate-spin-custom" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* NOMOR KARYAWAN (NIK) */}
-        <div>
-          <label htmlFor="form-employee-number" style={labelStyle}>
-            Nomor Karyawan (NIK) <RequiredMark />
-          </label>
-          <input
-            id="form-employee-number"
-            name="employee_number"
-            type="text"
-            value={formData.employee_number}
-            onChange={(e) => onFieldChange('employee_number', e.target.value)}
-            style={{ ...inputStyle, ...errorStyle('employee_number') }}
-            placeholder="Contoh: 10293847"
-          />
-        </div>
-      </div>
-
-      {/* NAMA LENGKAP TEKNISI */}
-      <div>
-        <label htmlFor="form-technician-name" style={labelStyle}>
-          Nama Lengkap Teknisi <RequiredMark />
+    <FormSection title="Identitas">
+      <div className="field">
+        <label htmlFor="form-technician-name" className="label">
+          Nama lengkap <RequiredMark />
         </label>
         <input
           id="form-technician-name"
           name="technician_name"
           type="text"
+          autoComplete="off"
           value={formData.technician_name}
           onChange={(e) => onFieldChange('technician_name', e.target.value)}
-          style={{ ...inputStyle, ...errorStyle('technician_name') }}
-          placeholder="Contoh: Budi Santoso"
+          className={fieldClass('input', hasError('technician_name'))}
+          placeholder="Budi Santoso"
         />
       </div>
 
-      {/* CABANG & SERVICE CENTER */}
-      <div style={twoColumnGrid}>
-        <div>
-          <label htmlFor="form-branch" style={splitLabelStyle}>
-            <span>
-              Cabang / Wilayah <RequiredMark />
-            </span>
-            {branchCode && branchCode !== 'MOD' && (
-              <LabelBadge tone="green" bold>
-                Kode: {branchCode}
-              </LabelBadge>
-            )}
+      <div className="grid-2">
+        <div className="field">
+          <label htmlFor="form-branch" className="label">
+            Cabang <RequiredMark />
+            {branchCode && branchCode !== 'MOD' && <LabelAside>Kode {branchCode}</LabelAside>}
           </label>
           <input
             id="form-branch"
@@ -133,8 +61,8 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
             list="dsc-branches-list"
             value={formData.branch}
             onChange={(e) => onBranchChange(e.target.value)}
-            style={{ ...inputStyle, ...errorStyle('branch') }}
-            placeholder="Pilih atau ketik cabang DSC..."
+            className={fieldClass('input', hasError('branch'))}
+            placeholder="Pilih atau ketik cabang DSC"
           />
           <datalist id="dsc-branches-list">
             {DSC_BRANCHES.map((b) => (
@@ -145,26 +73,20 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
           </datalist>
         </div>
 
-        {/* SERVICE CENTER (PILIHAN KHUSUS LINGKUP DSC) */}
-        <div>
-          <label htmlFor="form-service-center" style={splitLabelStyle}>
-            <span>Service Center</span>
-            <LabelBadge tone="green">Lingkup DSC</LabelBadge>
+        <div className="field">
+          <label htmlFor="form-service-center" className="label">
+            Service center
           </label>
           <select
             id="form-service-center"
             name="service_center"
+            className="select"
             value={formData.service_center}
             onChange={(e) => onServiceCenterChange(e.target.value)}
-            style={{
-              ...inputStyle,
-              backgroundColor: '#FFFFFF',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            disabled={serviceCenters.length === 0}
           >
             {serviceCenters.length === 0 ? (
-              <option value="">Pilih cabang terlebih dahulu...</option>
+              <option value="">Pilih cabang dulu</option>
             ) : (
               serviceCenters.map((sc) => (
                 <option key={sc} value={sc}>
@@ -175,6 +97,49 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
           </select>
         </div>
       </div>
-    </>
+
+      <div className="grid-2">
+        {/* ID TEKNISI (AUTO-GENERATE & TERKUNCI) */}
+        <div className="field">
+          <label htmlFor="form-technician-id" className="label">
+            ID teknisi
+            <LabelAside>Dibuat otomatis dari cabang</LabelAside>
+          </label>
+          <div className="input-wrap">
+            <input
+              id="form-technician-id"
+              name="technician_id"
+              type="text"
+              readOnly
+              className="input tnum"
+              value={formData.technician_id}
+              style={{ fontWeight: formData.technician_id ? 600 : 400 }}
+              placeholder={generatingId ? 'Membuat ID…' : 'Terisi setelah cabang dipilih'}
+            />
+            {generatingId && (
+              <span className="input-suffix">
+                <Loader2 size={16} className="spin" />
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="form-employee-number" className="label">
+            Nomor karyawan (NIK) <RequiredMark />
+          </label>
+          <input
+            id="form-employee-number"
+            name="employee_number"
+            type="text"
+            inputMode="numeric"
+            value={formData.employee_number}
+            onChange={(e) => onFieldChange('employee_number', e.target.value)}
+            className={fieldClass('input', hasError('employee_number'))}
+            placeholder="10293847"
+          />
+        </div>
+      </div>
+    </FormSection>
   );
 };
