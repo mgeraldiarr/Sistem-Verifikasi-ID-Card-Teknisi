@@ -55,33 +55,10 @@ export function SuperAdminOnly({ children }: { children: React.ReactNode }) {
 
   if (!isAllowed) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.85rem',
-          padding: '4rem 1.5rem',
-          textAlign: 'center',
-        }}
-      >
-        <ShieldAlert size={38} color="var(--accent-red)" />
-        <h2 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>
-          403 — Khusus Super Admin
-        </h2>
-        <p
-          style={{
-            fontSize: '0.85rem',
-            color: 'var(--text-secondary)',
-            margin: 0,
-            maxWidth: '360px',
-            lineHeight: 1.6,
-          }}
-        >
-          Halaman administrasi sistem hanya dapat dibuka oleh Super Admin. Anda sedang
-          dialihkan kembali ke dashboard.
-        </p>
+      <div className="table-empty" style={{ maxWidth: '420px', margin: '48px auto' }}>
+        <ShieldAlert size={28} color="var(--red)" style={{ marginBottom: '12px' }} />
+        <strong>Khusus Super Admin</strong>
+        Halaman ini hanya dapat dibuka oleh Super Admin. Anda sedang dialihkan ke daftar teknisi.
       </div>
     );
   }

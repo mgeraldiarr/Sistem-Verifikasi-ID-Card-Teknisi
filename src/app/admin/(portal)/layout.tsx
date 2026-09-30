@@ -1,9 +1,9 @@
 // src/app/admin/(portal)/layout.tsx
 'use client';
 
-import React, { Suspense, useCallback, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
 import { useTechnicianBranchCounts } from '@/hooks/useTechnicianBranchCounts';
@@ -11,8 +11,6 @@ import { supabase } from '@/lib/supabase';
 import { PortalSidebar } from './components/sidebar/PortalSidebar';
 import { LogoutModal } from './components/LogoutModal';
 import { PortalProvider } from './portal-context';
-
-const SIDEBAR_WIDTH = '272px';
 
 /** Parameter filter yang diingat per cabang saat pengguna berpindah cabang */
 const FILTER_KEYS = ['q', 'month', 'year', 'level', 'status'] as const;
@@ -28,6 +26,22 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const { counts, total } = useTechnicianBranchCounts();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  // Sidebar tampil sebagai drawer di layar < 1024px
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Tutup drawer setiap kali halaman atau cabang kerja berganti
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawerOpen]);
 
   // Memori filter per cabang: disimpan di ref karena hanya dibaca saat berpindah cabang
   const branchFilterMemory = useRef<Record<string, BranchFilterState>>({});
@@ -90,32 +104,40 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     <PortalProvider
       value={{ profile, scopedBranch, selectedBranch, selectBranch, refreshProfile }}
     >
-      <div
-        className="portal-shell"
-        style={{ backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}
-      >
-        {/* Sidebar persisten — tidak ikut remount saat berpindah halaman */}
-        <div className="no-print">
-          <PortalSidebar
-            selectedBranch={selectedBranch}
-            onSelectBranch={selectBranch}
-            totalTechnicians={total}
-            techniciansBranchCounts={counts}
-            onLogout={() => setShowLogoutModal(true)}
-            profile={profile}
-            lockedBranch={scopedBranch}
-          />
-        </div>
+      <div className="portal-shell">
+        <header className="topbar no-print">
+          <img src="/modena-logo-white.png" alt="MODENA" />
+          <span className="topbar-context">{selectedBranch || 'Semua cabang DSC'}</span>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Buka menu"
+            aria-expanded={drawerOpen}
+          >
+            <Menu size={22} />
+          </button>
+        </header>
 
-        <main
-          className="portal-main"
-          style={{
-            marginLeft: SIDEBAR_WIDTH,
-            minHeight: '100vh',
-            padding: '1.5rem 2rem',
-          }}
-        >
-          {children}
+        {drawerOpen && (
+          <div className="sidebar-scrim no-print" onClick={() => setDrawerOpen(false)} />
+        )}
+
+        {/* Sidebar persisten — tidak ikut remount saat berpindah halaman */}
+        <PortalSidebar
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          selectedBranch={selectedBranch}
+          onSelectBranch={selectBranch}
+          totalTechnicians={total}
+          techniciansBranchCounts={counts}
+          onLogout={() => setShowLogoutModal(true)}
+          profile={profile}
+          lockedBranch={scopedBranch}
+        />
+
+        <main className="portal-main">
+          <div className="portal-content">{children}</div>
         </main>
 
         <div className="no-print">
@@ -138,10 +160,9 @@ function ShellFallback() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--bg-secondary)',
       }}
     >
-      <Loader2 size={40} color="var(--bg-dark)" className="animate-spin-custom" />
+      <Loader2 size={28} color="var(--ink-3)" className="spin" />
     </div>
   );
 }
