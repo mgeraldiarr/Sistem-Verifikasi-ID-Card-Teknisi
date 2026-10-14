@@ -57,7 +57,6 @@ export const IdCardFront: React.FC<FaceProps & { levelText: string }> = ({
 
     <div className={styles.identity}>
       <div className={styles.name}>{technician.technician_name}</div>
-      <div className={styles.role}>Authorized Technician</div>
 
       <dl className={styles.meta}>
         <div>
