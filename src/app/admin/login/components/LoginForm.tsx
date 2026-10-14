@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, HelpCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { getRoleHomeRoute } from '@/hooks/useAuthProfile';
 import { supabase } from '@/lib/supabase';
 import { UserRole } from '@/types';
@@ -135,15 +135,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword,
         </button>
       </form>
 
-      <button
-        type="button"
-        onClick={onOpenGuide}
-        className="btn btn-ghost btn-block"
-        style={{ marginTop: '12px' }}
-      >
-        <HelpCircle size={16} />
-        Belum tahu ID atau kata sandi Anda?
-      </button>
+      <div style={{ marginTop: '16px', textAlign: 'center' }}>
+        <button type="button" onClick={onOpenGuide} className="btn-link" style={{ fontSize: '13px' }}>
+          Butuh bantuan masuk?
+        </button>
+      </div>
     </>
   );
 };

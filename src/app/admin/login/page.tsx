@@ -63,17 +63,15 @@ export default function AdminLogin() {
   };
 
   return (
-    <main className="auth-page">
+    <main className="auth-page auth-page--plain">
       <div className="auth-card">
         <div className="auth-card-body">
           <img src="/modena-logo-official.png" alt="MODENA" className="auth-logo" />
-          <h1 className="auth-title">
-            {mode === 'login' ? 'Masuk ke portal teknisi' : 'Atur ulang kata sandi'}
-          </h1>
+          <h1 className="auth-title">{mode === 'login' ? 'Masuk' : 'Atur ulang kata sandi'}</h1>
           <p className="auth-sub">
             {mode === 'login'
-              ? 'Gunakan ID teknisi, ID admin cabang, atau email Super Admin.'
-              : 'Kami kirim tautan untuk membuat kata sandi baru ke email Anda.'}
+              ? 'Gunakan ID pengguna atau email Anda.'
+              : 'Tautan untuk kata sandi baru akan dikirim ke email Anda.'}
           </p>
 
           {(error || info) && (
@@ -113,8 +111,8 @@ export default function AdminLogin() {
             )}
           </div>
         </div>
-        <div className="auth-strip">MODENA Authorized Service</div>
       </div>
+      <p className="auth-foot">MODENA Authorized Service</p>
 
       <LoginGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </main>

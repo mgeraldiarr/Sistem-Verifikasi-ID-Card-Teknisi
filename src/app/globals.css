@@ -1469,15 +1469,6 @@ img {
   font-size: 14px;
   color: var(--ink-2);
 }
-.auth-strip {
-  padding: 9px 16px;
-  background: var(--red);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-  letter-spacing: 0.02em;
-}
 .auth-foot {
   margin-top: 20px;
   font-size: 12px;
@@ -1485,6 +1476,25 @@ img {
   text-align: center;
 }
 
+/* Varian polos untuk halaman login: latar terang, kartu tanpa ornamen */
+.auth-page--plain {
+  background: var(--surface-dark-2);
+}
+.auth-page--plain .auth-card {
+  max-width: 380px;
+  box-shadow: none;
+}
+.auth-page--plain .auth-logo {
+  margin: 0 auto;
+}
+.auth-page--plain .auth-title,
+.auth-page--plain .auth-sub {
+  text-align: center;
+}
+.auth-page--plain .auth-title {
+  margin-top: 24px;
+  font-size: 22px;
+}
 .public-page {
   min-height: 100vh;
   min-height: 100dvh;

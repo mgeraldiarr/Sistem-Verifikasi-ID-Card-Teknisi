@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="auth-page">
+    <main className="auth-page auth-page--plain">
       <div className="auth-card">
         <div className="auth-card-body">
           <img src="/modena-logo-official.png" alt="MODENA" className="auth-logo" />
@@ -181,8 +181,8 @@ export default function ResetPasswordPage() {
             )}
           </div>
         </div>
-        <div className="auth-strip">MODENA Authorized Service</div>
       </div>
+      <p className="auth-foot">MODENA Authorized Service</p>
     </main>
   );
 }
