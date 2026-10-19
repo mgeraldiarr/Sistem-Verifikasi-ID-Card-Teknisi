@@ -112,7 +112,7 @@ export default function AdminLogin() {
           </div>
         </div>
       </div>
-      <p className="auth-foot">MODENA Authorized Service</p>
+      <p className="auth-foot">MODENA Service Center</p>
 
       <LoginGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </main>

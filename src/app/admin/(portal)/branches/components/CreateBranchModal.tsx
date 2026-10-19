@@ -96,7 +96,6 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, o
             {SERVICE_SCOPES.map((scope) => (
               <option key={scope.code} value={scope.code}>
                 {scope.code}, {scope.fullName}
-                {scope.isActive ? '' : ' (belum aktif)'}
               </option>
             ))}
           </select>
