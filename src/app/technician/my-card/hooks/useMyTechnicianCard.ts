@@ -12,6 +12,7 @@ const TECHNICIAN_COLUMNS = `
   employee_number,
   technician_name,
   branch,
+  service_type,
   service_center,
   photo_url,
   phone,
@@ -51,11 +52,21 @@ export function useMyTechnicianCard(technicianRowId: string | null, profileLoadi
 
     const fetchTechnician = async () => {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('technicians')
-        .select(TECHNICIAN_COLUMNS)
-        .eq('id', technicianRowId)
-        .maybeSingle();
+      const fetchColumns = (columns: string) =>
+        supabase
+          .from('technicians')
+          .select(columns)
+          .eq('id', technicianRowId)
+          .maybeSingle<Technician>();
+
+      let { data, error: fetchError } = await fetchColumns(TECHNICIAN_COLUMNS);
+
+      // Database lama tanpa kolom service_type: kartu tetap tampil sebagai DSC
+      if (fetchError) {
+        ({ data, error: fetchError } = await fetchColumns(
+          TECHNICIAN_COLUMNS.replace('service_type,', '')
+        ));
+      }
 
       if (cancelled) return;
 
@@ -64,7 +75,7 @@ export function useMyTechnicianCard(technicianRowId: string | null, profileLoadi
       } else if (!data) {
         setError('Data teknisi Anda tidak ditemukan dalam sistem.');
       } else {
-        setTechnician(data as unknown as Technician);
+        setTechnician(data);
         setError(null);
       }
       setLoading(false);

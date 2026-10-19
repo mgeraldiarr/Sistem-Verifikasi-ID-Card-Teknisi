@@ -9,6 +9,7 @@ interface TechnicianData {
   technician_id: string;
   technician_name: string;
   branch: string;
+  service_type?: string | null;
   service_center: string | null;
   photo_url: string | null;
   technician_status: TechnicianStatus;

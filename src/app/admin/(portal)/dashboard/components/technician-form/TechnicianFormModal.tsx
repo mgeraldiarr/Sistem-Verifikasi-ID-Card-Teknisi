@@ -45,13 +45,8 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [missingFields, setMissingFields] = useState<string[]>([]);
 
-  const { liveKpiScore, liveLevel, generatingId, changeBranch } = useTechnicianFormLogic({
-    show,
-    formId,
-    formData,
-    setFormData,
-    kpiWeights,
-  });
+  const { liveKpiScore, liveLevel, generatingId, branchOptions, changeBranch, changeServiceType } =
+    useTechnicianFormLogic({ show, formId, formData, setFormData, kpiWeights });
 
   const clearError = (field: string) =>
     setFieldErrors((prev) => {
@@ -120,6 +115,12 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
           <IdentitySection
             formData={formData}
             generatingId={generatingId}
+            branchOptions={branchOptions}
+            isScopeLocked={Boolean(formId)}
+            onServiceTypeChange={(serviceType) => {
+              clearError('branch');
+              changeServiceType(serviceType);
+            }}
             onFieldChange={updateField}
             onBranchChange={(branch) => {
               clearError('branch');

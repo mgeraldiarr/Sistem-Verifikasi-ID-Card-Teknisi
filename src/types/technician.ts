@@ -29,10 +29,12 @@ export interface TechnicianIdCard {
 
 export interface Technician {
   id: string;
-  technician_id: string; // contoh: DSC-BAL-001
+  technician_id: string; // contoh: DSC-BAL-001, ASC-MDN-001, SL-SBY-001
   employee_number: string;
   technician_name: string;
   branch: string;
+  /** Lingkup layanan; kosong pada database lama = DSC */
+  service_type?: ServiceTypeCode | null;
   service_center: string | null;
   photo_url: string | null;
   phone: string | null;
@@ -50,6 +52,7 @@ export interface TechnicianFormData {
   employee_number: string;
   technician_name: string;
   branch: string;
+  service_type: ServiceTypeCode;
   service_center: string;
   phone: string;
   email: string;
@@ -72,6 +75,7 @@ export interface TechnicianPublicData {
   technician_id: string;
   technician_name: string;
   branch: string;
+  service_type?: ServiceTypeCode | null;
   service_center: string | null;
   photo_url: string | null;
   technician_status: TechnicianStatus;

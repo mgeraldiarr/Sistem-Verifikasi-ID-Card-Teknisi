@@ -8,8 +8,9 @@ import {
   parseExcelPeriod,
   parseMonthNameToPeriod,
 } from '@/lib/excel';
+import { parseServiceType } from '@/constants/service-center';
 import { KpiIndicators } from '@/lib/kpi';
-import { CardStatus, TechnicianStatus } from '@/types';
+import { CardStatus, ServiceTypeCode, TechnicianStatus } from '@/types';
 import { COLUMN_ALIASES as COL } from './excel-columns';
 
 export type ExcelRow = Record<string, unknown>;
@@ -17,6 +18,8 @@ export type ExcelRow = Record<string, unknown>;
 export interface ParsedExcelRow {
   technicianName: string;
   branch: string;
+  /** Lingkup layanan dari kolom opsional; null = ditentukan saat impor */
+  serviceType: ServiceTypeCode | null;
   /** Kosong bila file tidak mencantumkan ID (akan dibuat otomatis untuk teknisi baru) */
   technicianId: string;
   employeeNumber: string;
@@ -83,6 +86,7 @@ export function parseExcelRow(row: ExcelRow): ParsedExcelRow {
   return {
     technicianName,
     branch,
+    serviceType: parseServiceType(getRowValue(row, [...COL.serviceType])),
     technicianId: text(getRowValue(row, [...COL.technicianId])),
     employeeNumber: text(getRowValue(row, [...COL.employeeNumber])),
     indicators: {

@@ -102,10 +102,17 @@ export function generateCardNumber(technicianId: string): string {
  * tidak pernah tertukar identitasnya dengan teknisi baru.
  * - Jika cabang baru -> menghasilkan '001'.
  * - Jika ada nomor [1, 3] -> menghasilkan '004'.
+ * Bila `prefix` diisi, hanya ID lingkup itu yang dihitung (DSC ikut menghitung MOD- lama),
+ * sehingga DSC, ASC, dan SL masing-masing punya nomor urut sendiri.
  */
-export function getNextSequenceNumber(existingIds: string[], code: string): string {
+export function getNextSequenceNumber(
+    existingIds: string[],
+    code: string,
+    prefix?: 'DSC' | 'ASC' | 'SL'
+): string {
     let highest = 0;
-    const pattern = new RegExp(`^(?:DSC|MOD|ASC|SL)-${code}-(\\d+)$`, 'i');
+    const prefixes = !prefix ? 'DSC|MOD|ASC|SL' : prefix === 'DSC' ? 'DSC|MOD' : prefix;
+    const pattern = new RegExp(`^(?:${prefixes})-${code}-(\\d+)$`, 'i');
 
     for (const id of existingIds) {
         if (!id) continue;
@@ -132,7 +139,7 @@ export function generateSequentialTechnicianId(
     prefix: 'DSC' | 'ASC' | 'SL' = 'DSC'
 ): string {
     const code = getBranchCode(branchName);
-    const seq = getNextSequenceNumber(existingIds, code);
+    const seq = getNextSequenceNumber(existingIds, code, prefix);
     return `${prefix}-${code}-${seq}`;
 }
 

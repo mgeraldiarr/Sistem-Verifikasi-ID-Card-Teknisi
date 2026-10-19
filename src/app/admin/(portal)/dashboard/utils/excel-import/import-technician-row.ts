@@ -1,8 +1,13 @@
 // src/app/admin/(portal)/dashboard/utils/excel-import/import-technician-row.ts
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getBranchCode, getNextSequenceNumber } from '@/constants/branch-codes';
+import {
+  DEFAULT_SERVICE_TYPE,
+  getServiceTypeFromTechnicianId,
+} from '@/constants/service-center';
 import { calculateHybridKpi, KpiWeights } from '@/lib/kpi';
 import { escapeIlike, sanitizeOrFilterValue } from '@/lib/postgrest-filters';
+import { ServiceTypeCode } from '@/types';
 import { ParsedExcelRow } from './parse-excel-row';
 
 interface ExistingTechnician {
@@ -26,15 +31,17 @@ function defaultExpiryDate(): string {
 }
 
 /**
- * Pengalokasi ID teknisi DSC-[KODE]-[NNN] selama satu kali impor.
+ * Pengalokasi ID teknisi [LINGKUP]-[KODE]-[NNN] (DSC/ASC/SL) selama satu kali impor.
  * ID yang sudah ada di database dimuat sekali per kode cabang, lalu setiap ID
  * baru dicatat agar baris berikutnya dalam file yang sama mendapat nomor +1.
+ * Nomor urut dihitung terpisah per lingkup layanan.
  */
 export function createTechnicianIdAllocator(supabase: SupabaseClient) {
   const idsByCode = new Map<string, string[]>();
+  const scopeByBranch = new Map<string, ServiceTypeCode | null>();
 
   return {
-    async allocate(branch: string): Promise<string> {
+    async allocate(branch: string, serviceType: ServiceTypeCode): Promise<string> {
       const code = getBranchCode(branch);
 
       if (!idsByCode.has(code)) {
@@ -42,13 +49,13 @@ export function createTechnicianIdAllocator(supabase: SupabaseClient) {
           .from('technicians')
           .select('technician_id')
           .or(
-            `branch.ilike.%${sanitizeOrFilterValue(branch)}%,technician_id.ilike.DSC-${code}-%,technician_id.ilike.MOD-${code}-%`
+            `branch.ilike.%${sanitizeOrFilterValue(branch)}%,technician_id.ilike.%-${code}-%`
           );
         idsByCode.set(code, (data ?? []).map((t) => t.technician_id).filter(Boolean));
       }
 
       const list = idsByCode.get(code)!;
-      const id = `DSC-${code}-${getNextSequenceNumber(list, code)}`;
+      const id = `${serviceType}-${code}-${getNextSequenceNumber(list, code, serviceType)}`;
       list.push(id);
       return id;
     },
@@ -57,6 +64,20 @@ export function createTechnicianIdAllocator(supabase: SupabaseClient) {
     remember(branch: string, technicianId: string) {
       const list = idsByCode.get(getBranchCode(branch));
       if (list && !list.includes(technicianId)) list.push(technicianId);
+    },
+
+    /** Lingkup layanan cabang menurut master `branches` (null = tidak terdaftar) */
+    async branchServiceType(branch: string): Promise<ServiceTypeCode | null> {
+      const key = branch.trim().toLowerCase();
+      if (!scopeByBranch.has(key)) {
+        const { data } = await supabase
+          .from('branches')
+          .select('service_type')
+          .ilike('name', escapeIlike(branch.trim()))
+          .maybeSingle();
+        scopeByBranch.set(key, (data?.service_type as ServiceTypeCode | undefined) ?? null);
+      }
+      return scopeByBranch.get(key)!;
     },
   };
 }
@@ -118,8 +139,15 @@ export async function importTechnicianRow(
     );
   }
 
-  const technicianId =
-    row.technicianId || existing?.technician_id || (await idAllocator.allocate(row.branch));
+  // Lingkup layanan: prefiks ID yang sudah terbit > kolom Excel > master cabang > DSC
+  const knownId = row.technicianId || existing?.technician_id || '';
+  const serviceType =
+    getServiceTypeFromTechnicianId(knownId) ??
+    row.serviceType ??
+    (await idAllocator.branchServiceType(row.branch)) ??
+    DEFAULT_SERVICE_TYPE;
+
+  const technicianId = knownId || (await idAllocator.allocate(row.branch, serviceType));
   const employeeNumber =
     row.employeeNumber ||
     existing?.employee_number ||
@@ -135,6 +163,7 @@ export async function importTechnicianRow(
     employee_number: employeeNumber,
     technician_name: row.technicianName,
     branch: row.branch,
+    service_type: serviceType,
     service_center: row.serviceCenter,
     photo_url: row.photoUrl,
     phone: row.phone,

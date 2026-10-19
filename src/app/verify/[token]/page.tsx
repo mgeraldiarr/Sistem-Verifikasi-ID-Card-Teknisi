@@ -4,6 +4,7 @@ import { evaluateCardStatus, getLevelCardLabel } from '@/lib/card-status';
 import { notFound } from 'next/navigation';
 import { Clock, ShieldCheck, ShieldX } from 'lucide-react';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
+import { TechnicianPublicData } from '@/types';
 
 // Menghindari Next.js melakukan caching halaman agar status keaktifan terupdate secara real-time
 export const dynamic = 'force-dynamic';
@@ -32,9 +33,7 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
   // Mengambil data teknisi menggunakan supabaseAdmin (bypass RLS agar status nonaktif terdeteksi dengan benar)
   // Hanya memilih kolom yang aman untuk publik (tidak menyertakan email, hp, dan nomor karyawan internal)
-  const { data: technician, error } = await supabaseAdmin
-    .from('technicians')
-    .select(`
+  const PUBLIC_COLUMNS = `
       technician_id,
       technician_name,
       branch,
@@ -47,9 +46,20 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
         card_status,
         expiry_date
       )
-    `)
-    .eq('qr_token', token)
-    .single();
+    `;
+  const fetchTechnician = (columns: string) =>
+    supabaseAdmin
+      .from('technicians')
+      .select(columns)
+      .eq('qr_token', token)
+      .single<TechnicianPublicData>();
+
+  let { data: technician, error } = await fetchTechnician(`service_type, ${PUBLIC_COLUMNS}`);
+
+  // Database lama tanpa kolom service_type: kartu tetap tampil sebagai DSC
+  if (error && error.code !== 'PGRST116') {
+    ({ data: technician, error } = await fetchTechnician(PUBLIC_COLUMNS));
+  }
 
   // Jika data tidak ditemukan (misalnya QR code lama yang telah diregenerasi / hangus)
   if (error || !technician) {

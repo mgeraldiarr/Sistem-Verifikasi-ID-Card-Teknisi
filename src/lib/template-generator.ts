@@ -150,7 +150,7 @@ export function downloadMasterTemplateExcel(
       'Nama Kolom': 'Branch',
       Wajib: 'Ya',
       Keterangan:
-        'Nama cabang DSC MODENA (contoh: Bali, Jakarta Selatan, Surabaya, Medan, dll).',
+        'Nama cabang MODENA (contoh: Bali, Jakarta Selatan, Surabaya, Medan, dll). Lingkup DSC/ASC/SL mengikuti master cabang.',
     },
     {
       No: 4,

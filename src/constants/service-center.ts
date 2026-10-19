@@ -6,8 +6,6 @@ export interface ServiceScopeItem {
     code: ServiceCenterType;
     label: string;
     fullName:string;
-    isActive: boolean;
-    badge?: string;
 }
 
 //konfigurasi 3 scope layanan
@@ -18,23 +16,51 @@ ServiceScopeItem[] = [
         code: 'DSC',
         label: 'DSC',
         fullName: 'Direct Service Center',
-        isActive: true,
     },
     {
         code: 'ASC',
         label: 'ASC',
         fullName: 'Authorized Service Center',
-        isActive: false,
-        badge: 'Coming Soon',
     },
     {
         code: 'SL',
         label: 'SL',
         fullName: 'Service Local',
-        isActive: false,
-        badge: 'Coming Soon',
     },
 ];
+
+export const DEFAULT_SERVICE_TYPE: ServiceCenterType = 'DSC';
+
+/** Menormalkan nilai lingkup layanan dari database/Excel; nilai tak dikenal -> null. */
+export function parseServiceType(value: unknown): ServiceCenterType | null {
+    const clean = String(value ?? '').trim().toUpperCase();
+    if (!clean) return null;
+
+    const byCode = SERVICE_SCOPES.find((s) => s.code === clean);
+    if (byCode) return byCode.code;
+
+    const byName = SERVICE_SCOPES.find((s) => s.fullName.toUpperCase() === clean);
+    return byName ? byName.code : null;
+}
+
+/** Lingkup layanan dari prefiks ID teknisi (DSC-/ASC-/SL-); format lama MOD- dianggap DSC. */
+export function getServiceTypeFromTechnicianId(technicianId: string | null | undefined): ServiceCenterType | null {
+    const match = (technicianId ?? '').trim().toUpperCase().match(/^(DSC|ASC|SL|MOD)-/);
+    if (!match) return null;
+    return match[1] === 'MOD' ? 'DSC' : (match[1] as ServiceCenterType);
+}
+
+/** Lingkup layanan seorang teknisi: kolom service_type, lalu prefiks ID, bawaan DSC. */
+export function getTechnicianServiceType(technician: {
+    service_type?: string | null;
+    technician_id?: string | null;
+}): ServiceCenterType {
+    return (
+        parseServiceType(technician.service_type) ??
+        getServiceTypeFromTechnicianId(technician.technician_id) ??
+        DEFAULT_SERVICE_TYPE
+    );
+}
 
 // Daftar Cabang Resmi DSC MODENA (bawaan bila tabel branches belum dimigrasi)
 
@@ -75,14 +101,28 @@ export const DSC_BRANCHES = [
 
 
 /**
- * Label resmi service center untuk footer kartu digital & cetak.
- * Contoh: "DIRECT SERVICE CENTER (DSC) - BALI"
+ * Label resmi lingkup layanan untuk footer kartu digital & cetak.
+ * Contoh: "DIRECT SERVICE CENTER (DSC) - BALI", "AUTHORIZED SERVICE CENTER (ASC) - MEDAN"
  */
-export function getServiceCenterCardLabel(branch: string | null | undefined): string {
-    const scope = SERVICE_SCOPES.find((s) => s.code === 'DSC');
-    const prefix = `${(scope?.fullName ?? 'Direct Service Center').toUpperCase()} (DSC)`;
+export function getServiceCenterCardLabel(
+    branch: string | null | undefined,
+    serviceType?: string | null
+): string {
+    const code = parseServiceType(serviceType) ?? DEFAULT_SERVICE_TYPE;
+    const scope = SERVICE_SCOPES.find((s) => s.code === code)!;
+    const prefix = `${scope.fullName.toUpperCase()} (${scope.code})`;
     const cleanBranch = (branch ?? '').trim().toUpperCase();
     return cleanBranch ? `${prefix} - ${cleanBranch}` : prefix;
+}
+
+/**
+ * Daftar pilihan Service Center untuk cabang sesuai lingkup layanannya.
+ * DSC memakai daftar DSC + MSC flagship; ASC/SL cukup "[LINGKUP] [Cabang]".
+ */
+export function getServiceCenterOptions(branch: string, serviceType: ServiceCenterType): string[] {
+    if (serviceType === 'DSC') return getDscServiceCenterOptions(branch);
+    if (!branch || !branch.trim()) return [];
+    return [`${serviceType} ${branch.trim().replace(/^(DSC|ASC|SL)\s+/i, '')}`];
 }
 
 /**
