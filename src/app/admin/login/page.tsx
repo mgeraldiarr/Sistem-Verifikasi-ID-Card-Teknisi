@@ -66,13 +66,18 @@ export default function AdminLogin() {
     <main className="auth-page auth-page--plain">
       <div className="auth-card">
         <div className="auth-card-body">
-          <img src="/modena-logo-official.png" alt="MODENA" className="auth-logo" />
-          <h1 className="auth-title">{mode === 'login' ? 'Masuk' : 'Atur ulang kata sandi'}</h1>
-          <p className="auth-sub">
-            {mode === 'login'
-              ? 'Gunakan ID pengguna atau email Anda.'
-              : 'Tautan untuk kata sandi baru akan dikirim ke email Anda.'}
-          </p>
+          <img src="/modena-logo-official.png" alt="MODENA" className="auth-logo"  />
+          <h1 style={{
+            textAlign: 'left',
+            fontSize: '22px',
+            fontWeight: 700,
+            marginTop: '20px',
+            marginBottom: '8px',
+            color: 'var(--ink)',
+            }}
+          >
+            {mode === 'login' ? 'Masuk' : 'Atur ulang kata sandi'}
+          </h1>
 
           {(error || info) && (
             <div style={{ marginTop: '20px' }}>
@@ -112,7 +117,7 @@ export default function AdminLogin() {
           </div>
         </div>
       </div>
-      <p className="auth-foot">MODENA Service Center</p>
+      <p className="auth-foot">MODENA SERVICE CENTER</p>
 
       <LoginGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </main>
