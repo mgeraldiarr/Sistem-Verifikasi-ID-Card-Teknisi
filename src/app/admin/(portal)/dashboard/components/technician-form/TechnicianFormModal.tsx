@@ -26,6 +26,8 @@ interface TechnicianFormModalProps {
   onSave: (e: React.FormEvent) => void;
   /** Bobot KPI aktif dari pengaturan sistem (tabel `kpi_settings`) */
   kpiWeights?: KpiWeights;
+  /** Cabang Admin Cabang (null = akses nasional); cabang & lingkup dikunci */
+  lockedBranch?: string | null;
 }
 
 const FORM_ID = 'technician-form';
@@ -41,6 +43,7 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
   onClose,
   onSave,
   kpiWeights = DEFAULT_KPI_WEIGHTS,
+  lockedBranch = null,
 }) => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [missingFields, setMissingFields] = useState<string[]>([]);
@@ -116,7 +119,10 @@ export const TechnicianFormModal: React.FC<TechnicianFormModalProps> = ({
             formData={formData}
             generatingId={generatingId}
             branchOptions={branchOptions}
-            isScopeLocked={Boolean(formId)}
+            scopeLockReason={
+              formId ? 'Mengikuti ID teknisi' : lockedBranch ? 'Mengikuti cabang Anda' : null
+            }
+            isBranchLocked={Boolean(lockedBranch)}
             onServiceTypeChange={(serviceType) => {
               clearError('branch');
               changeServiceType(serviceType);

@@ -12,7 +12,13 @@ import {
   parseExcelNumber,
   parseExcelPeriod,
 } from '@/lib/excel';
-import { SyncErrorDetail, SyncRecord } from '@/types';
+import {
+  DEFAULT_SERVICE_TYPE,
+  getServiceTypeFromTechnicianId,
+  parseServiceType,
+} from '@/constants/service-center';
+import { escapeIlike } from '@/lib/postgrest-filters';
+import { ServiceTypeCode, SyncErrorDetail, SyncRecord } from '@/types';
 
 // Maksimal 10 permintaan sinkronisasi per menit per IP
 const syncLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 10 });
@@ -101,6 +107,21 @@ export async function POST(req: NextRequest) {
       syncLogId = logData.id;
     }
 
+    // Lingkup layanan per cabang dari master `branches`, dimuat sekali per nama cabang
+    const branchScopeCache = new Map<string, ServiceTypeCode | null>();
+    const getBranchServiceType = async (branch: string): Promise<ServiceTypeCode | null> => {
+      const key = branch.toLowerCase();
+      if (!branchScopeCache.has(key)) {
+        const { data } = await supabaseAdmin
+          .from('branches')
+          .select('service_type')
+          .ilike('name', escapeIlike(branch))
+          .maybeSingle();
+        branchScopeCache.set(key, parseServiceType(data?.service_type));
+      }
+      return branchScopeCache.get(key)!;
+    };
+
     // 4. Lakukan pemrosesan record secara sekuensial (baris per baris)
     for (let i = 0; i < payload.length; i++) {
       const row = payload[i];
@@ -124,12 +145,21 @@ export async function POST(req: NextRequest) {
         const email = getRowValue(row, ['email', 'surel']);
         const rawStatus = getRowValue(row, ['technician_status', 'status_teknisi', 'status teknisi', 'status', 'status_keaktifan', 'status keaktifan']);
         const rawLevel = getRowValue(row, ['technician_level', 'level_teknisi', 'level teknisi', 'level', 'sertifikasi', 'level_sertifikasi', 'level sertifikasi']);
+        const rawServiceType = getRowValue(row, ['service_type', 'service type', 'lingkup_layanan', 'lingkup layanan', 'lingkup']);
+
+        // Lingkup layanan: prefiks ID (DSC-/ASC-/SL-) > kolom lingkup > master cabang > DSC
+        const service_type =
+          getServiceTypeFromTechnicianId(technician_id) ??
+          parseServiceType(rawServiceType) ??
+          (await getBranchServiceType(branch)) ??
+          DEFAULT_SERVICE_TYPE;
 
         const techData = {
           technician_id,
           employee_number,
           technician_name,
           branch,
+          service_type,
           service_center: service_center ? String(service_center).trim() : null,
           photo_url: photo_url ? String(photo_url).trim() : null,
           phone: phone ? String(phone).trim() : null,

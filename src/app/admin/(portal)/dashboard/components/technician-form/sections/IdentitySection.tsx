@@ -13,8 +13,13 @@ interface IdentitySectionProps {
   generatingId: boolean;
   /** Saran nama cabang untuk lingkup layanan yang dipilih */
   branchOptions: string[];
-  /** Lingkup tidak bisa diganti saat mengubah data (prefiks ID sudah terbit) */
-  isScopeLocked: boolean;
+  /**
+   * Alasan lingkup tidak bisa diganti (prefiks ID sudah terbit, atau Admin Cabang
+   * terkunci pada lingkup cabangnya); null = bebas dipilih
+   */
+  scopeLockReason: string | null;
+  /** Admin Cabang: cabang terkunci pada cabangnya sendiri */
+  isBranchLocked: boolean;
   onServiceTypeChange: (serviceType: ServiceTypeCode) => void;
   /** Mengubah satu field teks dan menghapus sorotan error-nya */
   onFieldChange: (field: 'employee_number' | 'technician_name', value: string) => void;
@@ -28,7 +33,8 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
   formData,
   generatingId,
   branchOptions,
-  isScopeLocked,
+  scopeLockReason,
+  isBranchLocked,
   onServiceTypeChange,
   onFieldChange,
   onBranchChange,
@@ -60,7 +66,7 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
         <div className="field">
           <label htmlFor="form-service-type" className="label">
             Lingkup layanan <RequiredMark />
-            {isScopeLocked && <LabelAside>Mengikuti ID teknisi</LabelAside>}
+            {scopeLockReason && <LabelAside>{scopeLockReason}</LabelAside>}
           </label>
           <select
             id="form-service-type"
@@ -68,7 +74,7 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
             className="select"
             value={formData.service_type}
             onChange={(e) => onServiceTypeChange(e.target.value as ServiceTypeCode)}
-            disabled={isScopeLocked}
+            disabled={Boolean(scopeLockReason)}
           >
             {SERVICE_SCOPES.map((scope) => (
               <option key={scope.code} value={scope.code}>
@@ -89,9 +95,11 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
             id="form-branch"
             name="branch"
             type="text"
-            list="scope-branches-list"
+            list={isBranchLocked ? undefined : 'scope-branches-list'}
             value={formData.branch}
             onChange={(e) => onBranchChange(e.target.value)}
+            readOnly={isBranchLocked}
+            title={isBranchLocked ? 'Admin Cabang hanya dapat mendaftarkan teknisi di cabangnya' : undefined}
             className={fieldClass('input', hasError('branch'))}
             placeholder={`Pilih atau ketik cabang ${formData.service_type}`}
           />

@@ -160,6 +160,7 @@ function AdminDashboard() {
           onClose={form.closeForm}
           onSave={form.handleSave}
           kpiWeights={kpiWeights}
+          lockedBranch={scopedBranch}
         />
       </div>
 
