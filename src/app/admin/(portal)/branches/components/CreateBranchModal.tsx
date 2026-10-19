@@ -8,6 +8,8 @@ import { SERVICE_SCOPES } from '@/constants/service-center';
 import { ServiceTypeCode } from '@/types';
 
 interface CreateBranchModalProps {
+  /** Lingkup yang sedang dibuka di halaman Kelola Cabang */
+  defaultServiceType: ServiceTypeCode;
   onClose: () => void;
   /** Mengembalikan pesan error, atau null bila cabang berhasil ditambahkan */
   onCreate: (name: string, serviceType: ServiceTypeCode) => Promise<string | null>;
@@ -15,11 +17,16 @@ interface CreateBranchModalProps {
 
 const FORM_ID = 'create-branch-form';
 
-export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, onCreate }) => {
+export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
+  defaultServiceType,
+  onClose,
+  onCreate,
+}) => {
   const [name, setName] = useState('');
-  const [serviceType, setServiceType] = useState<ServiceTypeCode>('DSC');
+  const [serviceType, setServiceType] = useState<ServiceTypeCode>(defaultServiceType);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const selectedScope = SERVICE_SCOPES.find((s) => s.code === serviceType)!;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +73,29 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, o
         )}
 
         <div className="field">
+          <span id="branch-type-label" className="label">
+            Lingkup layanan
+          </span>
+          <div className="segmented" role="radiogroup" aria-labelledby="branch-type-label">
+            {SERVICE_SCOPES.map((scope) => (
+              <button
+                key={scope.code}
+                type="button"
+                role="radio"
+                aria-checked={serviceType === scope.code}
+                title={scope.fullName}
+                onClick={() => setServiceType(scope.code)}
+              >
+                {scope.code}
+              </button>
+            ))}
+          </div>
+          <p className="hint">{selectedScope.fullName}</p>
+        </div>
+
+        <div className="field">
           <label htmlFor="branch-name" className="label">
-            Nama cabang
+            Nama cabang {serviceType}
           </label>
           <input
             id="branch-name"
@@ -80,25 +108,6 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({ onClose, o
             onChange={(e) => setName(e.target.value)}
             placeholder="Cirebon"
           />
-        </div>
-
-        <div className="field">
-          <label htmlFor="branch-type" className="label">
-            Lingkup layanan
-          </label>
-          <select
-            id="branch-type"
-            name="branch_type"
-            className="select"
-            value={serviceType}
-            onChange={(e) => setServiceType(e.target.value as ServiceTypeCode)}
-          >
-            {SERVICE_SCOPES.map((scope) => (
-              <option key={scope.code} value={scope.code}>
-                {scope.code}, {scope.fullName}
-              </option>
-            ))}
-          </select>
         </div>
       </form>
     </Modal>

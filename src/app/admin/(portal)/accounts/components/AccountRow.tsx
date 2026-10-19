@@ -3,7 +3,9 @@
 
 import React from 'react';
 import { KeyRound, Loader2, Trash2 } from 'lucide-react';
-import { UserProfile, UserRole } from '@/types';
+import { BranchOptions } from '@/components/ui/BranchOptions';
+import { SERVICE_SCOPES } from '@/constants/service-center';
+import { ServiceTypeCode, UserProfile, UserRole } from '@/types';
 import { ROLE_META } from './role-meta';
 
 export interface AccountRowActions {
@@ -19,14 +21,17 @@ interface AccountRowProps extends AccountRowActions {
   account: UserProfile;
   isSelf: boolean;
   busy: boolean;
-  branchNames: string[];
+  /** Lingkup cabang akun ini; null = nasional / cabang tidak terdaftar */
+  serviceType: ServiceTypeCode | null;
+  branchesByScope: Record<ServiceTypeCode, string[]>;
 }
 
 export const AccountRow: React.FC<AccountRowProps> = ({
   account,
   isSelf,
   busy,
-  branchNames,
+  serviceType,
+  branchesByScope,
   onChangeRole,
   onChangeBranch,
   onToggleActive,
@@ -113,6 +118,20 @@ export const AccountRow: React.FC<AccountRowProps> = ({
         )}
       </td>
 
+      {/* LINGKUP — mengikuti lingkup cabang akun */}
+      <td data-label="Lingkup">
+        {serviceType ? (
+          <span
+            className="badge"
+            title={SERVICE_SCOPES.find((s) => s.code === serviceType)?.fullName}
+          >
+            {serviceType}
+          </span>
+        ) : (
+          <span className="text-3">{account.branch ? '-' : 'Nasional'}</span>
+        )}
+      </td>
+
       {/* CABANG */}
       <td data-label="Cabang">
         {isTechnician ? (
@@ -127,11 +146,12 @@ export const AccountRow: React.FC<AccountRowProps> = ({
             style={{ maxWidth: '220px' }}
           >
             <option value="">Nasional (tanpa cabang)</option>
-            {branchNames.map((branch) => (
-              <option key={branch} value={branch}>
-                {branch}
-              </option>
-            ))}
+            {/* Cabang lama/nonaktif tetap tampil agar nilai select tidak hilang */}
+            {account.branch &&
+              !Object.values(branchesByScope).some((names) => names.includes(account.branch!)) && (
+              <option value={account.branch}>{account.branch}</option>
+            )}
+            <BranchOptions branchesByScope={branchesByScope} />
           </select>
         )}
       </td>

@@ -3,12 +3,19 @@
 
 import React, { useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { BranchOptions } from '@/components/ui/BranchOptions';
 import { Modal } from '@/components/ui/Modal';
 import { getBranchCode } from '@/constants/branch-codes';
+import { SERVICE_SCOPES } from '@/constants/service-center';
+import { ServiceTypeCode } from '@/types';
 import { CreateAccountInput } from '../hooks/useAccounts';
 
 interface CreateAccountModalProps {
-  branchNames: string[];
+  /** Cabang aktif per lingkup layanan */
+  branchesByScope: Record<ServiceTypeCode, string[]>;
+  /** Lingkup & cabang yang sedang disaring di halaman, sebagai isian awal */
+  defaultScope: ServiceTypeCode;
+  defaultBranch: string;
   onClose: () => void;
   /** Mengembalikan pesan error, atau null bila akun berhasil dibuat */
   onCreate: (input: CreateAccountInput) => Promise<string | null>;
@@ -33,11 +40,18 @@ const EMPTY_FORM: FormState = {
 const FORM_ID = 'create-account-form';
 
 export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
-  branchNames,
+  branchesByScope,
+  defaultScope,
+  defaultBranch,
   onClose,
   onCreate,
 }) => {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // Admin Cabang: pilih lingkup layanan dulu, lalu cabang di lingkup tersebut
+  const [scope, setScope] = useState<ServiceTypeCode>(defaultScope);
+  const [form, setForm] = useState<FormState>(() => ({
+    ...EMPTY_FORM,
+    branch: branchesByScope[defaultScope]?.includes(defaultBranch) ? defaultBranch : '',
+  }));
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -167,8 +181,33 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
 
         {isBranchAdmin && (
           <div className="field">
+            <span id="new-scope-label" className="label">
+              Lingkup layanan
+            </span>
+            <div className="segmented" role="radiogroup" aria-labelledby="new-scope-label">
+              {SERVICE_SCOPES.map((s) => (
+                <button
+                  key={s.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={scope === s.code}
+                  title={s.fullName}
+                  onClick={() => {
+                    setScope(s.code);
+                    setField('branch', '');
+                  }}
+                >
+                  {s.code}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isBranchAdmin && (
+          <div className="field">
             <label htmlFor="new-branch" className="label">
-              Cabang penugasan
+              Cabang penugasan {scope}
             </label>
             <select
               id="new-branch"
@@ -178,12 +217,12 @@ export const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
               value={form.branch}
               onChange={(e) => setField('branch', e.target.value)}
             >
-              <option value="">Pilih cabang</option>
-              {branchNames.map((branch) => (
-                <option key={branch} value={branch}>
-                  {branch}
-                </option>
-              ))}
+              <option value="">
+                {branchesByScope[scope].length > 0
+                  ? `Pilih cabang ${scope}`
+                  : `Belum ada cabang ${scope}, tambahkan di Kelola cabang`}
+              </option>
+              <BranchOptions branchesByScope={branchesByScope} scope={scope} />
             </select>
             <p className="hint">
               ID login dibuat otomatis
