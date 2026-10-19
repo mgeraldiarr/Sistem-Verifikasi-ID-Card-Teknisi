@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { RotateCcw, Search } from 'lucide-react';
+import { ServiceTypeCode } from '@/types';
 import { BranchSelect } from './BranchSelect';
 import { MonthYearPicker } from './MonthYearPicker';
 import styles from './DashboardFilters.module.css';
@@ -10,7 +11,7 @@ import styles from './DashboardFilters.module.css';
 interface DashboardFiltersProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
-  /** Cabang kerja aktif ('' = seluruh cabang DSC) */
+  /** Cabang kerja aktif ('' = seluruh cabang) */
   filterBranch: string;
   setFilterBranch: (val: string) => void;
   /**
@@ -18,6 +19,8 @@ interface DashboardFiltersProps {
    * sehingga data cabang lain tidak dapat dibuka.
    */
   lockedBranch?: string | null;
+  /** Lingkup aktif; pilihan cabang dibatasi ke lingkup ini ('' = semua) */
+  filterScope: ServiceTypeCode | '';
   filterMonth: string; // Format: 'YYYY-MM' (contoh: '2026-08')
   setFilterMonth: (val: string) => void;
   filterYear: string; // Format: 'YYYY' (contoh: '2026')
@@ -37,6 +40,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   filterBranch,
   setFilterBranch,
   lockedBranch = null,
+  filterScope,
   filterMonth,
   setFilterMonth,
   filterYear,
@@ -70,7 +74,12 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       </div>
 
       <div className={styles.controls}>
-        <BranchSelect value={filterBranch} onChange={setFilterBranch} lockedBranch={lockedBranch} />
+        <BranchSelect
+          value={filterBranch}
+          onChange={setFilterBranch}
+          lockedBranch={lockedBranch}
+          scope={filterScope}
+        />
 
         <MonthYearPicker
           month={filterMonth}

@@ -1,25 +1,35 @@
-// src/app/admin/(portal)/components/sidebar/DscBranchList.tsx
+// src/app/admin/(portal)/components/sidebar/ScopeBranchList.tsx
 'use client';
 
 import React, { useState } from 'react';
 import { Lock, Search } from 'lucide-react';
 import { BranchButton } from './SidebarPrimitives';
 
-interface DscBranchListProps {
+interface ScopeBranchListProps {
+  /** Kode lingkup (DSC/ASC/SL) untuk id unik & teks kosong */
+  scopeCode: string;
   branches: string[];
-  selectedBranch: string;
+  /** Cabang terpilih ('' = semua cabang lingkup ini, null = lingkup ini tidak aktif) */
+  selectedBranch: string | null;
+  /** Tampilkan semua teknisi lingkup ini */
+  onSelectAllInScope: () => void;
   onSelectBranch: (branch: string) => void;
   branchCounts: Record<string, number>;
+  /** Jumlah teknisi lingkup ini */
+  scopeCount: number;
   /** true untuk Admin Cabang: tanpa pencarian & tanpa pilihan "Semua cabang" */
   isLocked: boolean;
 }
 
-/** Submenu cabang DSC: pencarian, "Semua cabang", dan daftar cabang */
-export const DscBranchList: React.FC<DscBranchListProps> = ({
+/** Submenu cabang satu lingkup layanan: pencarian, "Semua cabang", dan daftar cabang */
+export const ScopeBranchList: React.FC<ScopeBranchListProps> = ({
+  scopeCode,
   branches,
   selectedBranch,
+  onSelectAllInScope,
   onSelectBranch,
   branchCounts,
+  scopeCount,
   isLocked,
 }) => {
   const [search, setSearch] = useState('');
@@ -39,7 +49,7 @@ export const DscBranchList: React.FC<DscBranchListProps> = ({
           <div className="sb-search">
             <Search size={13} />
             <input
-              id="sidebar-branch-search"
+              id={`sidebar-branch-search-${scopeCode.toLowerCase()}`}
               name="sidebar_branch_search"
               type="search"
               aria-label="Cari cabang"
@@ -50,15 +60,18 @@ export const DscBranchList: React.FC<DscBranchListProps> = ({
           </div>
 
           <BranchButton
-            label="Semua cabang"
+            label={`Semua teknisi ${scopeCode}`}
             isSelected={selectedBranch === ''}
-            onClick={() => onSelectBranch('')}
+            onClick={onSelectAllInScope}
+            count={scopeCount}
           />
         </>
       )}
 
       <div className="sb-branch-list">
-        {filtered.length === 0 ? (
+        {branches.length === 0 ? (
+          <div className="sb-empty">Belum ada cabang {scopeCode}</div>
+        ) : filtered.length === 0 ? (
           <div className="sb-empty">Tidak ada cabang dengan nama itu</div>
         ) : (
           filtered.map((branch) => (

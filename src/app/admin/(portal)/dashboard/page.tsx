@@ -2,7 +2,7 @@
 'use client';
 
 import React, { Suspense, useMemo } from 'react';
-import { DSC_BRANCHES } from '@/constants/service-center';
+import { useBranches } from '@/hooks/useBranches';
 import { useFeedbackModals } from '@/hooks/useFeedbackModals';
 import { useKpiWeights } from '@/hooks/useKpiWeights';
 import { downloadMasterTemplateExcel } from '@/lib/template-generator';
@@ -25,18 +25,26 @@ import { filterTechnicians } from './utils/technician-filters';
 function AdminDashboard() {
   // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch).
   // Cabang kerja juga mengunci Admin Cabang pada cabangnya sendiri.
-  const { profile, scopedBranch, selectedBranch, selectBranch } = usePortal();
+  const { profile, scopedBranch, selectedScope, selectedBranch, selectBranch } = usePortal();
   const isBranchAdmin = profile?.role === 'branch_admin';
 
   const { notify, askConfirm, modals } = useFeedbackModals();
   const { weights: kpiWeights } = useKpiWeights();
+  const { branchNames, branchesByScope } = useBranches();
   const { technicians, lastSyncLog, loading, fetchData } = useDashboardData({
     scopedBranch,
     enabled: Boolean(profile),
   });
 
   const filters = useDashboardFilters();
-  const form = useTechnicianForm({ technicians, scopedBranch, notify, onSaved: fetchData });
+  const form = useTechnicianForm({
+    technicians,
+    scopedBranch,
+    selectedScope,
+    selectedBranch,
+    notify,
+    onSaved: fetchData,
+  });
   const actions = useTechnicianActions({ notify, askConfirm, onChanged: fetchData });
   const excel = useExcelUpload({ scopedBranch, kpiWeights, notify, onUploaded: fetchData });
 
@@ -44,6 +52,8 @@ function AdminDashboard() {
     () =>
       filterTechnicians(technicians, {
         search: filters.searchQuery,
+        // Cabang terpilih sudah cukup menyaring; lingkup dipakai saat melihat semua cabangnya
+        scope: selectedBranch ? '' : selectedScope,
         branch: selectedBranch,
         level: filters.level,
         status: filters.status,
@@ -53,6 +63,7 @@ function AdminDashboard() {
     [
       technicians,
       filters.searchQuery,
+      selectedScope,
       selectedBranch,
       filters.level,
       filters.status,
@@ -80,7 +91,18 @@ function AdminDashboard() {
       {/* Sidebar & kerangka halaman disediakan layout portal */}
       <div className="no-print">
         <DashboardToolbar
-          subtitle={`${buildBranchLabel(selectedBranch, DSC_BRANCHES.length)}, ${buildPeriodLabel(filters.year, filters.month)}`}
+          title={
+            selectedBranch
+              ? `Teknisi ${selectedScope} ${selectedBranch}`
+              : selectedScope
+                ? `Teknisi ${selectedScope}`
+                : 'Daftar teknisi'
+          }
+          subtitle={`${buildBranchLabel(
+            selectedBranch,
+            selectedScope,
+            selectedScope ? branchesByScope[selectedScope].length : branchNames.length
+          )}, ${buildPeriodLabel(filters.year, filters.month)}`}
           uploadingExcel={excel.uploadingExcel}
           onExcelUpload={excel.handleExcelUpload}
           onAddTechnician={() => form.openForm()}
@@ -101,6 +123,7 @@ function AdminDashboard() {
           filterBranch={selectedBranch}
           setFilterBranch={selectBranch}
           lockedBranch={scopedBranch}
+          filterScope={selectedScope}
           filterMonth={filters.month}
           setFilterMonth={filters.setMonth}
           filterYear={filters.year}

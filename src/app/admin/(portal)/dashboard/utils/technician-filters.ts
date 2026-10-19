@@ -1,8 +1,11 @@
 // src/app/admin/(portal)/dashboard/utils/technician-filters.ts
-import { Technician } from '@/types';
+import { getTechnicianServiceType } from '@/constants/service-center';
+import { ServiceTypeCode, Technician } from '@/types';
 
 export interface TechnicianFilters {
   search: string;
+  /** Lingkup layanan ('' = semua lingkup) */
+  scope: ServiceTypeCode | '';
   branch: string;
   level: string;
   status: string;
@@ -35,6 +38,7 @@ export function filterTechnicians(technicians: Technician[], filters: Technician
       tech.technician_id.toLowerCase().includes(query) ||
       tech.employee_number.toLowerCase().includes(query);
 
+    const matchesScope = filters.scope === '' || getTechnicianServiceType(tech) === filters.scope;
     const matchesBranch =
       filters.branch === '' || tech.branch.toLowerCase() === filters.branch.toLowerCase();
     const matchesLevel = filters.level === '' || tech.technician_level === filters.level;
@@ -51,7 +55,7 @@ export function filterTechnicians(technicians: Technician[], filters: Technician
       !filters.year || periodYear === filters.year || created.year === filters.year;
 
     return (
-      matchesSearch && matchesBranch && matchesLevel && matchesStatus && matchesMonth && matchesYear
+      matchesSearch && matchesScope && matchesBranch && matchesLevel && matchesStatus && matchesMonth && matchesYear
     );
   });
 }

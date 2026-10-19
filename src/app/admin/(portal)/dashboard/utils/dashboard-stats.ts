@@ -73,6 +73,13 @@ export function buildPeriodLabel(year: string, month: string): string {
   return 'semua periode';
 }
 
-export function buildBranchLabel(branch: string, totalBranches: number): string {
-  return branch ? `DSC ${branch}` : `Semua ${totalBranches} cabang DSC`;
+/** Contoh: "DSC Bandung", "Semua 5 cabang ASC", atau "Semua 34 cabang, semua lingkup" */
+export function buildBranchLabel(
+  branch: string,
+  scope: string,
+  totalBranches: number
+): string {
+  if (branch) return `${scope || 'DSC'} ${branch}`;
+  if (scope) return `Semua ${totalBranches} cabang ${scope}`;
+  return `Semua ${totalBranches} cabang, semua lingkup`;
 }

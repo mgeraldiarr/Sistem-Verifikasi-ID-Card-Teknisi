@@ -4,62 +4,100 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SERVICE_SCOPES } from '@/constants/service-center';
-import { DscBranchList } from './DscBranchList';
+import { ServiceTypeCode } from '@/types';
+import { ScopeBranchList } from './ScopeBranchList';
 
 interface ServiceScopeListProps {
-  branches: string[];
+  branchesByScope: Record<ServiceTypeCode, string[]>;
+  /** Lingkup aktif ('' = semua lingkup) */
+  selectedScope: ServiceTypeCode | '';
   selectedBranch: string;
+  /** Tampilkan teknisi seluruh lingkup */
+  onSelectAll: () => void;
+  /** Tampilkan teknisi satu lingkup & buka daftar cabangnya */
+  onSelectScope: (scope: ServiceTypeCode) => void;
   onSelectBranch: (branch: string) => void;
   branchCounts: Record<string, number>;
+  /** Jumlah teknisi per lingkup */
+  scopeCounts: Partial<Record<ServiceTypeCode, number>>;
+  totalTechnicians: number;
   isLocked: boolean;
-  isDscExpanded: boolean;
-  onToggleDsc: () => void;
+  /** Lingkup yang daftar cabangnya sedang terbuka (null = semua tertutup) */
+  expandedScope: ServiceTypeCode | null;
 }
 
-/** 3 lingkup layanan; hanya DSC yang aktif dan dapat dibuka ke daftar cabang. */
+/**
+ * Navigasi teknisi per lingkup layanan (DSC, ASC, SL).
+ * Klik lingkup = semua teknisi lingkup itu; klik cabang di dalamnya = teknisi cabang itu.
+ */
 export const ServiceScopeList: React.FC<ServiceScopeListProps> = ({
-  branches,
+  branchesByScope,
+  selectedScope,
   selectedBranch,
+  onSelectAll,
+  onSelectScope,
   onSelectBranch,
   branchCounts,
+  scopeCounts,
+  totalTechnicians,
   isLocked,
-  isDscExpanded,
-  onToggleDsc,
+  expandedScope,
 }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+    {!isLocked && (
+      <button
+        type="button"
+        className="sb-scope"
+        onClick={onSelectAll}
+        aria-current={selectedScope === '' && !selectedBranch ? 'true' : undefined}
+        data-active={(selectedScope === '' && !selectedBranch) || undefined}
+      >
+        <span className="sb-scope-code">Semua</span>
+        <span className="sb-scope-name">Semua lingkup layanan</span>
+        <span className="sb-scope-meta">
+          <span className="tnum">{totalTechnicians}</span>
+        </span>
+      </button>
+    )}
+
     {SERVICE_SCOPES.map((scope) => {
-      const isDsc = scope.code === 'DSC';
-      const expanded = isDsc && isDscExpanded;
+      const branches = branchesByScope[scope.code] ?? [];
+      const expanded = expandedScope === scope.code;
+      const isActive = selectedScope === scope.code;
+
+      // Admin Cabang hanya melihat lingkup cabangnya sendiri
+      if (isLocked && branches.length === 0) return null;
 
       return (
         <div key={scope.code}>
           <button
             type="button"
             className="sb-scope"
-            onClick={isDsc ? onToggleDsc : undefined}
-            disabled={!scope.isActive}
-            aria-expanded={isDsc ? expanded : undefined}
+            onClick={() => onSelectScope(scope.code)}
+            aria-expanded={expanded}
+            aria-current={isActive && !selectedBranch ? 'true' : undefined}
+            data-active={isActive || undefined}
+            title={`Tampilkan semua teknisi ${scope.code}`}
           >
             <span className="sb-scope-code">{scope.label}</span>
             <span className="sb-scope-name">{scope.fullName}</span>
             <span className="sb-scope-meta">
-              {scope.isActive ? (
-                <>
-                  <span className="tnum">{isLocked ? 1 : branches.length}</span>
-                  {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </>
-              ) : (
-                'Segera'
-              )}
+              <span className="tnum" title="Jumlah teknisi">
+                {scopeCounts[scope.code] ?? 0}
+              </span>
+              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </button>
 
           {expanded && (
-            <DscBranchList
+            <ScopeBranchList
+              scopeCode={scope.code}
               branches={branches}
-              selectedBranch={selectedBranch}
+              selectedBranch={isActive ? selectedBranch : null}
+              onSelectAllInScope={() => onSelectScope(scope.code)}
               onSelectBranch={onSelectBranch}
               branchCounts={branchCounts}
+              scopeCount={scopeCounts[scope.code] ?? 0}
               isLocked={isLocked}
             />
           )}
