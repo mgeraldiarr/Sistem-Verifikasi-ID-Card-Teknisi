@@ -23,149 +23,46 @@ interface TechnicianTableProps {
 export const TechnicianTable: React.FC<TechnicianTableProps> = ({
   loading,
   technicians,
-  onToggleActive,
-  onPrint,
-  onRegenerateQR,
-  onEdit,
-  onDelete,
-  onSendAccess,
   canDelete = true,
   kpiWeights,
-}) => {
-  return (
-    <div className="modena-card" style={{ padding: '0', overflowX: 'auto' }}>
-      {loading ? (
-        <div
-          style={{
-            padding: '4rem',
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          <Loader2
-            className="animate-spin-custom"
-            size={36}
-            color="var(--bg-dark)"
-          />
-        </div>
-      ) : (
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left',
-            minWidth: '800px',
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                borderBottom: '1px solid var(--border-color)',
-                backgroundColor: '#F9FAFB',
-              }}
-            >
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Teknisi
-              </th>
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Cabang / Service Center
-              </th>
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Performa (KPI/CSI)
-              </th>
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                ID Card Fisik
-              </th>
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Status
-              </th>
-              <th
-                style={{
-                  padding: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.825rem',
-                  textTransform: 'uppercase',
-                  textAlign: 'right',
-                }}
-              >
-                Aksi
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {technicians.map((tech) => (
-              <TechnicianTableRow
-                key={tech.id}
-                tech={tech}
-                onToggleActive={onToggleActive}
-                onPrint={onPrint}
-                onRegenerateQR={onRegenerateQR}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onSendAccess={onSendAccess}
-                canDelete={canDelete}
-                kpiWeights={kpiWeights}
-              />
-            ))}
-
-            {technicians.length === 0 && (
-              <tr>
-                <td
-                  colSpan={6}
-                  style={{
-                    textAlign: 'center',
-                    padding: '3rem',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  Data teknisi tidak ditemukan.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-};
+  ...handlers
+}) => (
+  <div className="table-panel">
+    {loading ? (
+      <div className="table-loading" aria-label="Memuat data teknisi">
+        <Loader2 className="spin" size={24} />
+      </div>
+    ) : technicians.length === 0 ? (
+      <div className="table-empty">
+        <strong>Belum ada teknisi yang cocok</strong>
+        Ubah kata kunci atau hapus filter, atau tambahkan teknisi baru.
+      </div>
+    ) : (
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Teknisi</th>
+            <th scope="col">Cabang</th>
+            <th scope="col">Skor KPI</th>
+            <th scope="col">ID card</th>
+            <th scope="col">Status</th>
+            <th scope="col" className="col-actions">
+              <span className="sr-only">Aksi</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {technicians.map((tech) => (
+            <TechnicianTableRow
+              key={tech.id}
+              tech={tech}
+              canDelete={canDelete}
+              kpiWeights={kpiWeights}
+              {...handlers}
+            />
+          ))}
+        </tbody>
+      </table>
+    )}
+  </div>
+);

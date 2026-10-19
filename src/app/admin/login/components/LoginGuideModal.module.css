@@ -1,0 +1,34 @@
+.steps {
+  list-style: none;
+  margin: 18px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.steps li {
+  padding: 12px 0 12px 16px;
+  border-left: 2px solid var(--line);
+}
+
+.steps strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.steps p {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+.steps code {
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}

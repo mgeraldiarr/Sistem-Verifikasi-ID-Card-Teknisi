@@ -1,0 +1,111 @@
+.root {
+  position: relative;
+  min-width: 0;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding-left: 12px;
+}
+
+.triggerIcon {
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Filter aktif: panah dropdown diganti tombol hapus */
+.trigger.active {
+  border-color: var(--ink);
+  background-image: none;
+  font-weight: 600;
+}
+
+.trigger.active .triggerIcon {
+  color: var(--ink);
+}
+
+.clear {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+}
+
+.clear:hover {
+  background: var(--surface-sunk);
+  color: var(--ink);
+}
+
+.popover {
+  top: calc(100% + 6px);
+  left: 0;
+  width: 280px;
+  padding: 10px;
+}
+
+@media (max-width: 639px) {
+  .popover {
+    width: min(280px, calc(100vw - 32px));
+  }
+}
+
+.yearNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.year {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.month {
+  height: 36px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.month:hover {
+  background: var(--surface-sunk);
+}
+
+.month[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--ink-inverse);
+  font-weight: 600;
+}
+
+.fullYear {
+  width: 100%;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  padding-top: 2px;
+}

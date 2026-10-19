@@ -29,40 +29,20 @@ function GateScreen({
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: '1rem',
-        padding: '2rem 1.25rem',
+        gap: '12px',
+        padding: '32px var(--gutter)',
         textAlign: 'center',
-        backgroundColor: 'var(--bg-secondary)',
       }}
     >
       {icon}
-      {title && (
-        <h2
-          style={{
-            fontSize: '1.05rem',
-            fontWeight: 800,
-            color: 'var(--text-primary)',
-            margin: 0,
-          }}
-        >
-          {title}
-        </h2>
-      )}
+      {title && <h1 style={{ fontSize: '17px', fontWeight: 600 }}>{title}</h1>}
       {message && (
-        <p
-          style={{
-            fontSize: '0.875rem',
-            color: 'var(--text-secondary)',
-            margin: 0,
-            maxWidth: '380px',
-            lineHeight: 1.6,
-          }}
-        >
+        <p className="text-2" style={{ maxWidth: '380px', lineHeight: 1.6 }}>
           {message}
         </p>
       )}
@@ -128,7 +108,7 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
     return (
       <GateScreen
         icon={
-          <Loader2 size={48} color="var(--bg-dark)" className="animate-spin-custom" />
+          <Loader2 size={28} color="var(--ink-3)" className="spin" aria-label="Memuat" />
         }
       />
     );
@@ -137,8 +117,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (!session) {
     return (
       <GateScreen
-        icon={<Lock size={40} color="var(--text-muted)" />}
-        title="Mengalihkan ke Halaman Login"
+        icon={<Lock size={28} color="var(--ink-3)" />}
+        title="Mengalihkan ke halaman masuk"
         message="Sesi Anda tidak ditemukan atau telah berakhir."
       />
     );
@@ -147,8 +127,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (isDeactivated) {
     return (
       <GateScreen
-        icon={<ShieldAlert size={40} color="var(--accent-red)" />}
-        title="Akun Dinonaktifkan"
+        icon={<ShieldAlert size={28} color="var(--red)" />}
+        title="Akun dinonaktifkan"
         message="Akun Anda telah dinonaktifkan oleh administrator. Silakan hubungi Super Admin MODENA untuk pengaktifan kembali."
       />
     );
@@ -157,8 +137,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (profileError) {
     return (
       <GateScreen
-        icon={<ShieldAlert size={40} color="var(--accent-red)" />}
-        title="Akses Belum Terdaftar"
+        icon={<ShieldAlert size={28} color="var(--red)" />}
+        title="Akses belum terdaftar"
         message={profileError}
       />
     );
@@ -167,8 +147,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (mustChangePassword) {
     return (
       <GateScreen
-        icon={<KeyRound size={40} color="var(--accent-red)" />}
-        title="Ganti Kata Sandi Awal"
+        icon={<KeyRound size={28} color="var(--red)" />}
+        title="Ganti kata sandi awal"
         message="Demi keamanan, kata sandi awal Anda wajib diganti sebelum portal dapat digunakan. Anda sedang dialihkan ke halaman penggantian kata sandi."
       />
     );
@@ -177,8 +157,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (isForbidden) {
     return (
       <GateScreen
-        icon={<ShieldAlert size={40} color="var(--accent-red)" />}
-        title="403 — Akses Ditolak"
+        icon={<ShieldAlert size={28} color="var(--red)" />}
+        title="Akses ditolak"
         message="Peran akun Anda tidak memiliki izin untuk membuka halaman ini. Anda sedang dialihkan ke halaman yang sesuai."
       />
     );

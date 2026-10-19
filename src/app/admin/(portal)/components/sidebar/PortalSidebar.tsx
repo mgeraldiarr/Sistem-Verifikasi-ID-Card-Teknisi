@@ -3,16 +3,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Layers, LogOut } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { useBranches } from '@/hooks/useBranches';
 import { UserProfile } from '@/types';
-import { C } from './sidebar-theme';
-import { SectionLabel } from './SidebarPrimitives';
 import { ServiceScopeList } from './ServiceScopeList';
 import { SidebarAdminMenu } from './SidebarAdminMenu';
 import { SidebarUserCard } from './SidebarUserCard';
 
 interface PortalSidebarProps {
+  /** Drawer terbuka (hanya berpengaruh di layar < 1024px) */
+  isOpen: boolean;
+  onClose: () => void;
   selectedBranch: string;
   onSelectBranch: (branch: string) => void;
   totalTechnicians: number;
@@ -28,6 +29,8 @@ interface PortalSidebarProps {
 }
 
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
+  isOpen,
+  onClose,
   selectedBranch,
   onSelectBranch,
   totalTechnicians,
@@ -59,71 +62,30 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     : branchNames;
 
   return (
-    <aside
-      style={{
-        width: '272px',
-        minWidth: '272px',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: C.bg,
-        zIndex: 30,
-        fontFamily: 'var(--font-sans)',
-      }}
-    >
-      {/* HEADER — LOGO MODENA */}
-      <div
-        style={{
-          padding: '1.125rem 1.25rem',
-          borderBottom: `1px solid ${C.divider}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          flexShrink: 0,
-        }}
-      >
-        <img
-          src="/modena-logo-white.png"
-          alt="MODENA"
-          style={{ height: '1.35rem', width: 'auto', objectFit: 'contain' }}
-        />
-        <div style={{ height: '14px', width: '1px', backgroundColor: C.creamFaint }} />
-        <span
-          style={{
-            color: C.creamMuted,
-            fontWeight: 600,
-            fontSize: '0.625rem',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-          }}
+    <aside className={`sidebar no-print${isOpen ? ' is-open' : ''}`} aria-label="Navigasi portal">
+      <div className="sb-brand">
+        <img src="/modena-logo-white.png" alt="MODENA" />
+        <span className="sb-brand-name">Portal Teknisi</span>
+        <button
+          type="button"
+          className="icon-btn sidebar-close"
+          onClick={onClose}
+          aria-label="Tutup menu"
         >
-          Technician Portal
-        </span>
+          <X size={18} />
+        </button>
       </div>
 
       {profile && <SidebarUserCard profile={profile} />}
 
       {isSuperAdmin && <SidebarAdminMenu pathname={pathname} />}
 
-      {/* AREA SCROLLABLE — Lingkup Layanan + Cabang DSC */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '0.875rem 0.875rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}
-      >
-        <div style={{ paddingLeft: '2px' }}>
-          <SectionLabel text="Lingkup Layanan" icon={<Layers size={11} color={C.accent} />} />
-          <div style={{ fontSize: '0.75rem', color: C.creamSoft, marginTop: '0.3rem' }}>
-            Total: <strong style={{ color: C.white }}>{totalTechnicians}</strong> teknisi
-          </div>
+      <div className="sb-scroll">
+        <div className="sb-section-title">
+          <span>Lingkup layanan</span>
+          <span>
+            <strong className="tnum">{totalTechnicians}</strong> teknisi
+          </span>
         </div>
 
         <ServiceScopeList
@@ -137,46 +99,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         />
       </div>
 
-      {/* FOOTER — TOMBOL LOGOUT */}
-      <div
-        style={{
-          padding: '0.625rem 0.875rem 0.75rem',
-          borderTop: `1px solid ${C.divider}`,
-          flexShrink: 0,
-        }}
-      >
-        <button
-          type="button"
-          onClick={onLogout}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: `1px solid ${C.creamFaint}`,
-            backgroundColor: C.creamGhost,
-            color: C.creamSoft,
-            fontSize: '0.775rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = C.accent;
-            e.currentTarget.style.borderColor = C.accent;
-            e.currentTarget.style.color = C.white;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = C.creamGhost;
-            e.currentTarget.style.borderColor = C.creamFaint;
-            e.currentTarget.style.color = C.creamSoft;
-          }}
-        >
-          <LogOut size={14} />
-          <span>Keluar dari Portal</span>
+      <div className="sb-foot">
+        <button type="button" className="sb-link" onClick={onLogout}>
+          <LogOut size={16} />
+          <span>Keluar</span>
         </button>
       </div>
     </aside>

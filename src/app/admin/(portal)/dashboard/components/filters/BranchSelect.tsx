@@ -19,34 +19,27 @@ export const BranchSelect: React.FC<BranchSelectProps> = ({ value, onChange, loc
   const isLocked = Boolean(lockedBranch);
 
   return (
-    <div style={{ minWidth: '210px', position: 'relative' }}>
+    <div className="input-wrap">
+      {isLocked ? (
+        <Lock size={14} className="input-icon" />
+      ) : (
+        <Building2 size={14} className="input-icon" />
+      )}
       <select
         id="filter-branch"
         name="filter_branch"
+        className="select"
         aria-label="Filter cabang"
         value={isLocked ? lockedBranch ?? '' : value}
         disabled={isLocked}
         onChange={(e) => onChange(e.target.value)}
         title={isLocked ? `Akses Anda terkunci pada cabang ${lockedBranch}` : 'Pilih cabang DSC'}
-        style={{
-          width: '100%',
-          padding: '8px 10px 8px 32px',
-          borderRadius: '8px',
-          border: isLocked ? '1px solid #E5E7EB' : '1px solid var(--border-color, #D1D5DB)',
-          fontSize: '0.825rem',
-          fontWeight: isLocked ? 700 : 500,
-          outline: 'none',
-          backgroundColor: isLocked ? '#F3F4F6' : '#FFFFFF',
-          color: isLocked ? '#6B7280' : '#374151',
-          cursor: isLocked ? 'not-allowed' : 'pointer',
-          appearance: 'auto',
-        }}
       >
         {isLocked ? (
           <option value={lockedBranch ?? ''}>{lockedBranch}</option>
         ) : (
           <>
-            <option value="">Semua Cabang DSC</option>
+            <option value="">Semua cabang DSC</option>
             {branchNames.map((branch) => (
               <option key={branch} value={branch}>
                 {branch}
@@ -55,24 +48,6 @@ export const BranchSelect: React.FC<BranchSelectProps> = ({ value, onChange, loc
           </>
         )}
       </select>
-
-      <span
-        style={{
-          position: 'absolute',
-          left: '10px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        {isLocked ? (
-          <Lock size={13} color="#DA291C" />
-        ) : (
-          <Building2 size={13} color="var(--text-muted, #9CA3AF)" />
-        )}
-      </span>
     </div>
   );
 };

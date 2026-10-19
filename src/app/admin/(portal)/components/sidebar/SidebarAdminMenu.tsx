@@ -2,38 +2,29 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Building2, LayoutDashboard, SlidersHorizontal, UserCog } from 'lucide-react';
-import { C } from './sidebar-theme';
-import { NavLink, SectionLabel } from './SidebarPrimitives';
 
 const ADMIN_MENU = [
-  { href: '/admin/dashboard', label: 'Dashboard Teknisi', icon: <LayoutDashboard size={15} /> },
-  { href: '/admin/accounts', label: 'Kelola Akun', icon: <UserCog size={15} /> },
-  { href: '/admin/branches', label: 'Kelola Cabang', icon: <Building2 size={15} /> },
-  { href: '/admin/kpi-settings', label: 'Bobot KPI', icon: <SlidersHorizontal size={15} /> },
+  { href: '/admin/dashboard', label: 'Daftar teknisi', icon: <LayoutDashboard size={16} /> },
+  { href: '/admin/accounts', label: 'Kelola akun', icon: <UserCog size={16} /> },
+  { href: '/admin/branches', label: 'Kelola cabang', icon: <Building2 size={16} /> },
+  { href: '/admin/kpi-settings', label: 'Bobot KPI', icon: <SlidersHorizontal size={16} /> },
 ];
 
 /** Menu administrasi sistem — hanya ditampilkan untuk Super Admin */
 export const SidebarAdminMenu: React.FC<{ pathname: string }> = ({ pathname }) => (
-  <nav
-    aria-label="Menu Super Admin"
-    style={{
-      padding: '0.75rem 0.875rem 0.625rem',
-      borderBottom: `1px solid ${C.divider}`,
-      flexShrink: 0,
-    }}
-  >
-    <SectionLabel text="Menu" />
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.4rem' }}>
-      {ADMIN_MENU.map((item) => (
-        <NavLink
-          key={item.href}
-          href={item.href}
-          label={item.label}
-          icon={item.icon}
-          isActive={pathname === item.href}
-        />
-      ))}
-    </div>
+  <nav aria-label="Menu Super Admin" className="sb-nav">
+    {ADMIN_MENU.map((item) => (
+      <Link
+        key={item.href}
+        href={item.href}
+        className="sb-link"
+        aria-current={pathname === item.href ? 'page' : undefined}
+      >
+        {item.icon}
+        {item.label}
+      </Link>
+    ))}
   </nav>
 );

@@ -3,9 +3,8 @@
 
 import React from 'react';
 import { KeyRound, Loader2, Trash2 } from 'lucide-react';
-import { tdStyle } from '@/components/ui/admin-styles';
 import { UserProfile, UserRole } from '@/types';
-import { controlStyle, ROLE_META } from './role-meta';
+import { ROLE_META } from './role-meta';
 
 export interface AccountRowActions {
   onChangeRole: (account: UserProfile, role: UserRole) => void;
@@ -39,38 +38,24 @@ export const AccountRow: React.FC<AccountRowProps> = ({
   const role = ROLE_META[account.role];
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+    <tr>
       {/* PENGGUNA */}
-      <td style={tdStyle}>
-        <div style={{ fontWeight: 700 }}>
-          {account.full_name || '(Tanpa Nama)'}
+      <td className="cell-primary">
+        <div className="cell-strong" style={{ overflowWrap: 'anywhere' }}>
+          {account.full_name || '(Tanpa nama)'}
           {isSelf && (
-            <span
-              style={{
-                marginLeft: '0.4rem',
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                color: 'var(--accent-red)',
-              }}
-            >
-              (Anda)
+            <span className="badge" style={{ marginLeft: '8px', verticalAlign: '1px' }}>
+              Anda
             </span>
           )}
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{account.email}</div>
+        <div className="cell-sub" style={{ overflowWrap: 'anywhere' }}>
+          {account.email}
+        </div>
 
         {account.role === 'branch_admin' &&
           (account.admin_id ? (
-            <div
-              title="ID login Admin Cabang"
-              style={{
-                marginTop: '3px',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                color: 'var(--text-primary)',
-              }}
-            >
+            <div className="cell-sub tnum" title="ID login Admin Cabang" style={{ color: 'var(--ink)', fontWeight: 600 }}>
               {account.admin_id}
             </div>
           ) : (
@@ -78,68 +63,37 @@ export const AccountRow: React.FC<AccountRowProps> = ({
               type="button"
               onClick={() => onIssueAdminId(account)}
               disabled={busy || !account.branch}
+              className="btn btn-danger btn-sm"
+              style={{ marginTop: '6px', minHeight: '26px' }}
               title={
                 account.branch
-                  ? 'Admin Cabang belum memiliki ID login'
+                  ? 'Admin Cabang ini belum punya ID login'
                   : 'Tetapkan cabang terlebih dahulu'
               }
-              style={{
-                display: 'block',
-                marginTop: '4px',
-                padding: '2px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                borderRadius: '6px',
-                border: '1px dashed var(--accent-red)',
-                background: 'transparent',
-                color: 'var(--accent-red)',
-                cursor: busy || !account.branch ? 'not-allowed' : 'pointer',
-              }}
             >
-              Terbitkan ID Login
+              Terbitkan ID login
             </button>
           ))}
 
         {account.must_change_password && (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
-              marginTop: '4px',
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              color: '#B45309',
-              backgroundColor: 'rgba(245,158,11,0.12)',
-              padding: '2px 7px',
-              borderRadius: '999px',
-            }}
-          >
-            <KeyRound size={10} /> Wajib ganti kata sandi
-          </span>
+          <div style={{ marginTop: '6px' }}>
+            <span className="badge badge-warn">
+              <KeyRound size={11} /> Belum ganti kata sandi awal
+            </span>
+          </div>
         )}
       </td>
 
       {/* PERAN — peran teknisi & akun sendiri tidak dapat diubah dari sini */}
-      <td style={tdStyle}>
+      <td data-label="Peran">
         {isTechnician || isSelf ? (
           <span
+            className="badge"
             title={
               isSelf
                 ? 'Peran akun sendiri tidak dapat diubah'
                 : 'Peran teknisi mengikuti data teknisi tertaut'
             }
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '3px 9px',
-              borderRadius: '999px',
-              fontSize: '0.7rem',
-              fontWeight: 800,
-              backgroundColor: role.bg,
-              color: role.color,
-            }}
           >
             {role.icon}
             {role.label}
@@ -147,10 +101,11 @@ export const AccountRow: React.FC<AccountRowProps> = ({
         ) : (
           <select
             aria-label={`Peran ${account.full_name}`}
+            className="select select-sm"
             value={account.role}
             disabled={busy}
             onChange={(e) => onChangeRole(account, e.target.value as UserRole)}
-            style={controlStyle}
+            style={{ maxWidth: '170px' }}
           >
             <option value="super_admin">Super Admin</option>
             <option value="branch_admin">Admin Cabang</option>
@@ -159,18 +114,19 @@ export const AccountRow: React.FC<AccountRowProps> = ({
       </td>
 
       {/* CABANG */}
-      <td style={tdStyle}>
+      <td data-label="Cabang">
         {isTechnician ? (
-          <span style={{ color: 'var(--text-secondary)' }}>{account.branch || '-'}</span>
+          <span className="text-2">{account.branch || '-'}</span>
         ) : (
           <select
             aria-label={`Cabang ${account.full_name}`}
+            className="select select-sm"
             value={account.branch ?? ''}
             disabled={busy}
             onChange={(e) => onChangeBranch(account, e.target.value || null)}
-            style={{ ...controlStyle, minWidth: '170px' }}
+            style={{ maxWidth: '220px' }}
           >
-            <option value="">— Tanpa Cabang (Nasional) —</option>
+            <option value="">Nasional (tanpa cabang)</option>
             {branchNames.map((branch) => (
               <option key={branch} value={branch}>
                 {branch}
@@ -181,61 +137,39 @@ export const AccountRow: React.FC<AccountRowProps> = ({
       </td>
 
       {/* STATUS */}
-      <td style={tdStyle}>
+      <td data-label="Status">
         <button
           type="button"
           onClick={() => onToggleActive(account)}
           disabled={busy || isSelf}
-          title={isSelf ? 'Anda tidak dapat menonaktifkan akun sendiri' : 'Ubah status akun'}
-          style={{
-            padding: '5px 13px',
-            borderRadius: '999px',
-            fontSize: '0.7rem',
-            fontWeight: 800,
-            border: '1px solid transparent',
-            cursor: isSelf ? 'not-allowed' : 'pointer',
-            opacity: isSelf ? 0.55 : 1,
-            backgroundColor: account.is_active
-              ? 'var(--status-active-glow)'
-              : 'var(--status-inactive-glow)',
-            color: account.is_active ? 'var(--status-active)' : 'var(--status-inactive)',
-          }}
+          className={`status-toggle ${account.is_active ? 'is-on' : 'is-off'}`}
+          title={isSelf ? 'Anda tidak dapat menonaktifkan akun sendiri' : 'Klik untuk mengubah status'}
         >
-          {account.is_active ? 'AKTIF' : 'NONAKTIF'}
+          {account.is_active ? 'Aktif' : 'Nonaktif'}
         </button>
       </td>
 
       {/* AKSI */}
-      <td style={{ ...tdStyle, textAlign: 'right' }}>
-        <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-          {busy && <Loader2 size={16} className="animate-spin-custom" color="var(--text-muted)" />}
+      <td className="col-actions">
+        <div className="row-actions">
+          {busy && <Loader2 size={16} className="spin text-3" style={{ margin: '0 6px' }} />}
           <button
             type="button"
+            className="icon-btn"
             onClick={() => onResetPassword(account)}
             disabled={busy}
-            title="Atur Ulang Kata Sandi"
+            title="Atur ulang kata sandi"
             aria-label={`Atur ulang kata sandi ${account.full_name}`}
-            style={{
-              padding: '5px',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-            }}
           >
             <KeyRound size={17} />
           </button>
           <button
             type="button"
+            className="icon-btn is-danger"
             onClick={() => onDelete(account)}
             disabled={busy || isSelf}
-            title={isSelf ? 'Anda tidak dapat menghapus akun sendiri' : 'Hapus Akun'}
+            title={isSelf ? 'Anda tidak dapat menghapus akun sendiri' : 'Hapus akun'}
             aria-label={`Hapus akun ${account.full_name}`}
-            style={{
-              padding: '5px',
-              background: 'transparent',
-              color: isSelf ? 'var(--text-muted)' : 'var(--accent-red)',
-              cursor: isSelf ? 'not-allowed' : 'pointer',
-            }}
           >
             <Trash2 size={17} />
           </button>

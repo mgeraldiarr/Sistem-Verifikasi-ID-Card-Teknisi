@@ -2,8 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Loader2, MapPin, Trash2 } from 'lucide-react';
-import { tdStyle, thStyle } from '@/components/ui/admin-styles';
+import { Loader2, Trash2 } from 'lucide-react';
 import { BranchRecord } from '@/types';
 
 interface BranchesTableProps {
@@ -25,21 +24,28 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
   onToggleActive,
   onDelete,
 }) => (
-  <div className="modena-card" style={{ padding: 0, overflowX: 'auto' }}>
+  <div className="table-panel">
     {loading ? (
-      <div style={{ padding: '3.5rem', display: 'flex', justifyContent: 'center' }}>
-        <Loader2 size={32} color="var(--bg-dark)" className="animate-spin-custom" />
+      <div className="table-loading" aria-label="Memuat cabang">
+        <Loader2 size={24} className="spin" />
+      </div>
+    ) : branches.length === 0 ? (
+      <div className="table-empty">
+        <strong>Belum ada cabang yang cocok</strong>
+        Ubah kata kunci pencarian, atau tambahkan cabang baru.
       </div>
     ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
+      <table className="data-table">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: '#F9FAFB' }}>
-            <th style={thStyle}>Nama Cabang</th>
-            <th style={thStyle}>Ruang Lingkup</th>
-            <th style={thStyle}>Teknisi</th>
-            <th style={thStyle}>Admin Cabang</th>
-            <th style={thStyle}>Status</th>
-            <th style={{ ...thStyle, textAlign: 'right' }}>Aksi</th>
+          <tr>
+            <th scope="col">Cabang</th>
+            <th scope="col">Lingkup</th>
+            <th scope="col">Teknisi</th>
+            <th scope="col">Admin cabang</th>
+            <th scope="col">Status</th>
+            <th scope="col" className="col-actions">
+              <span className="sr-only">Aksi</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -50,83 +56,51 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
             const inUse = techCount > 0 || adminCount > 0;
 
             return (
-              <tr key={branch.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <td style={tdStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
-                    <MapPin size={13} color="var(--text-muted)" />
-                    {branch.name}
-                  </div>
+              <tr key={branch.id}>
+                <td className="cell-primary cell-strong">{branch.name}</td>
+
+                <td data-label="Lingkup">
+                  <span className="badge">{branch.service_type}</span>
                 </td>
 
-                <td style={tdStyle}>
-                  <span
-                    style={{
-                      padding: '2px 9px',
-                      borderRadius: '999px',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      backgroundColor: 'rgba(28,28,26,0.07)',
-                      color: '#1C1C1A',
-                    }}
-                  >
-                    {branch.service_type}
-                  </span>
+                <td data-label="Teknisi" className="tnum">
+                  {techCount}
                 </td>
 
-                <td style={tdStyle}>{techCount}</td>
-                <td style={tdStyle}>
+                <td data-label="Admin cabang">
                   {adminCount === 0 ? (
-                    <span style={{ color: '#B45309', fontWeight: 600, fontSize: '0.775rem' }}>
-                      Belum ada
-                    </span>
+                    <span className="badge badge-warn">Belum ada</span>
                   ) : (
-                    adminCount
+                    <span className="tnum">{adminCount}</span>
                   )}
                 </td>
 
-                <td style={tdStyle}>
+                <td data-label="Status">
                   <button
                     type="button"
                     onClick={() => onToggleActive(branch)}
                     disabled={busy}
-                    style={{
-                      padding: '5px 13px',
-                      borderRadius: '999px',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      border: '1px solid transparent',
-                      cursor: 'pointer',
-                      backgroundColor: branch.is_active
-                        ? 'var(--status-active-glow)'
-                        : 'var(--status-inactive-glow)',
-                      color: branch.is_active ? 'var(--status-active)' : 'var(--status-inactive)',
-                    }}
+                    className={`status-toggle ${branch.is_active ? 'is-on' : 'is-off'}`}
+                    title="Klik untuk mengubah status"
                   >
-                    {branch.is_active ? 'AKTIF' : 'NONAKTIF'}
+                    {branch.is_active ? 'Aktif' : 'Nonaktif'}
                   </button>
                 </td>
 
-                <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-                    {busy && (
-                      <Loader2 size={16} className="animate-spin-custom" color="var(--text-muted)" />
-                    )}
+                <td className="col-actions">
+                  <div className="row-actions">
+                    {busy && <Loader2 size={16} className="spin text-3" style={{ margin: '0 6px' }} />}
                     <button
                       type="button"
+                      className="icon-btn is-danger"
                       onClick={() => onDelete(branch)}
                       disabled={busy}
                       aria-label={`Hapus cabang ${branch.name}`}
                       title={
                         inUse
-                          ? 'Cabang masih memiliki teknisi/admin — nonaktifkan saja'
-                          : 'Hapus Cabang'
+                          ? 'Cabang masih punya teknisi atau admin, nonaktifkan saja'
+                          : 'Hapus cabang'
                       }
-                      style={{
-                        padding: '5px',
-                        background: 'transparent',
-                        color: inUse ? 'var(--text-muted)' : 'var(--accent-red)',
-                        cursor: 'pointer',
-                      }}
                     >
                       <Trash2 size={17} />
                     </button>
@@ -135,22 +109,6 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
               </tr>
             );
           })}
-
-          {branches.length === 0 && (
-            <tr>
-              <td
-                colSpan={6}
-                style={{
-                  textAlign: 'center',
-                  padding: '3rem',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Master cabang kosong atau tidak ada yang cocok dengan pencarian.
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
     )}

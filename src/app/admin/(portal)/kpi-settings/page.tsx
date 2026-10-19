@@ -2,47 +2,29 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Info, Loader2, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, Loader2, RotateCcw } from 'lucide-react';
 import { PageHeading } from '@/components/PageHeading';
 import { NotificationModal } from '@/components/ui/NotificationModal';
 import { useKpiWeights } from '@/hooks/useKpiWeights';
 import { DEFAULT_KPI_WEIGHTS, KpiWeights, validateKpiWeights } from '@/lib/kpi';
 import { NotificationState, NotificationType } from '@/types';
 import { SuperAdminOnly } from '../portal-context';
+import styles from './kpi-settings.module.css';
 
 const INDICATORS: { key: keyof KpiWeights; label: string; hint: string }[] = [
-  { key: 'tat', label: 'TAT', hint: 'Turn Around Time — kecepatan penyelesaian servis' },
-  { key: 'rtat', label: 'RTAT', hint: 'Repeat TAT — servis ulang untuk kasus yang sama' },
+  { key: 'tat', label: 'TAT', hint: 'Turn around time, kecepatan penyelesaian servis' },
+  { key: 'rtat', label: 'RTAT', hint: 'Repeat TAT, servis ulang untuk kasus yang sama' },
   { key: 'csat', label: 'CSAT', hint: 'Kepuasan pelanggan' },
   { key: 'grooming', label: 'Penampilan', hint: 'Kerapian & seragam (grooming)' },
   { key: 'service', label: 'Pelayanan', hint: 'Sikap & komunikasi dengan pelanggan' },
-  { key: 'repair_quality', label: 'Hasil Perbaikan', hint: 'Kualitas hasil pekerjaan' },
+  { key: 'repair_quality', label: 'Hasil perbaikan', hint: 'Kualitas hasil pekerjaan' },
 ];
 
-const LEVEL_RULES = [
-  { label: 'Beginner', range: '< 70', color: '#6B7280' },
-  { label: 'Intermediate', range: '70 – 84', color: '#2563EB' },
-  { label: 'Advance', range: '≥ 85', color: '#16A34A' },
+const LEVEL_RULES: { level: 'beginner' | 'intermediate' | 'advance'; label: string; range: string }[] = [
+  { level: 'beginner', label: 'Beginner', range: 'di bawah 70' },
+  { level: 'intermediate', label: 'Intermediate', range: '70–84' },
+  { level: 'advance', label: 'Advance', range: '85 ke atas' },
 ];
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.8rem',
-  fontWeight: 700,
-  color: 'var(--text-primary)',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '88px',
-  padding: '0.55rem 1.6rem 0.55rem 0.7rem',
-  borderRadius: '8px',
-  border: '1px solid var(--border-color)',
-  fontSize: '0.9rem',
-  fontWeight: 700,
-  textAlign: 'right',
-  outline: 'none',
-  fontFamily: 'inherit',
-};
 
 function sameWeights(a: KpiWeights, b: KpiWeights) {
   return INDICATORS.every(({ key }) => Number(a[key]) === Number(b[key]));
@@ -100,92 +82,46 @@ function KpiSettingsContent() {
     );
   };
 
-  const totalColor = validation.isValid ? '#16A34A' : 'var(--accent-red)';
+  const cannotSave = loading || saving || !isDirty || !validation.isValid;
 
   return (
     <>
       <PageHeading
         title="Bobot KPI"
-        subtitle="Atur persentase 6 indikator evaluasi teknisi. Total wajib 100%."
-        icon={<SlidersHorizontal size={19} />}
+        subtitle="Persentase tiap indikator dalam skor KPI teknisi. Jumlah keenam bobot harus tepat 100%."
       />
 
       {usingFallback && !loading && (
-        <div
-          className="modena-card"
-          style={{
-            display: 'flex',
-            gap: '0.6rem',
-            alignItems: 'flex-start',
-            padding: '0.85rem 1rem',
-            marginBottom: '1rem',
-            border: '1px solid #FCD34D',
-            backgroundColor: '#FFFBEB',
-            fontSize: '0.8rem',
-            lineHeight: 1.55,
-            color: '#92400E',
-          }}
-        >
-          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div className="alert alert-warn" style={{ marginBottom: '16px' }}>
+          <AlertTriangle size={16} />
           <span>
-            Pengaturan bobot belum ditemukan di database, sehingga sistem memakai bobot bawaan.
-            Menyimpan di halaman ini akan membuat pengaturannya.
+            Pengaturan bobot belum ada di database, jadi sistem memakai bobot bawaan. Menyimpan di
+            halaman ini akan membuat pengaturannya.
           </span>
         </div>
       )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '1.25rem',
-          alignItems: 'start',
-        }}
-      >
-        {/* DAFTAR INDIKATOR */}
-        <div className="modena-card" style={{ padding: 0 }}>
+      <div className={styles.layout}>
+        <div className="panel">
           {loading ? (
-            <div style={{ padding: '3.5rem', display: 'flex', justifyContent: 'center' }}>
-              <Loader2 size={32} color="var(--bg-dark)" className="animate-spin-custom" />
+            <div className="table-loading" aria-label="Memuat bobot">
+              <Loader2 size={24} className="spin" />
             </div>
           ) : (
             <>
               {INDICATORS.map(({ key, label, hint }) => {
                 const changed = Number(draft[key]) !== Number(weights[key]);
                 return (
-                  <div
-                    key={key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '1rem',
-                      padding: '0.9rem 1.1rem',
-                      borderBottom: '1px solid var(--border-color)',
-                    }}
-                  >
+                  <div key={key} className={styles.row}>
                     <div style={{ minWidth: 0 }}>
-                      <label htmlFor={`kpi-weight-${key}`} style={labelStyle}>
+                      <label htmlFor={`kpi-weight-${key}`} className="label">
                         {label}
-                        {changed && (
-                          <span
-                            style={{
-                              marginLeft: '0.45rem',
-                              fontSize: '0.68rem',
-                              fontWeight: 600,
-                              color: 'var(--text-muted)',
-                            }}
-                          >
-                            (sebelumnya {weights[key]}%)
-                          </span>
-                        )}
+                        {changed && <span className="label-aside">semula {weights[key]}%</span>}
                       </label>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {hint}
-                      </span>
+                      <p className="hint">{hint}</p>
                     </div>
 
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div className={`input-wrap ${styles.weight}`}>
                       <input
                         id={`kpi-weight-${key}`}
                         name={`kpi_weight_${key}`}
@@ -194,133 +130,80 @@ function KpiSettingsContent() {
                         max={100}
                         step={0.5}
                         inputMode="decimal"
+                        className="input tnum"
                         value={draft[key]}
                         onChange={(e) => handleChange(key, e.target.value)}
                         disabled={saving}
-                        style={{
-                          ...inputStyle,
-                          borderColor: changed ? 'var(--bg-dark)' : 'var(--border-color)',
-                        }}
+                        style={changed ? { borderColor: 'var(--ink)' } : undefined}
                       />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          right: '0.6rem',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          fontSize: '0.8rem',
-                          color: 'var(--text-muted)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        %
-                      </span>
+                      <span className="input-suffix">%</span>
                     </div>
                   </div>
                 );
               })}
 
-              {/* TOTAL */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
-                  padding: '1rem 1.1rem',
-                  backgroundColor: '#F9FAFB',
-                  borderBottomLeftRadius: 'inherit',
-                  borderBottomRightRadius: 'inherit',
-                }}
-              >
-                <div>
-                  <span style={{ ...labelStyle, fontSize: '0.85rem' }}>Total</span>
-                  <span style={{ fontSize: '0.75rem', color: totalColor, fontWeight: 600 }}>
-                    {validation.isValid
-                      ? 'Sudah tepat 100%'
-                      : remaining > 0
-                        ? `Kurang ${remaining}%`
-                        : `Lebih ${Math.abs(remaining)}%`}
+              <div className={styles.total} aria-live="polite">
+                <div className={styles.totalHead}>
+                  <span>
+                    Total
+                    <span className={validation.isValid ? styles.ok : styles.off}>
+                      {validation.isValid
+                        ? 'pas 100%'
+                        : remaining > 0
+                          ? `kurang ${remaining}%`
+                          : `lebih ${Math.abs(remaining)}%`}
+                    </span>
                   </span>
+                  <strong className={validation.isValid ? undefined : styles.offValue}>
+                    {validation.total}%
+                  </strong>
                 </div>
-                <span style={{ fontSize: '1.35rem', fontWeight: 800, color: totalColor }}>
-                  {validation.total}%
-                </span>
+                <div className={styles.meter}>
+                  <span
+                    className={validation.isValid ? styles.meterOk : styles.meterOff}
+                    style={{ width: `${Math.min(100, validation.total)}%` }}
+                  />
+                </div>
               </div>
             </>
           )}
         </div>
 
-        {/* PANEL SAMPING: ATURAN LEVEL & AKSI */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="modena-card" style={{ padding: '1rem 1.1rem' }}>
-            <span style={{ ...labelStyle, marginBottom: '0.6rem' }}>
-              Penentuan Level Otomatis
-            </span>
-            {LEVEL_RULES.map((rule) => (
-              <div
-                key={rule.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.4rem 0',
-                  fontSize: '0.82rem',
-                }}
-              >
-                <span style={{ fontWeight: 700, color: rule.color }}>{rule.label}</span>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Skor {rule.range}
-                </span>
-              </div>
-            ))}
-            <p
-              style={{
-                display: 'flex',
-                gap: '0.45rem',
-                margin: '0.6rem 0 0',
-                fontSize: '0.75rem',
-                lineHeight: 1.55,
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <Info size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
-              Skor terbobot = Σ (skor indikator × bobot). Perubahan bobot tidak menghitung
-              ulang skor teknisi yang sudah tersimpan.
+        <div className={styles.side}>
+          <div className="panel panel-pad">
+            <h2 className={styles.sideTitle}>Cara level ditentukan</h2>
+            <dl className={styles.rules}>
+              {LEVEL_RULES.map((rule) => (
+                <div key={rule.level}>
+                  <dt className={`level level-${rule.level}`}>{rule.label}</dt>
+                  <dd className="tnum">skor {rule.range}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="hint" style={{ marginTop: '12px' }}>
+              Skor KPI adalah jumlah skor tiap indikator dikali bobotnya. Mengubah bobot tidak
+              menghitung ulang skor teknisi yang sudah tersimpan.
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <div className={styles.actions}>
             <button
               type="button"
               onClick={handleSave}
-              disabled={loading || saving || !isDirty || !validation.isValid}
-              className="modena-btn-primary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                opacity: loading || saving || !isDirty || !validation.isValid ? 0.55 : 1,
-                cursor:
-                  loading || saving || !isDirty || !validation.isValid ? 'not-allowed' : 'pointer',
-              }}
+              disabled={cannotSave}
+              className="btn btn-primary"
             >
-              {saving ? <Loader2 size={16} className="animate-spin-custom" /> : <Save size={16} />}
-              Simpan Bobot
+              {saving && <Loader2 size={16} className="spin" />}
+              Simpan bobot
             </button>
-
             <button
               type="button"
               onClick={() => setDraft(DEFAULT_KPI_WEIGHTS)}
               disabled={loading || saving || isDefault}
-              className="modena-btn-secondary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                opacity: loading || saving || isDefault ? 0.55 : 1,
-              }}
+              className="btn btn-secondary"
             >
-              <RotateCcw size={15} /> Kembalikan Bawaan
+              <RotateCcw size={15} />
+              Pakai bobot bawaan
             </button>
           </div>
         </div>

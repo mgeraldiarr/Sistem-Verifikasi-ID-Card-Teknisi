@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { UserCog } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { PageHeading } from '@/components/PageHeading';
 import { useBranches } from '@/hooks/useBranches';
 import { useFeedbackModals } from '@/hooks/useFeedbackModals';
@@ -62,9 +62,14 @@ function ManageAccountsContent() {
   return (
     <>
       <PageHeading
-        title="Kelola Akun"
-        subtitle="Pengguna resmi portal MODENA"
-        icon={<UserCog size={19} />}
+        title="Kelola akun"
+        subtitle="Atur peran, cabang, dan status akun yang dapat masuk ke portal. Akun teknisi dibuat dari daftar teknisi."
+        actions={
+          <button type="button" onClick={() => setShowCreate(true)} className="btn btn-primary">
+            <Plus size={16} />
+            Tambah akun admin
+          </button>
+        }
       />
 
       <RoleSummaryCards counts={roleCounts} />
@@ -74,7 +79,6 @@ function ManageAccountsContent() {
         onSearchChange={setSearchQuery}
         roleFilter={roleFilter}
         onRoleFilterChange={setRoleFilter}
-        onAddAccount={() => setShowCreate(true)}
       />
 
       <AccountsTable

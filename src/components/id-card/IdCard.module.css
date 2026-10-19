@@ -1,0 +1,240 @@
+/* Kanvas CR80: 32em x 50.75em. Teks terkecil 1.05em (~5pt saat dicetak). */
+
+.card {
+  position: relative;
+  width: 32em;
+  height: 50.75em;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.4em;
+  font-family: var(--font-sans);
+  line-height: 1.3;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.card dl,
+.card dd,
+.card p {
+  margin: 0;
+}
+
+.print {
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.front {
+  background: #ece8da;
+  color: #1c1c1a;
+  box-shadow: 0 2em 4em -1.2em rgba(28, 28, 26, 0.35), inset 0 0 0 1px rgba(28, 28, 26, 0.08);
+}
+
+.back {
+  background: #1c1c1a;
+  color: #f4f3ee;
+  box-shadow: 0 2em 4em -1.2em rgba(28, 28, 26, 0.45);
+}
+
+/* ---------- Kepala (kedua sisi) ---------- */
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 2.2em 2.2em 0;
+  flex-shrink: 0;
+}
+
+.logo {
+  height: 1.8em;
+  width: auto;
+  display: block;
+}
+
+.level {
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0.3em 0.75em;
+  border-radius: 0.3em;
+  background: #1c1c1a;
+  color: #ece8da;
+  white-space: nowrap;
+}
+
+.backTitle {
+  font-size: 1.1em;
+  color: rgba(244, 243, 238, 0.6);
+}
+
+/* ---------- Sisi depan ---------- */
+
+.photo {
+  flex: 1;
+  min-height: 0;
+  margin: 1.8em 2.2em 0;
+  border-radius: 0.8em;
+  overflow: hidden;
+  background: #d9d4c3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+}
+
+.noPhoto {
+  color: rgba(28, 28, 26, 0.3);
+  display: flex;
+}
+
+.identity {
+  padding: 1.7em 2.2em 1.8em;
+  flex-shrink: 0;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5em;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.role {
+  margin-top: 0.45em;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #da291c;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2em;
+  margin-top: 1.3em;
+  padding-top: 1.1em;
+  border-top: 1px solid rgba(28, 28, 26, 0.18);
+}
+
+.meta > div {
+  min-width: 0;
+}
+
+.meta dt {
+  font-size: 1.05em;
+  color: #6b6960;
+}
+
+.meta dd {
+  margin-top: 0.15em;
+  font-size: 1.3em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Pita service center (kedua sisi) ---------- */
+
+.band {
+  flex-shrink: 0;
+  padding: 0.8em 1.4em;
+  background: #da291c;
+  color: #fff;
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* ---------- Sisi belakang ---------- */
+
+.qr {
+  width: 19em;
+  height: 19em;
+  margin: 2.4em auto 0;
+  padding: 1.4em;
+  border-radius: 0.8em;
+  background: #fff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrCaption {
+  margin-top: 1em !important;
+  text-align: center;
+  font-size: 1.15em;
+  color: rgba(244, 243, 238, 0.7);
+}
+
+.backData {
+  margin: auto 2.2em 0 !important;
+}
+
+.backData > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.6em 0;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.14);
+  font-size: 1.2em;
+}
+
+.backData dt {
+  color: rgba(244, 243, 238, 0.6);
+  flex-shrink: 0;
+}
+
+.backData dd {
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backData .alert {
+  color: #ff7a6e;
+}
+
+.fine {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.6em;
+  padding: 1.3em 2.2em 1.6em;
+  font-size: 1.05em;
+  line-height: 1.4;
+  color: rgba(244, 243, 238, 0.55);
+}
+
+.callCenter {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.callCenter strong {
+  display: block;
+  font-size: 1.35em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}

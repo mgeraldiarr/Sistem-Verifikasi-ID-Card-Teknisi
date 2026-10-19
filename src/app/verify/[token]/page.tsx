@@ -2,7 +2,7 @@
 import { supabaseAdmin } from '@/lib/server/supabase-admin';
 import { evaluateCardStatus, getLevelCardLabel } from '@/lib/card-status';
 import { notFound } from 'next/navigation';
-import { CheckCircle, XCircle, Lock } from 'lucide-react';
+import { Clock, ShieldCheck, ShieldX } from 'lucide-react';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
 
 // Menghindari Next.js melakukan caching halaman agar status keaktifan terupdate secara real-time
@@ -10,6 +10,15 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ token: string }>;
+}
+
+function PublicHeader() {
+  return (
+    <header className="public-head">
+      <img src="/modena-logo-official.png" alt="MODENA" />
+      <span>Verifikasi teknisi resmi</span>
+    </header>
+  );
 }
 
 export default async function VerifyTechnicianPage({ params }: PageProps) {
@@ -51,97 +60,32 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
     });
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
-        
-        {/* Header Logo MODENA */}
-        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-          <img
-            src="/modena-logo-official.png"
-            alt="MODENA"
-            style={{
-              height: '1.8rem',
-              width: 'auto',
-              objectFit: 'contain',
-              display: 'inline-block',
-              marginBottom: '0.25rem'
-            }}
-          />
-          <span style={{ fontSize: '0.75rem', letterSpacing: '0.3em', color: '#707070', fontWeight: 700 }}>
-            AUTHORIZED SERVICE
-          </span>
-        </div>
-
-        {/* Card Status Kartu Hangus / Tidak Valid */}
-        <div 
-          style={{ 
-            width: '100%', 
-            maxWidth: '420px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            gap: '1.25rem', 
-            padding: '2rem 1.5rem', 
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E7EB',
-            borderRadius: '16px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.04)',
-            textAlign: 'center'
-          }}
-        >
-          {/* Badge Icon Merah */}
-          <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            backgroundColor: '#FEE2E2',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#DA291C'
-          }}>
-            <XCircle size={32} />
+      <main className="public-page">
+        <PublicHeader />
+        <div className="public-body">
+          <div className="verdict is-invalid" role="status">
+            <ShieldX size={28} />
+            <div>
+              <h1 className="verdict-title">QR code tidak berlaku</h1>
+              <p className="verdict-sub">
+                Kartu ini sudah diganti oleh HR, atau QR code tidak terdaftar di sistem verifikasi
+                MODENA.
+              </p>
+            </div>
           </div>
 
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1C1C1A', margin: 0, lineHeight: 1.3 }}>
-            KARTU / QR CODE TIDAK VALID ATAU TELAH HANGUS
-          </h2>
-
-          <p style={{ fontSize: '0.875rem', color: '#4B5563', margin: 0, lineHeight: 1.6 }}>
-            QR Code ini sudah tidak berlaku (ID Card fisik lama telah diregenerasi/diperbarui oleh HR) atau token tidak terdaftar dalam sistem verifikasi resmi MODENA.
-          </p>
-
-          <div style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: '#FFF5F5',
-            borderRadius: '8px',
-            border: '1px dashed #FECDD3',
-            fontSize: '11px',
-            color: '#9F1239',
-            lineHeight: 1.5
-          }}>
-            Silakan minta teknisi di lokasi untuk menunjukkan ID Card fisik terbaru dengan QR Code aktif.
-          </div>
-
-          {/* Watermark Keamanan */}
-          <div style={{
-            marginTop: '0.5rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid #F3F4F6',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            fontSize: '11px',
-            color: '#9CA3AF'
-          }}>
-            <Lock size={14} color="#DA291C" />
-            <span>Verifikasi Sistem MODENA • {timestamp} WIB</span>
+          <div className="panel panel-pad" style={{ width: '100%' }}>
+            <p style={{ lineHeight: 1.6 }}>
+              Minta teknisi menunjukkan ID card terbaru, lalu pindai ulang QR code di kartu
+              tersebut. Bila ragu, hubungi Call Center MODENA di <strong>1500-715</strong>.
+            </p>
+            <p className="stamp" style={{ marginTop: '14px' }}>
+              <Clock size={13} />
+              Diperiksa {timestamp} WIB
+            </p>
           </div>
         </div>
-
-      </div>
+      </main>
     );
   }
 
@@ -158,118 +102,74 @@ export default async function VerifyTechnicianPage({ params }: PageProps) {
 
   const levelText = getLevelCardLabel(technician.technician_level);
 
+  const invalidReason = !isTechnicianActive
+    ? 'Teknisi ini sudah tidak aktif di MODENA.'
+    : !cardInfo
+      ? 'ID card untuk teknisi ini belum diterbitkan.'
+      : !isCardActive
+        ? 'ID card ini sedang ditangguhkan.'
+        : `ID card ini sudah kedaluwarsa sejak ${formattedExpiryDate}.`;
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#F3F2EC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2.5rem 1rem', fontFamily: 'var(--font-sans, Arial, sans-serif)' }}>
+    <main className="public-page">
+      <PublicHeader />
+      <div className="public-body">
+        <div className={`verdict${isValid ? '' : ' is-invalid'}`} role="status">
+          {isValid ? <ShieldCheck size={28} /> : <ShieldX size={28} />}
+          <div>
+            <h1 className="verdict-title">
+              {isValid ? 'Teknisi resmi MODENA' : 'Kartu tidak valid'}
+            </h1>
+            <p className="verdict-sub">
+              {isValid
+                ? `${technician.technician_name} terdaftar aktif. Kartu berlaku sampai ${formattedExpiryDate}.`
+                : invalidReason}
+            </p>
+          </div>
+        </div>
 
-      {/* Header Logo MODENA */}
-      <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-        <img
-          src="/modena-logo-official.png"
-          alt="MODENA"
-          style={{
-            height: '1.8rem',
-            width: 'auto',
-            objectFit: 'contain',
-            display: 'inline-block',
-            marginBottom: '0.25rem'
-          }}
-        />
-        <span style={{ fontSize: '0.75rem', letterSpacing: '0.3em', color: '#707070', fontWeight: 700 }}>
-          AUTHORIZED SERVICE
-        </span>
-      </div>
-
-      {/* Tampilan Visual Kartu 3D Interaktif (Sisi Depan & Belakang) */}
-      <div style={{ marginBottom: '2rem' }}>
         <TechnicianCard3D
           technician={technician}
           levelText={levelText}
           formattedExpiryDate={formattedExpiryDate}
           isValid={isValid}
         />
-      </div>
 
-      {/* Informasi Detail & Status Verifikasi Digital */}
-      <div 
-        className="modena-card" 
-        style={{ 
-          width: '100%', 
-          maxWidth: '400px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '1.5rem', 
-          padding: '1.5rem', 
-          backgroundColor: '#FFFFFF',
-          border: '1px solid var(--border-color)',
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)'
-        }}
-      >
-        {/* Status Badge Verifikasi */}
-        <div style={{
-          backgroundColor: isValid ? 'var(--status-active)' : 'var(--status-inactive)',
-          color: 'white',
-          padding: '1rem',
-          borderRadius: '8px',
-          textAlign: 'center',
-          fontWeight: 700,
-          letterSpacing: '0.05em',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '0.5rem',
-          fontSize: '0.9rem',
-          boxShadow: isValid ? '0 4px 12px var(--status-active-glow)' : '0 4px 12px var(--status-inactive-glow)'
-        }}>
-          {isValid ? <CheckCircle size={20} /> : <XCircle size={20} />}
-          {isValid ? 'TEKNISI RESMI AKTIF' : (!isTechnicianActive ? 'TEKNISI NONAKTIF / BLOKIR' : (!cardInfo ? 'KARTU TIDAK DITEMUKAN' : (!isCardActive ? 'KARTU DITANGGUHKAN' : 'KARTU KADALUARSA')))}
-        </div>
-
-        {/* Tabel Detail Informasi */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.875rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', paddingBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>ID Teknisi</span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{technician.technician_id}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', paddingBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Cabang / Wilayah</span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{technician.branch}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', paddingBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Service Center</span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{technician.service_center || '-'}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', paddingBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>No. Seri ID Card</span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{cardInfo?.card_number || '-'}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Masa Berlaku Kartu</span>
-            <span style={{ fontWeight: 700, color: isExpired ? 'var(--status-inactive)' : 'var(--text-primary)' }}>{formattedExpiryDate}</span>
-          </div>
-        </div>
-
-        {/* Watermark Keamanan */}
-        <div style={{
-          padding: '10px 12px',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '6px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '8px',
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          border: '1px dashed var(--border-color)',
-          lineHeight: '1.4'
-        }}>
-          <Lock size={14} style={{ flexShrink: 0, marginTop: '2px', color: isValid ? 'var(--status-active)' : 'var(--status-inactive)' }} />
-          <div>
-            Halaman ini adalah bukti resmi verifikasi digital identitas teknisi MODENA.<br />
-            Diverifikasi pada: <strong style={{ color: 'var(--text-secondary)' }}>{timestamp} WIB</strong>
-          </div>
+        <div className="panel panel-pad" style={{ width: '100%' }}>
+          <dl className="detail-list">
+            <div>
+              <dt>Nama</dt>
+              <dd>{technician.technician_name}</dd>
+            </div>
+            <div>
+              <dt>ID teknisi</dt>
+              <dd className="tnum">{technician.technician_id}</dd>
+            </div>
+            <div>
+              <dt>Cabang</dt>
+              <dd>{technician.branch}</dd>
+            </div>
+            <div>
+              <dt>Service center</dt>
+              <dd>{technician.service_center || '-'}</dd>
+            </div>
+            <div>
+              <dt>Nomor kartu</dt>
+              <dd className="tnum">{cardInfo?.card_number || '-'}</dd>
+            </div>
+            <div>
+              <dt>Berlaku sampai</dt>
+              <dd style={isExpired ? { color: 'var(--red-ink)' } : undefined}>
+                {formattedExpiryDate}
+              </dd>
+            </div>
+          </dl>
+          <p className="stamp" style={{ marginTop: '14px' }}>
+            <Clock size={13} />
+            Status diperiksa langsung dari sistem MODENA pada {timestamp} WIB.
+          </p>
         </div>
       </div>
-
-    </div>
+    </main>
   );
 }
