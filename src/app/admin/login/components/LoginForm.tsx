@@ -86,7 +86,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword,
             style={{ minHeight: '44px' }}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="DSC-BAL-001"
           />
         </div>
 
