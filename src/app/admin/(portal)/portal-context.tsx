@@ -4,17 +4,21 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
-import { UserProfile } from '@/types';
+import { ServiceTypeCode, UserProfile } from '@/types';
 
 export interface PortalContextValue {
   /** Profil peran pengguna yang sedang login (diambil sekali di layout) */
   profile: UserProfile | null;
   /** Cabang yang dipaksakan untuk Admin Cabang (null = akses nasional) */
   scopedBranch: string | null;
-  /** Cabang kerja aktif ('' = seluruh cabang) */
+  /** Lingkup layanan aktif ('' = semua lingkup); mengikuti cabang bila cabang dipilih */
+  selectedScope: ServiceTypeCode | '';
+  /** Cabang kerja aktif ('' = seluruh cabang pada lingkup aktif) */
   selectedBranch: string;
   /** Mengganti cabang kerja; diabaikan bila akses terkunci pada satu cabang */
   selectBranch: (branch: string) => void;
+  /** Membuka seluruh teknisi satu lingkup ('' = semua lingkup), cabang dikosongkan */
+  selectScope: (scope: ServiceTypeCode | '') => void;
   /** Memuat ulang profil peran (dipakai setelah mengubah akun sendiri) */
   refreshProfile: () => Promise<void>;
 }

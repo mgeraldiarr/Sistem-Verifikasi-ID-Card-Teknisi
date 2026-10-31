@@ -7,6 +7,8 @@ import { PageHeading } from '@/components/PageHeading';
 import { downloadMasterTemplateExcel } from '@/lib/template-generator';
 
 interface DashboardToolbarProps {
+  /** Judul sesuai lingkup/cabang aktif, misal "Teknisi ASC" */
+  title: string;
   /** Konteks data yang sedang tampil, misal "DSC Bandung · YTD 2026" */
   subtitle: React.ReactNode;
   uploadingExcel: boolean;
@@ -17,6 +19,7 @@ interface DashboardToolbarProps {
 
 /** Judul halaman dashboard beserta aksi utama: template, upload Excel, tambah teknisi. */
 export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
+  title,
   subtitle,
   uploadingExcel,
   onExcelUpload,
@@ -24,7 +27,7 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   onDownloadTemplate,
 }) => (
   <PageHeading
-    title="Daftar teknisi"
+    title={title}
     subtitle={subtitle}
     actions={
       <>

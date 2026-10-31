@@ -5,9 +5,12 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Menu } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
+import { parseServiceType } from '@/constants/service-center';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
+import { useBranches } from '@/hooks/useBranches';
 import { useTechnicianBranchCounts } from '@/hooks/useTechnicianBranchCounts';
 import { supabase } from '@/lib/supabase';
+import { ServiceTypeCode } from '@/types';
 import { PortalSidebar } from './components/sidebar/PortalSidebar';
 import { LogoutModal } from './components/LogoutModal';
 import { PortalProvider } from './portal-context';
@@ -23,7 +26,8 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
 
   const { profile, scopedBranch, refresh: refreshProfile } = useAuthProfile();
-  const { counts, total } = useTechnicianBranchCounts();
+  const { counts, scopeCounts, total } = useTechnicianBranchCounts();
+  const { getBranchServiceType } = useBranches();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   // Sidebar tampil sebagai drawer di layar < 1024px
@@ -47,22 +51,27 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const branchFilterMemory = useRef<Record<string, BranchFilterState>>({});
 
   const urlBranch = searchParams.get('branch') || '';
+  const urlScope = parseServiceType(searchParams.get('scope')) ?? '';
   // Admin Cabang selalu terkunci pada cabangnya, apa pun isi parameter URL
   const selectedBranch = scopedBranch ?? urlBranch;
+  // Lingkup mengikuti cabang terpilih; tanpa cabang, pakai lingkup di URL
+  const selectedScope: ServiceTypeCode | '' = selectedBranch
+    ? getBranchServiceType(selectedBranch) ?? (urlScope || 'DSC')
+    : urlScope;
 
   /**
-   * Berpindah cabang kerja.
+   * Berpindah lingkup/cabang kerja.
    *
-   * Filter aktif cabang sekarang disimpan lebih dulu, lalu filter yang pernah
-   * dipakai di cabang tujuan dipulihkan — perilaku memori filter per cabang.
+   * Filter aktif lingkup/cabang sekarang disimpan lebih dulu, lalu filter yang pernah
+   * dipakai di tujuan dipulihkan — perilaku memori filter per cabang.
    * Navigasi selalu menuju dashboard karena cabang adalah konteks data teknisi.
    */
-  const selectBranch = useCallback(
-    (nextBranch: string) => {
+  const selectWorkspace = useCallback(
+    (nextScope: ServiceTypeCode | '', nextBranch: string) => {
       if (scopedBranch) return; // isolasi cabang: tidak boleh berpindah
 
-      const currentKey = urlBranch || 'all';
-      const nextKey = nextBranch || 'all';
+      const currentKey = `${selectedScope}|${urlBranch}`;
+      const nextKey = `${nextScope}|${nextBranch}`;
 
       // Simpan filter cabang yang sedang aktif
       const snapshot: BranchFilterState = {};
@@ -75,6 +84,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       // Pulihkan filter cabang tujuan
       const saved = branchFilterMemory.current[nextKey] ?? {};
       const params = new URLSearchParams();
+      if (nextScope) params.set('scope', nextScope);
       if (nextBranch) params.set('branch', nextBranch);
       FILTER_KEYS.forEach((key) => {
         const value = saved[key];
@@ -92,8 +102,30 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         router.push(target);
       }
     },
-    [pathname, router, scopedBranch, searchParams, urlBranch]
+    [pathname, router, scopedBranch, searchParams, selectedScope, urlBranch]
   );
+
+  /** Pilih cabang; '' = seluruh cabang pada lingkup yang sedang aktif */
+  const selectBranch = useCallback(
+    (nextBranch: string) =>
+      selectWorkspace(
+        nextBranch ? getBranchServiceType(nextBranch) ?? selectedScope : selectedScope,
+        nextBranch
+      ),
+    [getBranchServiceType, selectWorkspace, selectedScope]
+  );
+
+  /** Tampilkan seluruh teknisi satu lingkup layanan ('' = semua lingkup) */
+  const selectScope = useCallback(
+    (nextScope: ServiceTypeCode | '') => selectWorkspace(nextScope, ''),
+    [selectWorkspace]
+  );
+
+  const topbarContext = selectedBranch
+    ? `${selectedScope} ${selectedBranch}`
+    : selectedScope
+      ? `Semua teknisi ${selectedScope}`
+      : 'Semua teknisi';
 
   const confirmLogout = useCallback(async () => {
     await supabase.auth.signOut();
@@ -102,12 +134,20 @@ function PortalShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PortalProvider
-      value={{ profile, scopedBranch, selectedBranch, selectBranch, refreshProfile }}
+      value={{
+        profile,
+        scopedBranch,
+        selectedScope,
+        selectedBranch,
+        selectBranch,
+        selectScope,
+        refreshProfile,
+      }}
     >
       <div className="portal-shell">
         <header className="topbar no-print">
           <img src="/modena-logo-white.png" alt="MODENA" />
-          <span className="topbar-context">{selectedBranch || 'Semua cabang DSC'}</span>
+          <span className="topbar-context">{topbarContext}</span>
           <button
             type="button"
             className="icon-btn"
@@ -127,10 +167,13 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         <PortalSidebar
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
+          selectedScope={selectedScope}
           selectedBranch={selectedBranch}
+          onSelectScope={selectScope}
           onSelectBranch={selectBranch}
           totalTechnicians={total}
           techniciansBranchCounts={counts}
+          techniciansScopeCounts={scopeCounts}
           onLogout={() => setShowLogoutModal(true)}
           profile={profile}
           lockedBranch={scopedBranch}

@@ -3,7 +3,7 @@
 
 import React from 'react';
 
-/** Tombol cabang di daftar navigasi DSC */
+/** Tombol cabang di daftar navigasi lingkup layanan */
 export function BranchButton({
   label,
   isSelected,

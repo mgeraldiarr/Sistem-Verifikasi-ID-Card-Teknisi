@@ -1,7 +1,8 @@
 // src/app/admin/(portal)/branches/hooks/useManagedBranches.ts
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { refreshBranches } from '@/hooks/useBranches';
 import { supabase } from '@/lib/supabase';
 import { BranchRecord, NotificationType, ServiceTypeCode } from '@/types';
 
@@ -60,15 +61,6 @@ export function useManagedBranches({ notify, askConfirm }: UseManagedBranchesOpt
     fetchAll();
   }, [fetchAll]);
 
-  const stats = useMemo(
-    () => ({
-      total: branches.length,
-      active: branches.filter((b) => b.is_active).length,
-      assigned: branches.filter((b) => (adminCounts[b.name] ?? 0) > 0).length,
-    }),
-    [branches, adminCounts]
-  );
-
   const toggleActive = (branch: BranchRecord) => {
     const nextActive = !branch.is_active;
 
@@ -92,6 +84,8 @@ export function useManagedBranches({ notify, askConfirm }: UseManagedBranchesOpt
         setBranches((prev) =>
           prev.map((b) => (b.id === branch.id ? { ...b, is_active: nextActive } : b))
         );
+        // Sidebar, filter, dan form teknisi ikut diperbarui tanpa muat ulang halaman
+        refreshBranches();
       }
     );
   };
@@ -137,6 +131,7 @@ export function useManagedBranches({ notify, askConfirm }: UseManagedBranchesOpt
         }
 
         setBranches((prev) => prev.filter((b) => b.id !== branch.id));
+        refreshBranches();
         notify('success', 'Cabang Dihapus', `${branch.name} telah dihapus dari master cabang.`);
       }
     );
@@ -161,6 +156,7 @@ export function useManagedBranches({ notify, askConfirm }: UseManagedBranchesOpt
     setBranches((prev) =>
       [...prev, data as BranchRecord].sort((a, b) => a.name.localeCompare(b.name))
     );
+    refreshBranches();
     notify('success', 'Cabang Ditambahkan', `${name} berhasil ditambahkan ke master cabang.`);
     return null;
   };
@@ -171,7 +167,6 @@ export function useManagedBranches({ notify, askConfirm }: UseManagedBranchesOpt
     adminCounts,
     loading,
     savingId,
-    stats,
     toggleActive,
     deleteBranch,
     createBranch,

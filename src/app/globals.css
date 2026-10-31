@@ -1052,6 +1052,23 @@ img {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line);
 }
 
+/* Tab lingkup layanan DSC / ASC / SL di Kelola Cabang & Kelola Akun */
+.scope-tabs {
+  max-width: 440px;
+  margin-bottom: 16px;
+}
+.scope-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.scope-tab-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
 /* ------------------------------------------------------------------ */
 /* Kerangka portal: sidebar + top bar                                  */
 /* ------------------------------------------------------------------ */
@@ -1214,6 +1231,23 @@ img {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sb-user-interactive {
+  text-decoration: none;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+.sb-user-interactive:hover {
+  background: var(--surface-dark-2);
+}
+.sb-user-chevron {
+  color: var(--ink-inverse-3);
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.sb-user-interactive:hover .sb-user-chevron {
+  color: var(--ink-inverse);
+  transform: translateX(2px);
+}
 
 .sb-nav {
   display: flex;
@@ -1292,6 +1326,14 @@ img {
 .sb-scope:disabled {
   cursor: default;
   color: var(--ink-inverse-3);
+}
+/* Lingkup yang teknisinya sedang ditampilkan */
+.sb-scope[data-active='true'] {
+  background: var(--surface-dark-2);
+  font-weight: 600;
+}
+.sb-scope[data-active='true'] .sb-scope-code {
+  color: var(--red);
 }
 .sb-scope-code {
   width: 36px;

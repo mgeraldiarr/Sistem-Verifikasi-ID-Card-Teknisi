@@ -2,7 +2,10 @@
 import React from 'react';
 import { QrCode, User } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { getServiceCenterCardLabel } from '@/constants/service-center';
+import {
+  getServiceCenterCardLabel,
+  getServiceTypeFromTechnicianId,
+} from '@/constants/service-center';
 import styles from './IdCard.module.css';
 
 /**
@@ -18,6 +21,8 @@ export interface IdCardData {
   technician_id: string;
   technician_name: string;
   branch: string;
+  /** Lingkup layanan (DSC/ASC/SL) untuk band kartu; kosong = DSC */
+  service_type?: string | null;
   photo_url: string | null;
 }
 
@@ -30,8 +35,14 @@ interface FaceProps {
 const cardClass = (side: string, variant: FaceProps['variant']) =>
   [styles.card, side, variant === 'print' ? styles.print : ''].join(' ');
 
-const ServiceBand: React.FC<{ branch: string }> = ({ branch }) => (
-  <div className={styles.band}>{getServiceCenterCardLabel(branch)}</div>
+/** Band lingkup layanan; data tanpa kolom service_type memakai prefiks ID teknisi */
+const ServiceBand: React.FC<{ technician: IdCardData }> = ({ technician }) => (
+  <div className={styles.band}>
+    {getServiceCenterCardLabel(
+      technician.branch,
+      technician.service_type || getServiceTypeFromTechnicianId(technician.technician_id)
+    )}
+  </div>
 );
 
 export const IdCardFront: React.FC<FaceProps & { levelText: string }> = ({
@@ -70,7 +81,7 @@ export const IdCardFront: React.FC<FaceProps & { levelText: string }> = ({
       </dl>
     </div>
 
-    <ServiceBand branch={technician.branch} />
+    <ServiceBand technician={technician} />
   </div>
 );
 
@@ -123,6 +134,6 @@ export const IdCardBack: React.FC<
       </p>
     </div>
 
-    <ServiceBand branch={technician.branch} />
+    <ServiceBand technician={technician} />
   </div>
 );

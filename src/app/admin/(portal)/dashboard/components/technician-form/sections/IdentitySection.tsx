@@ -4,13 +4,23 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { getBranchCode } from '@/constants/branch-codes';
-import { DSC_BRANCHES, getDscServiceCenterOptions } from '@/constants/service-center';
-import { TechnicianFormData } from '@/types';
+import { getServiceCenterOptions, SERVICE_SCOPES } from '@/constants/service-center';
+import { ServiceTypeCode, TechnicianFormData } from '@/types';
 import { fieldClass, FormSection, LabelAside, RequiredMark } from '../form-styles';
 
 interface IdentitySectionProps {
   formData: TechnicianFormData;
   generatingId: boolean;
+  /** Saran nama cabang untuk lingkup layanan yang dipilih */
+  branchOptions: string[];
+  /**
+   * Alasan lingkup tidak bisa diganti (prefiks ID sudah terbit, atau Admin Cabang
+   * terkunci pada lingkup cabangnya); null = bebas dipilih
+   */
+  scopeLockReason: string | null;
+  /** Admin Cabang: cabang terkunci pada cabangnya sendiri */
+  isBranchLocked: boolean;
+  onServiceTypeChange: (serviceType: ServiceTypeCode) => void;
   /** Mengubah satu field teks dan menghapus sorotan error-nya */
   onFieldChange: (field: 'employee_number' | 'technician_name', value: string) => void;
   onBranchChange: (branch: string) => void;
@@ -18,34 +28,61 @@ interface IdentitySectionProps {
   hasError: (field: string) => boolean;
 }
 
-/** ID teknisi (otomatis), NIK, nama, cabang, dan Service Center. */
+/** Nama, lingkup layanan, cabang, Service Center, ID teknisi (otomatis), dan NIK. */
 export const IdentitySection: React.FC<IdentitySectionProps> = ({
   formData,
   generatingId,
+  branchOptions,
+  scopeLockReason,
+  isBranchLocked,
+  onServiceTypeChange,
   onFieldChange,
   onBranchChange,
   onServiceCenterChange,
   hasError,
 }) => {
   const branchCode = formData.branch ? getBranchCode(formData.branch) : null;
-  const serviceCenters = getDscServiceCenterOptions(formData.branch);
+  const serviceCenters = getServiceCenterOptions(formData.branch, formData.service_type);
 
   return (
     <FormSection title="Identitas">
-      <div className="field">
-        <label htmlFor="form-technician-name" className="label">
-          Nama lengkap <RequiredMark />
-        </label>
-        <input
-          id="form-technician-name"
-          name="technician_name"
-          type="text"
-          autoComplete="off"
-          value={formData.technician_name}
-          onChange={(e) => onFieldChange('technician_name', e.target.value)}
-          className={fieldClass('input', hasError('technician_name'))}
-          placeholder="Budi Santoso"
-        />
+      <div className="grid-2">
+        <div className="field">
+          <label htmlFor="form-technician-name" className="label">
+            Nama lengkap <RequiredMark />
+          </label>
+          <input
+            id="form-technician-name"
+            name="technician_name"
+            type="text"
+            autoComplete="off"
+            value={formData.technician_name}
+            onChange={(e) => onFieldChange('technician_name', e.target.value)}
+            className={fieldClass('input', hasError('technician_name'))}
+            placeholder="Budi Santoso"
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="form-service-type" className="label">
+            Lingkup layanan <RequiredMark />
+            {scopeLockReason && <LabelAside>{scopeLockReason}</LabelAside>}
+          </label>
+          <select
+            id="form-service-type"
+            name="service_type"
+            className="select"
+            value={formData.service_type}
+            onChange={(e) => onServiceTypeChange(e.target.value as ServiceTypeCode)}
+            disabled={Boolean(scopeLockReason)}
+          >
+            {SERVICE_SCOPES.map((scope) => (
+              <option key={scope.code} value={scope.code}>
+                {scope.code}, {scope.fullName}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid-2">
@@ -58,14 +95,16 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
             id="form-branch"
             name="branch"
             type="text"
-            list="dsc-branches-list"
+            list={isBranchLocked ? undefined : 'scope-branches-list'}
             value={formData.branch}
             onChange={(e) => onBranchChange(e.target.value)}
+            readOnly={isBranchLocked}
+            title={isBranchLocked ? 'Admin Cabang hanya dapat mendaftarkan teknisi di cabangnya' : undefined}
             className={fieldClass('input', hasError('branch'))}
-            placeholder="Pilih atau ketik cabang DSC"
+            placeholder={`Pilih atau ketik cabang ${formData.service_type}`}
           />
-          <datalist id="dsc-branches-list">
-            {DSC_BRANCHES.map((b) => (
+          <datalist id="scope-branches-list">
+            {branchOptions.map((b) => (
               <option key={b} value={b}>
                 {`${b} (Kode: ${getBranchCode(b)})`}
               </option>
@@ -103,7 +142,7 @@ export const IdentitySection: React.FC<IdentitySectionProps> = ({
         <div className="field">
           <label htmlFor="form-technician-id" className="label">
             ID teknisi
-            <LabelAside>Dibuat otomatis dari cabang</LabelAside>
+            <LabelAside>Dibuat otomatis dari lingkup & cabang</LabelAside>
           </label>
           <div className="input-wrap">
             <input

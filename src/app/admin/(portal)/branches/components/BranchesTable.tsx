@@ -13,6 +13,8 @@ interface BranchesTableProps {
   adminCounts: Record<string, number>;
   onToggleActive: (branch: BranchRecord) => void;
   onDelete: (branch: BranchRecord) => void;
+  emptyTitle: string;
+  emptyHint: string;
 }
 
 export const BranchesTable: React.FC<BranchesTableProps> = ({
@@ -23,6 +25,8 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
   adminCounts,
   onToggleActive,
   onDelete,
+  emptyTitle,
+  emptyHint,
 }) => (
   <div className="table-panel">
     {loading ? (
@@ -31,15 +35,14 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
       </div>
     ) : branches.length === 0 ? (
       <div className="table-empty">
-        <strong>Belum ada cabang yang cocok</strong>
-        Ubah kata kunci pencarian, atau tambahkan cabang baru.
+        <strong>{emptyTitle}</strong>
+        {emptyHint}
       </div>
     ) : (
       <table className="data-table">
         <thead>
           <tr>
             <th scope="col">Cabang</th>
-            <th scope="col">Lingkup</th>
             <th scope="col">Teknisi</th>
             <th scope="col">Admin cabang</th>
             <th scope="col">Status</th>
@@ -58,10 +61,6 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
             return (
               <tr key={branch.id}>
                 <td className="cell-primary cell-strong">{branch.name}</td>
-
-                <td data-label="Lingkup">
-                  <span className="badge">{branch.service_type}</span>
-                </td>
 
                 <td data-label="Teknisi" className="tnum">
                   {techCount}

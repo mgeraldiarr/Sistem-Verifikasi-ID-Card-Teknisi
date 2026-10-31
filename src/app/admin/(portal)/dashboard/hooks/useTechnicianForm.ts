@@ -2,8 +2,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { DEFAULT_SERVICE_TYPE, getTechnicianServiceType } from '@/constants/service-center';
 import { getErrorMessage } from '@/lib/errors';
-import { NotificationType, Technician, TechnicianFormData } from '@/types';
+import { NotificationType, ServiceTypeCode, Technician, TechnicianFormData } from '@/types';
 import { saveTechnician, uploadTechnicianPhoto } from '../utils/save-technician';
 
 const EMPTY_FORM: TechnicianFormData = {
@@ -11,6 +12,7 @@ const EMPTY_FORM: TechnicianFormData = {
   employee_number: '',
   technician_name: '',
   branch: '',
+  service_type: DEFAULT_SERVICE_TYPE,
   service_center: '',
   phone: '',
   email: '',
@@ -36,6 +38,8 @@ function toFormData(tech: Technician): TechnicianFormData {
     employee_number: tech.employee_number,
     technician_name: tech.technician_name,
     branch: tech.branch,
+    // Database lama tanpa kolom service_type: ambil dari prefiks ID, bawaan DSC
+    service_type: getTechnicianServiceType(tech),
     service_center: tech.service_center || '',
     phone: tech.phone || '',
     email: tech.email || '',
@@ -59,12 +63,22 @@ interface UseTechnicianFormOptions {
   technicians: Technician[];
   /** Cabang yang dikunci untuk Admin Cabang (null = akses nasional) */
   scopedBranch: string | null;
+  /** Lingkup & cabang yang sedang dibuka, sebagai isian awal teknisi baru */
+  selectedScope: ServiceTypeCode | '';
+  selectedBranch: string;
   notify: (type: NotificationType, title: string, message: string) => void;
   onSaved: () => void;
 }
 
 /** State & aksi modal tambah/edit teknisi. */
-export function useTechnicianForm({ technicians, scopedBranch, notify, onSaved }: UseTechnicianFormOptions) {
+export function useTechnicianForm({
+  technicians,
+  scopedBranch,
+  selectedScope,
+  selectedBranch,
+  notify,
+  onSaved,
+}: UseTechnicianFormOptions) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formId, setFormId] = useState<string | null>(null);
@@ -79,8 +93,10 @@ export function useTechnicianForm({ technicians, scopedBranch, notify, onSaved }
       setFormId(null);
       setFormData({
         ...EMPTY_FORM,
-        // Admin Cabang hanya boleh mendaftarkan teknisi di cabangnya sendiri
-        branch: scopedBranch ?? '',
+        // Admin Cabang hanya boleh mendaftarkan teknisi di cabangnya sendiri;
+        // Super Admin langsung memakai lingkup & cabang yang sedang dibuka
+        branch: scopedBranch ?? selectedBranch,
+        service_type: selectedScope || DEFAULT_SERVICE_TYPE,
         expiry_date: defaultExpiryDate(),
       });
     }

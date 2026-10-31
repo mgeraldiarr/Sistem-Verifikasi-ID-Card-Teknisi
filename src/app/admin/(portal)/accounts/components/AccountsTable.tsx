@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { UserProfile } from '@/types';
+import { ServiceTypeCode, UserProfile } from '@/types';
 import { AccountRow, AccountRowActions } from './AccountRow';
 
 interface AccountsTableProps extends AccountRowActions {
@@ -11,7 +11,8 @@ interface AccountsTableProps extends AccountRowActions {
   loading: boolean;
   savingId: string | null;
   currentUserId: string | undefined;
-  branchNames: string[];
+  branchesByScope: Record<ServiceTypeCode, string[]>;
+  getBranchServiceType: (branch: string | null) => ServiceTypeCode | null;
 }
 
 export const AccountsTable: React.FC<AccountsTableProps> = ({
@@ -19,7 +20,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   loading,
   savingId,
   currentUserId,
-  branchNames,
+  branchesByScope,
+  getBranchServiceType,
   ...actions
 }) => (
   <div className="table-panel">
@@ -30,7 +32,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
     ) : accounts.length === 0 ? (
       <div className="table-empty">
         <strong>Tidak ada akun yang cocok</strong>
-        Ubah kata kunci atau pilih peran lain.
+        Ubah kata kunci, atau pilih lingkup, cabang, maupun peran lain.
       </div>
     ) : (
       <table className="data-table">
@@ -38,6 +40,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
           <tr>
             <th scope="col">Pengguna</th>
             <th scope="col">Peran</th>
+            <th scope="col">Lingkup</th>
             <th scope="col">Cabang</th>
             <th scope="col">Status</th>
             <th scope="col" className="col-actions">
@@ -52,7 +55,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
               account={account}
               isSelf={account.id === currentUserId}
               busy={savingId === account.id}
-              branchNames={branchNames}
+              serviceType={getBranchServiceType(account.branch)}
+              branchesByScope={branchesByScope}
               {...actions}
             />
           ))}

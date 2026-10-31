@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, User } from 'lucide-react';
+import { getTechnicianServiceType } from '@/constants/service-center';
 import { DEFAULT_KPI_WEIGHTS, KpiWeights } from '@/lib/kpi';
 import { Technician, TechnicianLevel, TechnicianStatus } from '@/types';
 import { KpiQuickPeek } from './KpiQuickPeek';
@@ -54,7 +55,12 @@ export const TechnicianTableRow: React.FC<TechnicianTableRowProps> = ({
 
       {/* CABANG */}
       <td data-label="Cabang">
-        <div className="cell-strong">{tech.branch}</div>
+        <div className="cell-strong">
+          <span className="badge" style={{ marginRight: '6px', verticalAlign: '1px' }}>
+            {getTechnicianServiceType(tech)}
+          </span>
+          {tech.branch}
+        </div>
         <div className="cell-sub">{tech.service_center || '-'}</div>
       </td>
 

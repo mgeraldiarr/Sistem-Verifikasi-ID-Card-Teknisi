@@ -26,15 +26,15 @@ interface ResolvedLogin {
   kind: LoginKind;
 }
 
-// Format ID resmi: DSC-BAL-001 (teknisi) & ADM-BAL-01 (Admin Cabang).
+// Format ID resmi: DSC-BAL-001 / ASC-BAL-001 / SL-BAL-001 (teknisi) & ADM-BAL-01 (Admin Cabang).
 // Karakter dibatasi agar aman dipakai pada filter PostgREST.
-const TECHNICIAN_ID_PATTERN = /^DSC-[A-Z0-9]{2,6}-\d{1,6}$/;
+const TECHNICIAN_ID_PATTERN = /^(?:DSC|ASC|SL)-[A-Z0-9]{2,6}-\d{1,6}$/;
 const ADMIN_ID_PATTERN = /^ADM-[A-Z0-9]{2,6}-\d{1,6}$/;
 
 /**
  * Memetakan ID Pengguna ke email akun login-nya.
  * - ADM-...  -> user_profiles.admin_id (Admin Cabang)
- * - DSC-...  -> technicians.technician_id (Teknisi)
+ * - DSC-/ASC-/SL-... -> technicians.technician_id (Teknisi)
  * - email    -> khusus Super Admin
  * Dijalankan dengan service role di server sehingga tidak menembus RLS klien.
  */
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Jenis ID harus sesuai peran akun: email hanya untuk Super Admin,
-  // ADM- hanya untuk Admin Cabang, DSC- hanya untuk Teknisi.
+  // ADM- hanya untuk Admin Cabang, DSC-/ASC-/SL- hanya untuk Teknisi.
   if (profile.role !== resolved.kind) {
     return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
   }

@@ -79,6 +79,7 @@ export async function saveTechnician({
     employee_number: formData.employee_number,
     technician_name: formData.technician_name,
     branch: formData.branch,
+    service_type: formData.service_type,
     service_center: formData.service_center || null,
     phone: formData.phone || null,
     email: formData.email || null,

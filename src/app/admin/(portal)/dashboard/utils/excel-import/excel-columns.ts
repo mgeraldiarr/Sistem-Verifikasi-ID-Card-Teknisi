@@ -17,6 +17,15 @@ export const COLUMN_ALIASES = {
     'nama lengkap',
   ],
   branch: ['branch', 'cabang', 'wilayah'],
+  // Opsional: DSC / ASC / SL (bila kosong mengikuti ID teknisi atau master cabang)
+  serviceType: [
+    'service_type',
+    'service type',
+    'lingkup layanan',
+    'lingkup_layanan',
+    'lingkup',
+    'service scope',
+  ],
   technicianId: ['technician_id', 'id_teknisi', 'id teknisi', 'id'],
   employeeNumber: [
     'employee_number',

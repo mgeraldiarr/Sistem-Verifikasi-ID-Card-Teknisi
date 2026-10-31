@@ -3,13 +3,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Building2, LayoutDashboard, SlidersHorizontal, UserCog } from 'lucide-react';
+import { Building2, LayoutDashboard, SlidersHorizontal, User, UserCog } from 'lucide-react';
 
 const ADMIN_MENU = [
   { href: '/admin/dashboard', label: 'Daftar teknisi', icon: <LayoutDashboard size={16} /> },
   { href: '/admin/accounts', label: 'Kelola akun', icon: <UserCog size={16} /> },
   { href: '/admin/branches', label: 'Kelola cabang', icon: <Building2 size={16} /> },
   { href: '/admin/kpi-settings', label: 'Bobot KPI', icon: <SlidersHorizontal size={16} /> },
+  { href: '/admin/profile', label: 'Profil saya', icon: <User size={16} /> },
 ];
 
 /** Menu administrasi sistem — hanya ditampilkan untuk Super Admin */

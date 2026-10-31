@@ -16,7 +16,7 @@ interface LoginFormProps {
 }
 
 /**
- * Login berbasis ID Pengguna: DSC-... (Teknisi), ADM-... (Admin Cabang),
+ * Login berbasis ID Pengguna: DSC-/ASC-/SL-... (Teknisi), ADM-... (Admin Cabang),
  * atau email (khusus Super Admin). Pemetaan ID -> akun dilakukan di server.
  */
 export const LoginForm: React.FC<LoginFormProps> = ({ onError, onForgotPassword, onOpenGuide }) => {

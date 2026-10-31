@@ -1,11 +1,11 @@
 // src/app/admin/(portal)/components/sidebar/PortalSidebar.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { LogOut, X } from 'lucide-react';
 import { useBranches } from '@/hooks/useBranches';
-import { UserProfile } from '@/types';
+import { ServiceTypeCode, UserProfile } from '@/types';
 import { ServiceScopeList } from './ServiceScopeList';
 import { SidebarAdminMenu } from './SidebarAdminMenu';
 import { SidebarUserCard } from './SidebarUserCard';
@@ -14,10 +14,14 @@ interface PortalSidebarProps {
   /** Drawer terbuka (hanya berpengaruh di layar < 1024px) */
   isOpen: boolean;
   onClose: () => void;
+  /** Lingkup aktif ('' = semua lingkup) */
+  selectedScope: ServiceTypeCode | '';
   selectedBranch: string;
+  onSelectScope: (scope: ServiceTypeCode | '') => void;
   onSelectBranch: (branch: string) => void;
   totalTechnicians: number;
   techniciansBranchCounts?: Record<string, number>;
+  techniciansScopeCounts?: Partial<Record<ServiceTypeCode, number>>;
   onLogout: () => void;
   /** Profil peran pengguna yang sedang login */
   profile?: UserProfile | null;
@@ -31,10 +35,13 @@ interface PortalSidebarProps {
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   isOpen,
   onClose,
+  selectedScope,
   selectedBranch,
+  onSelectScope,
   onSelectBranch,
   totalTechnicians,
   techniciansBranchCounts = {},
+  techniciansScopeCounts = {},
   onLogout,
   profile = null,
   lockedBranch = null,
@@ -43,23 +50,41 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   const isLocked = Boolean(lockedBranch);
   const isSuperAdmin = profile?.role === 'super_admin';
 
-  // Daftar cabang DSC terbuka bila Admin Cabang (cabangnya langsung terlihat) atau
-  // ada cabang aktif di URL; Super Admin tanpa filter melihatnya tertutup.
-  const [isDscExpanded, setIsDscExpanded] = useState<boolean>(
-    () => Boolean(lockedBranch || selectedBranch)
-  );
-
-  // Profil Admin Cabang bisa selesai dimuat setelah render awal
-  useEffect(() => {
-    if (lockedBranch) setIsDscExpanded(true);
-  }, [lockedBranch]);
-
   // Master cabang dari tabel `branches` (fallback ke konstanta bila belum dimigrasi).
   // Admin Cabang hanya melihat cabangnya sendiri.
-  const { branchNames } = useBranches();
-  const visibleBranches = isLocked
-    ? branchNames.filter((branch) => branch === lockedBranch)
-    : branchNames;
+  const { branchesByScope } = useBranches();
+  const visibleBranchesByScope = useMemo(() => {
+    if (!isLocked) return branchesByScope;
+    const onlyLocked = (names: string[]) => names.filter((branch) => branch === lockedBranch);
+    const scoped = {
+      DSC: onlyLocked(branchesByScope.DSC),
+      ASC: onlyLocked(branchesByScope.ASC),
+      SL: onlyLocked(branchesByScope.SL),
+    };
+    // Cabang Admin Cabang yang belum terdaftar di master tetap tampil (bawaan DSC)
+    const found = scoped.DSC.length + scoped.ASC.length + scoped.SL.length > 0;
+    return found || !lockedBranch ? scoped : { ...scoped, DSC: [lockedBranch] };
+  }, [isLocked, lockedBranch, branchesByScope]);
+
+  // Daftar cabang terbuka pada lingkup yang sedang aktif (termasuk lingkup Admin Cabang);
+  // tanpa lingkup aktif semuanya tertutup.
+  const activeScope = selectedScope || null;
+  const [expandedScope, setExpandedScope] = useState<ServiceTypeCode | null>(activeScope);
+
+  // Lingkup aktif bisa berubah dari URL, filter dashboard, atau profil yang baru dimuat
+  useEffect(() => {
+    if (activeScope) setExpandedScope(activeScope);
+  }, [activeScope]);
+
+  /** Klik lingkup: tampilkan semua teknisinya; klik lagi lingkup yang aktif untuk melipat */
+  const handleScopeClick = (scope: ServiceTypeCode) => {
+    if (isLocked || (scope === selectedScope && !selectedBranch)) {
+      setExpandedScope((prev) => (prev === scope ? null : scope));
+      return;
+    }
+    setExpandedScope(scope);
+    onSelectScope(scope);
+  };
 
   return (
     <aside className={`sidebar no-print${isOpen ? ' is-open' : ''}`} aria-label="Navigasi portal">
@@ -89,13 +114,17 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </div>
 
         <ServiceScopeList
-          branches={visibleBranches}
+          branchesByScope={visibleBranchesByScope}
+          selectedScope={selectedScope}
           selectedBranch={selectedBranch}
+          onSelectAll={() => onSelectScope('')}
+          onSelectScope={handleScopeClick}
           onSelectBranch={onSelectBranch}
           branchCounts={techniciansBranchCounts}
+          scopeCounts={techniciansScopeCounts}
+          totalTechnicians={totalTechnicians}
           isLocked={isLocked}
-          isDscExpanded={isDscExpanded}
-          onToggleDsc={() => setIsDscExpanded((prev) => !prev)}
+          expandedScope={expandedScope}
         />
       </div>
 
