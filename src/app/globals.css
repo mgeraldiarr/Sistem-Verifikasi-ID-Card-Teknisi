@@ -1231,6 +1231,23 @@ img {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sb-user-interactive {
+  text-decoration: none;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+.sb-user-interactive:hover {
+  background: var(--surface-dark-2);
+}
+.sb-user-chevron {
+  color: var(--ink-inverse-3);
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.sb-user-interactive:hover .sb-user-chevron {
+  color: var(--ink-inverse);
+  transform: translateX(2px);
+}
 
 .sb-nav {
   display: flex;
