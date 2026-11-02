@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2, RotateCcw } from 'lucide-react';
 import { PageHeading } from '@/components/PageHeading';
 import { NotificationModal } from '@/components/ui/NotificationModal';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useKpiWeights } from '@/hooks/useKpiWeights';
 import { DEFAULT_KPI_WEIGHTS, KpiWeights, validateKpiWeights } from '@/lib/kpi';
 import { NotificationState, NotificationType } from '@/types';
@@ -61,25 +62,30 @@ function KpiSettingsContent() {
   };
 
   const handleSave = async () => {
-    if (!validation.isValid) return;
-    setSaving(true);
-    const error = await save(draft);
-    setSaving(false);
-
-    if (error) {
+    if (!validation.isValid) {
       notify(
-        'error',
-        'Gagal Menyimpan Bobot',
-        `${error}\n\nPastikan migrasi 20260923_add_admin_id_and_kpi_settings sudah dijalankan.`
+        'warning',
+        'Total Bobot Belum 100%',
+        `Total bobot saat ini ${validation.total}%. ${
+          remaining > 0 ? `Kurang ${remaining}%` : `Kelebihan ${Math.abs(remaining)}%`
+        } agar pas 100%.`
       );
       return;
     }
 
-    notify(
-      'success',
-      'Bobot KPI Tersimpan',
-      'Bobot baru berlaku untuk input & upload berikutnya. Skor teknisi yang sudah tersimpan tidak dihitung ulang otomatis.'
-    );
+    setSaving(true);
+    const err = await save(draft);
+    setSaving(false);
+
+    if (err) {
+      notify('error', 'Gagal Menyimpan Bobot', err);
+    } else {
+      notify(
+        'success',
+        'Bobot Tersimpan',
+        'Bobot KPI berhasil diperbarui. Nilai teknisi baru dan pratinjau form akan memakai komposisi ini.'
+      );
+    }
   };
 
   const cannotSave = loading || saving || !isDirty || !validation.isValid;
@@ -88,10 +94,10 @@ function KpiSettingsContent() {
     <>
       <PageHeading
         title="Bobot KPI"
-        subtitle="Persentase tiap indikator dalam skor KPI teknisi. Jumlah keenam bobot harus tepat 100%."
+        subtitle="Atur persentase kontribusi tiap indikator ke skor performa akhir teknisi."
       />
 
-      {usingFallback && !loading && (
+      {usingFallback && (
         <div className="alert alert-warn" style={{ marginBottom: '16px' }}>
           <AlertTriangle size={16} />
           <span>
@@ -104,8 +110,16 @@ function KpiSettingsContent() {
       <div className={styles.layout}>
         <div className="panel">
           {loading ? (
-            <div className="table-loading" aria-label="Memuat bobot">
-              <Loader2 size={24} className="spin" />
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <Skeleton width="120px" height="16px" />
+                    <Skeleton width="220px" height="12px" />
+                  </div>
+                  <Skeleton width="70px" height="34px" radius="6px" />
+                </div>
+              ))}
             </div>
           ) : (
             <>

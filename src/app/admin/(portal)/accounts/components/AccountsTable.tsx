@@ -2,9 +2,9 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import { ServiceTypeCode, UserProfile } from '@/types';
 import { AccountRow, AccountRowActions } from './AccountRow';
+import { AccountsTableSkeleton } from './AccountsTableSkeleton';
 
 interface AccountsTableProps extends AccountRowActions {
   accounts: UserProfile[];
@@ -25,11 +25,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   ...actions
 }) => (
   <div className="table-panel">
-    {loading ? (
-      <div className="table-loading" aria-label="Memuat akun">
-        <Loader2 size={24} className="spin" />
-      </div>
-    ) : accounts.length === 0 ? (
+    {!loading && accounts.length === 0 ? (
       <div className="table-empty">
         <strong>Tidak ada akun yang cocok</strong>
         Ubah kata kunci, atau pilih lingkup, cabang, maupun peran lain.
@@ -49,17 +45,21 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {accounts.map((account) => (
-            <AccountRow
-              key={account.id}
-              account={account}
-              isSelf={account.id === currentUserId}
-              busy={savingId === account.id}
-              serviceType={getBranchServiceType(account.branch)}
-              branchesByScope={branchesByScope}
-              {...actions}
-            />
-          ))}
+          {loading ? (
+            <AccountsTableSkeleton rows={5} />
+          ) : (
+            accounts.map((account) => (
+              <AccountRow
+                key={account.id}
+                account={account}
+                isSelf={account.id === currentUserId}
+                busy={savingId === account.id}
+                serviceType={getBranchServiceType(account.branch)}
+                branchesByScope={branchesByScope}
+                {...actions}
+              />
+            ))
+          )}
         </tbody>
       </table>
     )}

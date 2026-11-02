@@ -14,6 +14,8 @@ interface AuthWrapperProps {
    * Kosongkan untuk mengizinkan seluruh peran yang sudah login & aktif.
    */
   allowedRoles?: UserRole[];
+  /** Tampilan kustom saat status autentikasi sedang dimuat (misal: Skeleton UI) */
+  fallback?: React.ReactNode;
 }
 
 /** Layar netral bertema MODENA untuk status loading / blokir akses */
@@ -50,7 +52,7 @@ function GateScreen({
   );
 }
 
-export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps) {
+export default function AuthWrapper({ children, allowedRoles, fallback }: AuthWrapperProps) {
   const router = useRouter();
   const {
     loading,
@@ -70,19 +72,19 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   useEffect(() => {
     if (loading) return;
 
-    // 1. Belum login sama sekali -> kembalikan ke portal login
+    // 1. Tidak punya sesi -> paksa login
     if (!session) {
       router.replace('/admin/login');
       return;
     }
 
-    // 2. Akun dinonaktifkan atau profil peran belum terdaftar -> logout paksa
-    if (isDeactivated || profileError) {
-      signOut().finally(() => router.replace('/admin/login'));
+    // 2. Akun dinonaktifkan -> putuskan sesi dan beri tahu
+    if (isDeactivated) {
+      signOut().then(() => router.replace('/admin/login'));
       return;
     }
 
-    // 3. Kata sandi awal belum dirotasi -> tahan akses sampai diganti
+    // 3. Wajib ganti kata sandi -> arahkan ke halaman rotasi sandi awal
     if (mustChangePassword) {
       router.replace('/admin/reset-password');
       return;
@@ -105,6 +107,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   ]);
 
   if (loading) {
+    if (fallback) return <>{fallback}</>;
+
     return (
       <GateScreen
         icon={
@@ -129,16 +133,16 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
       <GateScreen
         icon={<ShieldAlert size={28} color="var(--red)" />}
         title="Akun dinonaktifkan"
-        message="Akun Anda telah dinonaktifkan oleh administrator. Silakan hubungi Super Admin MODENA untuk pengaktifan kembali."
+        message="Akses Anda telah ditutup oleh Super Admin. Hubungi administrator untuk informasi lebih lanjut."
       />
     );
   }
 
-  if (profileError) {
+  if (profileError && !profile) {
     return (
       <GateScreen
         icon={<ShieldAlert size={28} color="var(--red)" />}
-        title="Akses belum terdaftar"
+        title="Gagal memuat profil akun"
         message={profileError}
       />
     );
@@ -147,9 +151,9 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
   if (mustChangePassword) {
     return (
       <GateScreen
-        icon={<KeyRound size={28} color="var(--red)" />}
-        title="Ganti kata sandi awal"
-        message="Demi keamanan, kata sandi awal Anda wajib diganti sebelum portal dapat digunakan. Anda sedang dialihkan ke halaman penggantian kata sandi."
+        icon={<KeyRound size={28} color="var(--warn)" />}
+        title="Perlu ganti kata sandi"
+        message="Anda harus mengganti kata sandi awal sebelum dapat menggunakan portal."
       />
     );
   }
@@ -158,8 +162,8 @@ export default function AuthWrapper({ children, allowedRoles }: AuthWrapperProps
     return (
       <GateScreen
         icon={<ShieldAlert size={28} color="var(--red)" />}
-        title="Akses ditolak"
-        message="Peran akun Anda tidak memiliki izin untuk membuka halaman ini. Anda sedang dialihkan ke halaman yang sesuai."
+        title="Akses ditolak (403)"
+        message="Akun Anda tidak memiliki izin untuk membuka halaman ini."
       />
     );
   }
