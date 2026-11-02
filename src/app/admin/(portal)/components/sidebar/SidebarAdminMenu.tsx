@@ -10,7 +10,6 @@ const ADMIN_MENU = [
   { href: '/admin/accounts', label: 'Kelola akun', icon: <UserCog size={16} /> },
   { href: '/admin/branches', label: 'Kelola cabang', icon: <Building2 size={16} /> },
   { href: '/admin/kpi-settings', label: 'Bobot KPI', icon: <SlidersHorizontal size={16} /> },
-
 ];
 
 /** Menu administrasi sistem — hanya ditampilkan untuk Super Admin */
