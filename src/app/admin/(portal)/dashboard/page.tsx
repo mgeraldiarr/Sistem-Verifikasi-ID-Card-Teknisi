@@ -1,7 +1,7 @@
 // src/app/admin/(portal)/dashboard/page.tsx
 'use client';
 
-import React, { Suspense, useMemo } from 'react';
+import React, { Suspense, useCallback, useMemo } from 'react';
 import { useBranches } from '@/hooks/useBranches';
 import { useFeedbackModals } from '@/hooks/useFeedbackModals';
 import { useKpiWeights } from '@/hooks/useKpiWeights';
@@ -25,7 +25,14 @@ import { filterTechnicians } from './utils/technician-filters';
 function AdminDashboard() {
   // Profil peran & cabang kerja disediakan oleh layout portal (satu kali fetch).
   // Cabang kerja juga mengunci Admin Cabang pada cabangnya sendiri.
-  const { profile, scopedBranch, selectedScope, selectedBranch, selectBranch } = usePortal();
+  const {
+    profile,
+    scopedBranch,
+    selectedScope,
+    selectedBranch,
+    selectBranch,
+    refreshCounts,
+  } = usePortal();
   const isBranchAdmin = profile?.role === 'branch_admin';
 
   const { notify, askConfirm, modals } = useFeedbackModals();
@@ -36,6 +43,10 @@ function AdminDashboard() {
     enabled: Boolean(profile),
   });
 
+  const handleDataChanged = useCallback(async () => {
+    await Promise.all([fetchData(), refreshCounts()]);
+  }, [fetchData, refreshCounts]);
+
   const filters = useDashboardFilters();
   const form = useTechnicianForm({
     technicians,
@@ -43,10 +54,19 @@ function AdminDashboard() {
     selectedScope,
     selectedBranch,
     notify,
-    onSaved: fetchData,
+    onSaved: handleDataChanged,
   });
-  const actions = useTechnicianActions({ notify, askConfirm, onChanged: fetchData });
-  const excel = useExcelUpload({ scopedBranch, kpiWeights, notify, onUploaded: fetchData });
+  const actions = useTechnicianActions({
+    notify,
+    askConfirm,
+    onChanged: handleDataChanged,
+  });
+  const excel = useExcelUpload({
+    scopedBranch,
+    kpiWeights,
+    notify,
+    onUploaded: handleDataChanged,
+  });
 
   const filteredTechnicians = useMemo(
     () =>
@@ -114,7 +134,7 @@ function AdminDashboard() {
         <SyncLogWidget
           lastSyncLog={lastSyncLog}
           lastFileName={excel.lastFileName}
-          onRefresh={fetchData}
+          onRefresh={handleDataChanged}
         />
 
         <DashboardFilters

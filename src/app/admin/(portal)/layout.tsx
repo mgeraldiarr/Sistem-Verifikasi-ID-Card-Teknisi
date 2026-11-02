@@ -27,7 +27,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
 
   const { profile, scopedBranch, refresh: refreshProfile } = useAuthProfile();
-  const { counts, scopeCounts, total } = useTechnicianBranchCounts();
+  const { counts, scopeCounts, total, refresh: refreshCounts } = useTechnicianBranchCounts();
   const { getBranchServiceType } = useBranches();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -138,6 +138,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         selectBranch,
         selectScope,
         refreshProfile,
+        refreshCounts,
       }}
     >
       <div className="portal-shell">
