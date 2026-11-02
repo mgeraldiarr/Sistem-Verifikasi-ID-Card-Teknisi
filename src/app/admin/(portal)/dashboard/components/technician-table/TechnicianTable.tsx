@@ -2,10 +2,10 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { KpiWeights } from '@/lib/kpi';
 import { Technician, TechnicianStatus } from '@/types';
 import { TechnicianTableRow } from './TechnicianTableRow';
-import { KpiWeights } from '@/lib/kpi';
+import { TechnicianTableSkeleton } from './TechnicianTableSkeleton';
 
 interface TechnicianTableProps {
   loading: boolean;
@@ -28,11 +28,7 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
   ...handlers
 }) => (
   <div className="table-panel">
-    {loading ? (
-      <div className="table-loading" aria-label="Memuat data teknisi">
-        <Loader2 className="spin" size={24} />
-      </div>
-    ) : technicians.length === 0 ? (
+    {!loading && technicians.length === 0 ? (
       <div className="table-empty">
         <strong>Belum ada teknisi yang cocok</strong>
         Ubah kata kunci atau hapus filter, atau tambahkan teknisi baru.
@@ -52,15 +48,19 @@ export const TechnicianTable: React.FC<TechnicianTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {technicians.map((tech) => (
-            <TechnicianTableRow
-              key={tech.id}
-              tech={tech}
-              canDelete={canDelete}
-              kpiWeights={kpiWeights}
-              {...handlers}
-            />
-          ))}
+          {loading ? (
+            <TechnicianTableSkeleton rows={6} />
+          ) : (
+            technicians.map((tech) => (
+              <TechnicianTableRow
+                key={tech.id}
+                tech={tech}
+                canDelete={canDelete}
+                kpiWeights={kpiWeights}
+                {...handlers}
+              />
+            ))
+          )}
         </tbody>
       </table>
     )}

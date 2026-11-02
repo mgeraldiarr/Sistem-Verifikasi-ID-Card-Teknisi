@@ -4,6 +4,7 @@
 import React from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { BranchRecord } from '@/types';
+import { BranchesTableSkeleton } from './BranchesTableSkeleton';
 
 interface BranchesTableProps {
   branches: BranchRecord[];
@@ -29,11 +30,7 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
   emptyHint,
 }) => (
   <div className="table-panel">
-    {loading ? (
-      <div className="table-loading" aria-label="Memuat cabang">
-        <Loader2 size={24} className="spin" />
-      </div>
-    ) : branches.length === 0 ? (
+    {!loading && branches.length === 0 ? (
       <div className="table-empty">
         <strong>{emptyTitle}</strong>
         {emptyHint}
@@ -52,62 +49,66 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {branches.map((branch) => {
-            const techCount = technicianCounts[branch.name] ?? 0;
-            const adminCount = adminCounts[branch.name] ?? 0;
-            const busy = savingId === branch.id;
-            const inUse = techCount > 0 || adminCount > 0;
+          {loading ? (
+            <BranchesTableSkeleton rows={5} />
+          ) : (
+            branches.map((branch) => {
+              const techCount = technicianCounts[branch.name] ?? 0;
+              const adminCount = adminCounts[branch.name] ?? 0;
+              const busy = savingId === branch.id;
+              const inUse = techCount > 0 || adminCount > 0;
 
-            return (
-              <tr key={branch.id}>
-                <td className="cell-primary cell-strong">{branch.name}</td>
+              return (
+                <tr key={branch.id}>
+                  <td className="cell-primary cell-strong">{branch.name}</td>
 
-                <td data-label="Teknisi" className="tnum">
-                  {techCount}
-                </td>
+                  <td data-label="Teknisi" className="tnum">
+                    {techCount}
+                  </td>
 
-                <td data-label="Admin cabang">
-                  {adminCount === 0 ? (
-                    <span className="badge badge-warn">Belum ada</span>
-                  ) : (
-                    <span className="tnum">{adminCount}</span>
-                  )}
-                </td>
+                  <td data-label="Admin cabang">
+                    {adminCount === 0 ? (
+                      <span className="badge badge-warn">Belum ada</span>
+                    ) : (
+                      <span className="tnum">{adminCount}</span>
+                    )}
+                  </td>
 
-                <td data-label="Status">
-                  <button
-                    type="button"
-                    onClick={() => onToggleActive(branch)}
-                    disabled={busy}
-                    className={`status-toggle ${branch.is_active ? 'is-on' : 'is-off'}`}
-                    title="Klik untuk mengubah status"
-                  >
-                    {branch.is_active ? 'Aktif' : 'Nonaktif'}
-                  </button>
-                </td>
-
-                <td className="col-actions">
-                  <div className="row-actions">
-                    {busy && <Loader2 size={16} className="spin text-3" style={{ margin: '0 6px' }} />}
+                  <td data-label="Status">
                     <button
                       type="button"
-                      className="icon-btn is-danger"
-                      onClick={() => onDelete(branch)}
+                      onClick={() => onToggleActive(branch)}
                       disabled={busy}
-                      aria-label={`Hapus cabang ${branch.name}`}
-                      title={
-                        inUse
-                          ? 'Cabang masih punya teknisi atau admin, nonaktifkan saja'
-                          : 'Hapus cabang'
-                      }
+                      className={`status-toggle ${branch.is_active ? 'is-on' : 'is-off'}`}
+                      title="Klik untuk mengubah status"
                     >
-                      <Trash2 size={17} />
+                      {branch.is_active ? 'Aktif' : 'Nonaktif'}
                     </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                  </td>
+
+                  <td className="col-actions">
+                    <div className="row-actions">
+                      {busy && <Loader2 size={16} className="spin text-3" style={{ margin: '0 6px' }} />}
+                      <button
+                        type="button"
+                        className="icon-btn is-danger"
+                        onClick={() => onDelete(branch)}
+                        disabled={busy}
+                        aria-label={`Hapus cabang ${branch.name}`}
+                        title={
+                          inUse
+                            ? 'Cabang masih punya teknisi atau admin, nonaktifkan saja'
+                            : 'Hapus cabang'
+                        }
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     )}

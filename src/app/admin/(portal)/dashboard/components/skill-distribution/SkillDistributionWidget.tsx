@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { TechnicianLevel } from '@/types';
 import { SkillDistributionStats } from '../../utils/dashboard-stats';
 import styles from './SkillDistributionWidget.module.css';
@@ -12,31 +13,29 @@ interface SkillDistributionWidgetProps {
 }
 
 const LEVELS: { level: TechnicianLevel; label: string; range: string }[] = [
-  { level: 'beginner', label: 'Beginner', range: 'skor di bawah 70' },
-  { level: 'intermediate', label: 'Intermediate', range: 'skor 70–84' },
-  { level: 'advance', label: 'Advance', range: 'skor 85 ke atas' },
+  { level: 'beginner', label: 'Beginner', range: '< 70' },
+  { level: 'intermediate', label: 'Intermediate', range: '70–84' },
+  { level: 'advance', label: 'Advance', range: '≥ 85' },
 ];
 
 function levelNumbers(stats: SkillDistributionStats, level: TechnicianLevel) {
   if (level === 'beginner') return { count: stats.beginnerCount, percent: stats.beginnerPercent };
-  if (level === 'intermediate') {
-    return { count: stats.intermediateCount, percent: stats.intermediatePercent };
-  }
+  if (level === 'intermediate') return { count: stats.intermediateCount, percent: stats.intermediatePercent };
   return { count: stats.advanceCount, percent: stats.advancePercent };
 }
 
-/** Proporsi level teknisi (bar bertumpuk + legenda) dan rata-rata KPI/CSI. */
+/** Proporsi level teknisi (bar bertumpuk + legenda) dan rata-rata KPI/CSI dengan skeleton loading. */
 export const SkillDistributionWidget: React.FC<SkillDistributionWidgetProps> = ({
   stats,
   loading = false,
 }) => {
-  const show = (value: React.ReactNode) => (loading ? '–' : value);
-
   return (
     <section aria-label="Distribusi level teknisi" className={`panel ${styles.widget}`}>
       <div className={styles.distribution}>
         <div className={styles.headline}>
-          <span className={styles.total}>{show(stats.total)}</span>
+          <span className={styles.total}>
+            {loading ? <Skeleton width="54px" height="32px" radius="6px" /> : stats.total}
+          </span>
           <span className={styles.totalLabel}>teknisi terdata, dibagi per level kompetensi</span>
         </div>
 
@@ -48,7 +47,9 @@ export const SkillDistributionWidget: React.FC<SkillDistributionWidgetProps> = (
             return `${label} ${count} (${percent}%)`;
           }).join(', ')}
         >
-          {!loading &&
+          {loading ? (
+            <Skeleton width="100%" height="8px" radius="999px" />
+          ) : (
             stats.total > 0 &&
             LEVELS.map(({ level }) => {
               const { percent } = levelNumbers(stats, level);
@@ -60,7 +61,8 @@ export const SkillDistributionWidget: React.FC<SkillDistributionWidgetProps> = (
                   style={{ width: `${percent}%` }}
                 />
               );
-            })}
+            })
+          )}
         </div>
 
         <dl className={styles.legend}>
@@ -70,8 +72,12 @@ export const SkillDistributionWidget: React.FC<SkillDistributionWidgetProps> = (
               <div key={level} className={styles.legendItem}>
                 <dt className={`level level-${level}`}>{label}</dt>
                 <dd>
-                  <span className={styles.count}>{show(count)}</span>
-                  <span className={styles.percent}>{show(`${percent}%`)}</span>
+                  <span className={styles.count}>
+                    {loading ? <Skeleton width="28px" height="18px" /> : count}
+                  </span>
+                  <span className={styles.percent}>
+                    {loading ? <Skeleton width="36px" height="18px" /> : `${percent}%`}
+                  </span>
                 </dd>
                 <dd className={styles.range}>{range}</dd>
               </div>
@@ -84,15 +90,27 @@ export const SkillDistributionWidget: React.FC<SkillDistributionWidgetProps> = (
         <div>
           <dt>Rata-rata skor KPI</dt>
           <dd className={styles.metric}>
-            {show(stats.avgKpi)}
-            <small>%</small>
+            {loading ? (
+              <Skeleton width="56px" height="28px" radius="6px" />
+            ) : (
+              <>
+                {stats.avgKpi}
+                <small>%</small>
+              </>
+            )}
           </dd>
         </div>
         <div>
           <dt>Rata-rata indeks CSI</dt>
           <dd className={styles.metric}>
-            {show(stats.avgCsi)}
-            <small>/10</small>
+            {loading ? (
+              <Skeleton width="56px" height="28px" radius="6px" />
+            ) : (
+              <>
+                {stats.avgCsi}
+                <small>/10</small>
+              </>
+            )}
           </dd>
         </div>
       </dl>

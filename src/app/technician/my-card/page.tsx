@@ -7,6 +7,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { Download, Loader2, LogOut, ShieldCheck, ShieldX } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
 import { useMyTechnicianCard } from './hooks/useMyTechnicianCard';
 
@@ -65,8 +66,13 @@ function MyCardContent() {
         )}
 
         {busy ? (
-          <div style={{ padding: '64px 0' }}>
-            <Loader2 size={28} color="var(--ink-3)" className="spin" aria-label="Memuat kartu" />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', width: '100%', marginTop: '8px' }}>
+            <div style={{ width: '100%', maxWidth: '380px' }}>
+              <Skeleton width="100%" height="60px" radius="var(--r-md)" />
+            </div>
+            <div className="id-card-stage" style={{ display: 'flex', justifyContent: 'center' }}>
+              <Skeleton width="32em" height="50.75em" radius="1.4em" />
+            </div>
           </div>
         ) : error ? (
           <div className="verdict is-invalid" role="status">
@@ -99,36 +105,40 @@ function MyCardContent() {
                 verifyUrl={verifyUrl}
               />
 
-              {/* QR tersembunyi khusus untuk keperluan unduhan PNG resolusi tinggi */}
-              <div
-                ref={qrWrapperRef}
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  width: '1px',
-                  height: '1px',
-                  overflow: 'hidden',
-                  opacity: 0,
-                  pointerEvents: 'none',
-                }}
-              >
-                {verifyUrl && <QRCodeCanvas value={verifyUrl} size={512} level="M" includeMargin />}
-              </div>
-
-              <div className="panel panel-pad" style={{ width: '100%' }}>
+              <div className="panel panel-pad" style={{ width: '100%', marginTop: '4px' }}>
+                <p className="text-sm text-2" style={{ marginBottom: '12px' }}>
+                  Simpan cadangan gambar QR code kartu Anda untuk ditunjukkan bila diperlukan tanpa
+                  harus membuka portal ini.
+                </p>
                 <button
                   type="button"
                   onClick={handleDownloadQr}
                   disabled={!verifyUrl}
-                  className="btn btn-dark btn-block"
+                  className="btn btn-secondary btn-block"
                 >
                   <Download size={16} />
-                  Unduh QR code
+                  Unduh gambar QR code (PNG)
                 </button>
-                <p className="hint" style={{ marginTop: '10px' }}>
-                  Kartu ini bersifat pribadi. Pelanggan yang memindai QR code melihat status
-                  keaktifan Anda secara langsung.
-                </p>
+              </div>
+
+              {/* Render elemen kanvas QR tersembunyi yang akan di-ekspor menjadi berkas PNG */}
+              <div ref={qrWrapperRef} style={{ display: 'none' }} aria-hidden="true">
+                {verifyUrl && (
+                  <QRCodeCanvas
+                    value={verifyUrl}
+                    size={512}
+                    level="H"
+                    includeMargin
+                    imageSettings={{
+                      src: '/modena-emblem.png',
+                      x: undefined,
+                      y: undefined,
+                      height: 96,
+                      width: 96,
+                      excavate: true,
+                    }}
+                  />
+                )}
               </div>
             </>
           )
@@ -138,7 +148,7 @@ function MyCardContent() {
   );
 }
 
-export default function TechnicianMyCardPage() {
+export default function MyCardPage() {
   return (
     <AuthWrapper allowedRoles={['technician']}>
       <MyCardContent />

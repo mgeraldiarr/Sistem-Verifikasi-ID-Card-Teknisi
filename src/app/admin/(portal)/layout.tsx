@@ -3,7 +3,7 @@
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import { parseServiceType } from '@/constants/service-center';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { ServiceTypeCode } from '@/types';
 import { PortalSidebar } from './components/sidebar/PortalSidebar';
 import { LogoutModal } from './components/LogoutModal';
+import { PortalSkeletonShell } from './components/PortalSkeletonShell';
 import { PortalProvider } from './portal-context';
 
 /** Parameter filter yang diingat per cabang saat pengguna berpindah cabang */
@@ -70,8 +71,8 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     (nextScope: ServiceTypeCode | '', nextBranch: string) => {
       if (scopedBranch) return; // isolasi cabang: tidak boleh berpindah
 
-      const currentKey = `${selectedScope}|${urlBranch}`;
-      const nextKey = `${nextScope}|${nextBranch}`;
+      const currentKey = `${selectedScope}:${selectedBranch || 'all'}`;
+      const nextKey = `${nextScope}:${nextBranch || 'all'}`;
 
       // Simpan filter cabang yang sedang aktif
       const snapshot: BranchFilterState = {};
@@ -94,28 +95,23 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       const qs = params.toString();
       const target = qs ? `/admin/dashboard?${qs}` : '/admin/dashboard';
 
-      // Tetap di dashboard -> replace (hindari menumpuk riwayat filter).
-      // Datang dari halaman lain -> push agar tombol kembali tetap wajar.
       if (pathname === '/admin/dashboard') {
         router.replace(target, { scroll: false });
       } else {
         router.push(target);
       }
     },
-    [pathname, router, scopedBranch, searchParams, selectedScope, urlBranch]
+    [pathname, router, scopedBranch, searchParams, selectedBranch, selectedScope]
   );
 
-  /** Pilih cabang; '' = seluruh cabang pada lingkup yang sedang aktif */
   const selectBranch = useCallback(
-    (nextBranch: string) =>
-      selectWorkspace(
-        nextBranch ? getBranchServiceType(nextBranch) ?? selectedScope : selectedScope,
-        nextBranch
-      ),
+    (nextBranch: string) => {
+      const scopeOfBranch = getBranchServiceType(nextBranch) ?? selectedScope;
+      selectWorkspace(scopeOfBranch, nextBranch);
+    },
     [getBranchServiceType, selectWorkspace, selectedScope]
   );
 
-  /** Tampilkan seluruh teknisi satu lingkup layanan ('' = semua lingkup) */
   const selectScope = useCallback(
     (nextScope: ServiceTypeCode | '') => selectWorkspace(nextScope, ''),
     [selectWorkspace]
@@ -195,32 +191,19 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ShellFallback() {
-  return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Loader2 size={28} color="var(--ink-3)" className="spin" />
-    </div>
-  );
-}
-
 /**
  * Layout portal admin.
  *
- * Guard otentikasi dipasang di sini, bukan di tiap halaman, sehingga setiap
- * rute baru di bawah grup ini otomatis terlindungi tanpa perlu diingat-ingat.
- * Akun teknisi ditolak dan dialihkan ke /technician/my-card.
+ * Menggunakan PortalSkeletonShell sehingga seluruh spinner bulat dihilangkan
+ * dan digantikan kerangka skeleton penuh tanpa loncatan layout (zero CLS).
  */
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthWrapper allowedRoles={['super_admin', 'branch_admin']}>
-      <Suspense fallback={<ShellFallback />}>
+    <AuthWrapper
+      allowedRoles={['super_admin', 'branch_admin']}
+      fallback={<PortalSkeletonShell />}
+    >
+      <Suspense fallback={<PortalSkeletonShell />}>
         <PortalShell>{children}</PortalShell>
       </Suspense>
     </AuthWrapper>
