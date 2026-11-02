@@ -21,6 +21,8 @@ export interface PortalContextValue {
   selectScope: (scope: ServiceTypeCode | '') => void;
   /** Memuat ulang profil peran (dipakai setelah mengubah akun sendiri) */
   refreshProfile: () => Promise<void>;
+  /** Memuat ulang jumlah teknisi per cabang dan per lingkup layanan pada sidebar */
+  refreshCounts: () => Promise<void>;
 }
 
 const PortalContext = createContext<PortalContextValue | null>(null);

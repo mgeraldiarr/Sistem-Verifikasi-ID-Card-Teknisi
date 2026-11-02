@@ -9,8 +9,8 @@ import { NotificationType, Technician, TechnicianStatus } from '@/types';
 
 interface UseTechnicianActionsOptions {
   notify: (type: NotificationType, title: string, message: string) => void;
-  askConfirm: (title: string, message: string, onConfirm: () => void) => void;
-  onChanged: () => void;
+  askConfirm: (title: string, message: string, onConfirm: () => void | Promise<void>) => void;
+  onChanged: () => void | Promise<void>;
 }
 
 /** Aksi per baris tabel teknisi: status, QR, hapus, kirim akses, dan cetak kartu. */
@@ -25,7 +25,7 @@ export function useTechnicianActions({ notify, askConfirm, onChanged }: UseTechn
       .eq('id', id);
 
     if (error) notify('error', 'Gagal Mengubah Status', error.message);
-    onChanged();
+    await onChanged();
   };
 
   const regenerateQr = (tech: Technician) => {
@@ -51,7 +51,7 @@ export function useTechnicianActions({ notify, askConfirm, onChanged }: UseTechn
           .eq('technician_id', tech.id);
 
         notify('success', 'Berhasil', 'QR Code baru berhasil di-generate!');
-        onChanged();
+        await onChanged();
       }
     );
   };
@@ -75,7 +75,7 @@ export function useTechnicianActions({ notify, askConfirm, onChanged }: UseTechn
           );
         } else {
           notify('success', 'Terhapus', 'Data teknisi berhasil dihapus.');
-          onChanged();
+          await onChanged();
         }
       }
     );
