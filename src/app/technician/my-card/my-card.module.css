@@ -1,0 +1,328 @@
+/* src/app/technician/my-card/my-card.module.css
+ *
+ * Desain Mobile Portal Teknisi - Mengikuti sistem desain resmi MODENA:
+ * - Kanvas abu baja dingin (--canvas: #eef0f1)
+ * - Header solid charcoal gelap (--surface-dark: #1c1c1a)
+ * - Kartu permukaan putih bersih (--surface: #ffffff) dengan border rapi (--line: #dde0e3)
+ * - Aksen merah resmi MODENA (--red: #da291c)
+ * - Indikator level teknisi sesuai tangga resmi (Beginner, Intermediate, Advance)
+ */
+
+.pageWrapper {
+  min-height: 100vh;
+  background: var(--canvas, #eef0f1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* App Header - Identik dengan brand header sidebar admin */
+.appHeader {
+  width: 100%;
+  background: var(--surface-dark, #1c1c1a);
+  height: 60px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line-dark, rgba(255, 255, 255, 0.08));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.appBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandLogo {
+  height: 19px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brandDivider {
+  height: 16px;
+  width: 1px;
+  background: var(--line-dark-strong, rgba(255, 255, 255, 0.16));
+}
+
+.brandName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.62));
+  letter-spacing: -0.01em;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoutBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.8));
+  padding: 6px 12px;
+  border-radius: var(--r-sm, 6px);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logoutBtn:hover:not(:disabled) {
+  background: var(--surface-dark-3, #30302d);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.logoutBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile Content Container */
+.mobileContainer {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab Navigation Switcher */
+.tabNavWrap {
+  margin-bottom: 16px;
+}
+
+.segmentedControl {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #dde0e3);
+  border-radius: var(--r-md, 8px);
+  padding: 4px;
+  box-shadow: 0 1px 2px rgba(28, 28, 26, 0.03);
+}
+
+.tabBtn {
+  background: transparent;
+  border: none;
+  padding: 9px 8px;
+  border-radius: var(--r-sm, 6px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2, #4a4f55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tabBtn:hover:not(.tabBtnActive) {
+  color: var(--ink, #1c1c1a);
+  background: var(--surface-sunk, #f6f7f8);
+}
+
+.tabBtnActive {
+  background: var(--surface-dark, #1c1c1a);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(28, 28, 26, 0.15);
+}
+
+/* Tab Content */
+.tabContent {
+  width: 100%;
+}
+
+/* Tab 1: Kartu ID Digital */
+.cardStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.flipHint {
+  font-size: 12px;
+  color: var(--ink-3, #737a82);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #dde0e3);
+  padding: 5px 14px;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(28, 28, 26, 0.02);
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.actionBtn {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line-strong, #c3c8cd);
+  color: var(--ink, #1c1c1a);
+  padding: 11px 14px;
+  border-radius: var(--r-md, 8px);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(28, 28, 26, 0.03);
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--surface-sunk, #f6f7f8);
+  border-color: var(--ink, #1c1c1a);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.copyLinkBtn {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: var(--ink-2, #4a4f55);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px;
+  transition: color 0.15s ease;
+}
+
+.copyLinkBtn:hover {
+  color: var(--ink, #1c1c1a);
+  text-decoration: underline;
+}
+
+/* Tab 3: Performa & KPI */
+.gradeBanner {
+  background: var(--surface-dark, #1c1c1a);
+  border: 1px solid var(--line-dark, rgba(255, 255, 255, 0.08));
+  border-radius: var(--r-lg, 12px);
+  padding: 18px 20px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(28, 28, 26, 0.06);
+}
+
+.gradeBannerSub {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-inverse-3, rgba(244, 243, 238, 0.4));
+}
+
+.gradeBannerTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 3px 0;
+}
+
+.gradeBannerDesc {
+  font-size: 12px;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.62));
+}
+
+.gradeScore {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.gradeScoreLabel {
+  font-size: 12px;
+  color: var(--ink-inverse-3, rgba(244, 243, 238, 0.4));
+  display: block;
+}
+
+.perfGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.perfCard {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #dde0e3);
+  border-radius: var(--r-md, 8px);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(28, 28, 26, 0.03);
+}
+
+.perfCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--ink-3, #737a82);
+}
+
+.perfValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink, #1c1c1a);
+}
+
+.perfLabel {
+  font-size: 12px;
+  color: var(--ink-3, #737a82);
+  margin-top: 2px;
+}
+
+/* QR Code Modal Popup */
+.qrModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 28, 26, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.qrModalCard {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #dde0e3);
+  border-radius: var(--r-lg, 12px);
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-pop);
+}
