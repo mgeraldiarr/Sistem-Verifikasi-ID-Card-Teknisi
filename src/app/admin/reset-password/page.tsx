@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getRoleHomeRoute, useAuthProfile } from '@/hooks/useAuthProfile';
-import { AlertCircle, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
 
 /**
  * Halaman tujuan tautan reset kata sandi dari Supabase Auth.
@@ -20,6 +20,8 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -27,6 +29,11 @@ export default function ResetPasswordPage() {
   const [wasForced, setWasForced] = useState(false);
 
   useEffect(() => {
+    // Mode pratinjau pengembangan untuk melihat UI tanpa perlu login / tautan email
+    if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
+      setReady(true);
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') setReady(true);
     });
@@ -138,34 +145,54 @@ export default function ResetPasswordPage() {
                   <label htmlFor="new-password" className="label">
                     Kata sandi baru
                   </label>
-                  <input
-                    id="new-password"
-                    name="new_password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    className="input"
-                    style={{ minHeight: '44px' }}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="input-wrap">
+                    <input
+                      id="new-password"
+                      name="new_password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      className="input"
+                      style={{ minHeight: '44px', paddingRight: '44px' }}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn input-trail"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="field">
                   <label htmlFor="confirm-password" className="label">
                     Ulangi kata sandi baru
                   </label>
-                  <input
-                    id="confirm-password"
-                    name="confirm_password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    className="input"
-                    style={{ minHeight: '44px' }}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
+                  <div className="input-wrap">
+                    <input
+                      id="confirm-password"
+                      name="confirm_password"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      className="input"
+                      style={{ minHeight: '44px', paddingRight: '44px' }}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn input-trail"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      aria-label={showConfirmPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
