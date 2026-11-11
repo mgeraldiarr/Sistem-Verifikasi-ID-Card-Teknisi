@@ -6,7 +6,7 @@ import { evaluateCardStatus, getLevelCardLabel } from '@/lib/card-status';
 import { supabase } from '@/lib/supabase';
 import { Technician } from '@/types';
 
-const TECHNICIAN_COLUMNS = `
+const FULL_TECHNICIAN_COLUMNS = `
   id,
   technician_id,
   employee_number,
@@ -14,6 +14,39 @@ const TECHNICIAN_COLUMNS = `
   branch,
   service_type,
   service_center,
+  photo_url,
+  phone,
+  email,
+  technician_status,
+  technician_level,
+  qr_token,
+  created_at,
+  technician_performance (
+    period,
+    kpi_score,
+    csi_score,
+    performance_score,
+    performance_level,
+    tat,
+    rtat,
+    csat,
+    grooming_score,
+    service_score,
+    repair_quality_score
+  ),
+  technician_id_cards!technician_id_cards_technician_id_fkey (
+    card_number,
+    card_status,
+    expiry_date
+  )
+`;
+
+const BASIC_TECHNICIAN_COLUMNS = `
+  id,
+  technician_id,
+  employee_number,
+  technician_name,
+  branch,
   photo_url,
   phone,
   email,
@@ -52,6 +85,7 @@ export function useMyTechnicianCard(technicianRowId: string | null, profileLoadi
 
     const fetchTechnician = async () => {
       setLoading(true);
+
       const fetchColumns = (columns: string) =>
         supabase
           .from('technicians')
@@ -59,13 +93,11 @@ export function useMyTechnicianCard(technicianRowId: string | null, profileLoadi
           .eq('id', technicianRowId)
           .maybeSingle<Technician>();
 
-      let { data, error: fetchError } = await fetchColumns(TECHNICIAN_COLUMNS);
+      let { data, error: fetchError } = await fetchColumns(FULL_TECHNICIAN_COLUMNS);
 
-      // Database lama tanpa kolom service_type: kartu tetap tampil sebagai DSC
+      // Fallback query bila ada kolom baru yang belum ada di Supabase
       if (fetchError) {
-        ({ data, error: fetchError } = await fetchColumns(
-          TECHNICIAN_COLUMNS.replace('service_type,', '')
-        ));
+        ({ data, error: fetchError } = await fetchColumns(BASIC_TECHNICIAN_COLUMNS));
       }
 
       if (cancelled) return;

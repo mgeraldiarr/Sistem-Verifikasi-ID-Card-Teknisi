@@ -1,0 +1,330 @@
+/* src/app/technician/grooming/grooming.module.css */
+
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.brandWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandLogo {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brandTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.periodCard {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.periodHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.periodTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.periodValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.badgeMonday {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ok-wash, #e5f3eb);
+  color: var(--ok, #16794a);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badgeWarning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--warn-wash, #fdf2de);
+  color: var(--warn, #9a5b00);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.stepNumberActive {
+  background: var(--red);
+  color: #ffffff;
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.stepNumberDone {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.stepLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.stepConnector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin: 0 8px;
+  position: relative;
+  top: -10px;
+}
+
+.cardSection {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionSubtitle {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+  .photoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.photoBox {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--r-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
+  min-height: 230px;
+  justify-content: center;
+}
+
+.photoBoxActive {
+  border-color: var(--red);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.photoPreview {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.photoActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.checklistGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.checkItem:hover {
+  background: var(--surface-2);
+}
+
+.checkItem input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+.checkContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.checkDesc {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+
+.alertBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.alertBoxError {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
+}
+
+.alertBoxInfo {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #1d4ed8;
+}
+
+.statusCard {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.statusIconWrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.statusIconSubmitted {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.statusIconApproved {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+.statusIconRejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}

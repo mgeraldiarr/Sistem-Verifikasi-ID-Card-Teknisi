@@ -103,7 +103,8 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
       {profile && <SidebarUserCard profile={profile} />}
 
-      {isSuperAdmin && <SidebarAdminMenu pathname={pathname} />}
+      {/* Menu navigasi admin (Super Admin & Admin Cabang) */}
+      <SidebarAdminMenu pathname={pathname} isSuperAdmin={isSuperAdmin} />
 
       <div className="sb-scroll">
         <div className="sb-section-title">

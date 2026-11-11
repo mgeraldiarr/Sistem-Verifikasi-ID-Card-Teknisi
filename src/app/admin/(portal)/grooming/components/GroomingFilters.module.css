@@ -1,0 +1,52 @@
+/* src/app/admin/(portal)/grooming/components/GroomingFilters.module.css */
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.searchWrap {
+  min-width: 0;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 600px) {
+  .controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .filters {
+    grid-template-columns: minmax(240px, 1fr) auto;
+    align-items: center;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .branchWrap {
+    width: 190px;
+    flex-shrink: 0;
+  }
+
+  .weekWrap {
+    width: 230px;
+    flex-shrink: 0;
+  }
+
+  .statusWrap {
+    width: 175px;
+    flex-shrink: 0;
+  }
+}

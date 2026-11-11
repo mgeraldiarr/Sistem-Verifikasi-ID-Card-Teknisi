@@ -2,3 +2,4 @@
 export * from './technician';
 export * from './sync';
 export * from './ui';
+export * from './grooming';

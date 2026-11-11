@@ -9,6 +9,7 @@ export interface CallerProfile {
   id: string;
   role: UserRole;
   branch: string | null;
+  technician_id?: string | null;
   is_active: boolean;
 }
 
@@ -45,12 +46,13 @@ export async function authenticateCaller(
   } = await supabaseAdmin.auth.getUser(token);
 
   if (userError || !user) {
-    return { error: jsonError('Sesi tidak valid atau telah berakhir.', 401) };
+    const detail = userError?.message ? ` (${userError.message})` : '';
+    return { error: jsonError(`Sesi tidak valid atau telah berakhir${detail}. Silakan masuk kembali.`, 401) };
   }
 
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
-    .select('id, role, branch, is_active')
+    .select('id, role, branch, technician_id, is_active')
     .eq('id', user.id)
     .maybeSingle();
 
