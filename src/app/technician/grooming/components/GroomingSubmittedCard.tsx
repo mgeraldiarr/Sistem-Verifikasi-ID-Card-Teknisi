@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  RotateCw,
   ShieldAlert,
   ShieldCheck,
   XCircle,
@@ -18,9 +19,14 @@ import styles from '../grooming.module.css';
 interface GroomingSubmittedCardProps {
   report: GroomingReport;
   onBackToCard?: () => void;
+  onRetake?: () => void;
 }
 
-export const GroomingSubmittedCard: React.FC<GroomingSubmittedCardProps> = ({ report, onBackToCard }) => {
+export const GroomingSubmittedCard: React.FC<GroomingSubmittedCardProps> = ({
+  report,
+  onBackToCard,
+  onRetake,
+}) => {
   const isApproved = report.status === 'approved';
   const isRejected = report.status === 'rejected';
 
@@ -77,9 +83,7 @@ export const GroomingSubmittedCard: React.FC<GroomingSubmittedCardProps> = ({ re
       >
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--ink-3)' }}>Periode:</span>
-          <strong>
-            {report.period_week} ({getWeekDateRangeLabel(report.period_week)})
-          </strong>
+          <strong>{getWeekDateRangeLabel(report.period_week)}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--ink-3)' }}>Waktu Submit:</span>
@@ -152,6 +156,18 @@ export const GroomingSubmittedCard: React.FC<GroomingSubmittedCardProps> = ({ re
           </span>
         </div>
       </div>
+
+      {isRejected && onRetake && (
+        <button
+          type="button"
+          onClick={onRetake}
+          className="btn btn-primary btn-block"
+          style={{ gap: '8px', marginBottom: '10px' }}
+        >
+          <RotateCw size={16} />
+          <span>Ambil Foto Ulang & Kirim Perbaikan</span>
+        </button>
+      )}
 
       {onBackToCard ? (
         <button

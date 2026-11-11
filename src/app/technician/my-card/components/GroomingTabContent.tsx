@@ -8,6 +8,7 @@ import {
   Clock,
   Info,
   Loader2,
+  RotateCw,
   Send,
   Sparkles,
 } from 'lucide-react';
@@ -53,6 +54,7 @@ export const GroomingTabContent: React.FC<GroomingTabContentProps> = ({
   // Submission states
   const [submitting, setSubmitting] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const currentWeek = getIsoWeekString();
   const isMonday = isMondayInWib();
@@ -95,6 +97,7 @@ export const GroomingTabContent: React.FC<GroomingTabContentProps> = ({
         });
 
         success = true;
+        setIsRetrying(false);
         onReportSubmitted(newReport);
         notify(
           'success',
@@ -160,23 +163,73 @@ export const GroomingTabContent: React.FC<GroomingTabContentProps> = ({
     );
   }
 
-  // Jika teknisi sudah pernah mengirimkan laporan minggu ini, tampilkan ringkasan hasil audit/watermark
-  if (report) {
-    return <GroomingSubmittedCard report={report} onBackToCard={onBackToCard} />;
+  // Jika teknisi sudah pernah mengirimkan laporan minggu ini dan tidak sedang kirim ulang, tampilkan ringkasan
+  if (report && !isRetrying) {
+    return (
+      <GroomingSubmittedCard
+        report={report}
+        onBackToCard={onBackToCard}
+        onRetake={() => {
+          setFullPhoto(null);
+          setFacePhoto(null);
+          setIsRetrying(true);
+        }}
+      />
+    );
   }
 
-  // Jika belum lapor, tampilkan langkah-langkah input grooming secara langsung di tab ini
+  // Jika belum lapor atau sedang kirim ulang perbaikan, tampilkan langkah-langkah input grooming
   return (
     <div>
+      {/* Banner Mode Kirim Ulang Perbaikan jika sedang retrying */}
+      {isRetrying && (
+        <div
+          className={`${styles.alertBox} ${styles.alertBoxError}`}
+          style={{ marginBottom: '16px', textAlign: 'left', alignItems: 'flex-start' }}
+        >
+          <RotateCw size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ flex: 1 }}>
+            <strong style={{ display: 'block', fontSize: '13.5px', marginBottom: '2px' }}>
+              Mode Kirim Ulang Perbaikan
+            </strong>
+            {report?.rejection_reason && (
+              <p style={{ margin: '2px 0 6px', fontSize: '12.5px' }}>
+                Catatan evaluasi admin: <em>&ldquo;{report.rejection_reason}&rdquo;</em>
+              </p>
+            )}
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--ink-2)' }}>
+              Silakan rapikan penampilan sesuai instruksi admin di atas, lalu ambil ulang 2 foto terbaru.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsRetrying(false)}
+              style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: 'var(--red-ink)',
+                textDecoration: 'underline',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'inline-block',
+              }}
+            >
+              ← Batal ambil ulang & kembali ke status laporan
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Banner Periode & Hari Senin */}
       <div className={styles.periodCard}>
         <div className={styles.periodHead}>
           <div>
             <span className={styles.periodTitle}>Periode Pelaporan</span>
             <div className={styles.periodValue}>
-              {currentWeek}{' '}
-              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ink-3)' }}>
-                ({getWeekDateRangeLabel(currentWeek)})
+              {getWeekDateRangeLabel(currentWeek)}
+              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink-3)', marginLeft: '6px' }}>
+                (Minggu Ini)
               </span>
             </div>
           </div>

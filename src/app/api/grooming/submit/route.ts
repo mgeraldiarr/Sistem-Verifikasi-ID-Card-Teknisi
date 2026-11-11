@@ -117,6 +117,9 @@ export async function POST(req: NextRequest) {
           photo_face_url: photoFaceUrl,
           notes: notes,
           status: 'submitted',
+          rejection_reason: null,
+          reviewed_by: null,
+          reviewed_at: null,
         },
         { onConflict: 'technician_id,period_week' }
       )

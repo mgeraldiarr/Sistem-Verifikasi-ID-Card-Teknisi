@@ -20,6 +20,16 @@ export function getIsoWeekString(date = new Date()): string {
 }
 
 /**
+ * Mengubah string tanggal YYYY-MM-DD (misal dari input type="date") ke string ISO week.
+ */
+export function dateStringToIsoWeek(dateStr: string): string {
+  if (!dateStr) return getIsoWeekString();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return getIsoWeekString();
+  return getIsoWeekString(new Date(y, m - 1, d));
+}
+
+/**
  * Memeriksa apakah tanggal saat ini adalah hari Senin (WIB).
  */
 export function isMondayInWib(date = new Date()): boolean {
@@ -48,16 +58,15 @@ export function formatWibTimestamp(date = new Date()): string {
 }
 
 /**
- * Mendapatkan rentang tanggal Senin-Minggu dari string ISO week ("YYYY-Www").
+ * Mendapatkan objek Date hari Senin dari string ISO week ("YYYY-Www").
  */
-export function getWeekDateRangeLabel(isoWeek: string): string {
+export function getMondayOfIsoWeek(isoWeek: string): Date {
   const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) return isoWeek;
+  if (!match) return new Date();
 
   const year = parseInt(match[1], 10);
   const week = parseInt(match[2], 10);
 
-  // Ambil tanggal 4 Januari dari tahun tersebut (selalu di minggu 1)
   const jan4 = new Date(year, 0, 4);
   const dayOfWeek = (jan4.getDay() + 6) % 7;
   const mondayWeek1 = new Date(jan4);
@@ -65,7 +74,27 @@ export function getWeekDateRangeLabel(isoWeek: string): string {
 
   const monday = new Date(mondayWeek1);
   monday.setDate(mondayWeek1.getDate() + (week - 1) * 7);
+  return monday;
+}
 
+/**
+ * Menggeser minggu (misal: -1 untuk minggu lalu, +1 untuk minggu depan).
+ */
+export function shiftIsoWeek(isoWeek: string, deltaWeeks: number): string {
+  const monday = getMondayOfIsoWeek(isoWeek);
+  monday.setDate(monday.getDate() + deltaWeeks * 7);
+  return getIsoWeekString(monday);
+}
+
+/**
+ * Mendapatkan rentang tanggal Senin-Minggu dari string ISO week ("YYYY-Www").
+ * Contoh: "2 Nov - 8 Nov 2026"
+ */
+export function getWeekDateRangeLabel(isoWeek: string): string {
+  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return isoWeek;
+
+  const monday = getMondayOfIsoWeek(isoWeek);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
@@ -75,4 +104,20 @@ export function getWeekDateRangeLabel(isoWeek: string): string {
   ];
 
   return `${monday.getDate()} ${months[monday.getMonth()]} - ${sunday.getDate()} ${months[sunday.getMonth()]} ${sunday.getFullYear()}`;
+}
+
+/**
+ * Label ramah manusia untuk periode minggu (misal: "Minggu Ini (2 Nov – 8 Nov 2026)").
+ */
+export function getHumanWeekLabel(isoWeek: string): string {
+  const current = getIsoWeekString();
+  const range = getWeekDateRangeLabel(isoWeek);
+
+  if (isoWeek === current) {
+    return `Minggu Ini (${range})`;
+  }
+  if (isoWeek === shiftIsoWeek(current, -1)) {
+    return `Minggu Lalu (${range})`;
+  }
+  return range;
 }

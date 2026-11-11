@@ -3,16 +3,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Calendar,
   CheckCircle2,
   Clock,
   Eye,
   Filter,
   Loader2,
-  RefreshCw,
+  RotateCcw,
   Search,
-  ShieldAlert,
-  ShieldCheck,
   Sparkles,
   XCircle,
 } from 'lucide-react';
@@ -29,17 +26,21 @@ import {
   reviewGroomingReport,
 } from '@/lib/grooming/service';
 import { GroomingReport, GroomingStatus } from '@/types';
+import { BranchSelect } from '../dashboard/components/filters/BranchSelect';
 import { usePortal } from '../portal-context';
 import { GroomingDetailModal } from './components/GroomingDetailModal';
+import { GroomingWeekPicker } from './components/GroomingWeekPicker';
+import styles from './components/GroomingFilters.module.css';
 
 export default function AdminGroomingPage() {
-  const { profile, scopedBranch, selectedScope, selectedBranch } = usePortal();
+  const { scopedBranch } = usePortal();
   const { notify, modals } = useFeedbackModals();
 
-  const isBranchAdmin = profile?.role === 'branch_admin';
-  const effectiveBranch = scopedBranch ?? selectedBranch;
+  const [filterBranch, setFilterBranch] = useState<string>(scopedBranch ?? '');
+  const effectiveBranch = scopedBranch ?? filterBranch;
 
-  const [periodWeek, setPeriodWeek] = useState(getIsoWeekString());
+  const currentIsoWeek = getIsoWeekString();
+  const [periodWeek, setPeriodWeek] = useState(currentIsoWeek);
   const [statusFilter, setStatusFilter] = useState<GroomingStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [reports, setReports] = useState<GroomingReport[]>([]);
@@ -52,7 +53,6 @@ export default function AdminGroomingPage() {
       const data = await getAdminGroomingReports({
         period_week: periodWeek || undefined,
         branch: effectiveBranch || undefined,
-        service_type: selectedBranch ? undefined : selectedScope || undefined,
         status: statusFilter,
         search: searchQuery,
       });
@@ -63,7 +63,7 @@ export default function AdminGroomingPage() {
     } finally {
       setLoading(false);
     }
-  }, [periodWeek, effectiveBranch, selectedScope, selectedBranch, statusFilter, searchQuery, notify]);
+  }, [periodWeek, effectiveBranch, statusFilter, searchQuery, notify]);
 
   useEffect(() => {
     fetchReports();
@@ -95,7 +95,7 @@ export default function AdminGroomingPage() {
   const handleReject = async (reportId: string, reason: string) => {
     try {
       await reviewGroomingReport(reportId, 'rejected', reason);
-      notify('warning', 'Grooming Ditolak', 'Catatan evaluasi telah dicatat dan status diperbarui menjadi Ditolak.');
+      notify('warning', 'Grooming Ditolak', 'Catatan evaluasi telah dicatat dan teknisi dapat mengirimkan foto perbaikan.');
       await fetchReports();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Gagal menolak laporan.';
@@ -103,201 +103,284 @@ export default function AdminGroomingPage() {
     }
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setPeriodWeek(currentIsoWeek);
+    setStatusFilter('all');
+    setFilterBranch(scopedBranch ?? '');
+  };
+
+  const hasActiveFilter =
+    Boolean(searchQuery) ||
+    periodWeek !== currentIsoWeek ||
+    statusFilter !== 'all' ||
+    Boolean(filterBranch && !scopedBranch);
+
   return (
     <>
       <PageHeading
         title="Monitoring Grooming Teknisi"
-        subtitle={`Pantau kepatuhan kerapian seragam & audit foto mingguan teknisi sebelum kunjungan servis pertama • Periode ${periodWeek} (${getWeekDateRangeLabel(periodWeek)})`}
-        actions={
-          <button type="button" onClick={fetchReports} className="btn btn-secondary btn-sm" disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            Muat Ulang
-          </button>
+        subtitle={
+          periodWeek
+            ? `Pantau kepatuhan kerapian seragam & audit foto mingguan teknisi sebelum kunjungan servis pertama • Periode ${getWeekDateRangeLabel(periodWeek)}`
+            : 'Pantau kepatuhan kerapian seragam & audit foto mingguan teknisi dari seluruh periode'
         }
       />
 
-      {/* Ringkasan Statistik */}
+      {/* Ringkasan Statistik Kepatuhan Mingguan */}
       <StatRow>
         <StatCard value={stats.total} label="Total Laporan Masuk" />
-        <StatCard value={`${stats.mondayRate}%`} label={`Kepatuhan Hari Senin (${stats.mondayCount} tepat waktu)`} />
+        <StatCard
+          value={`${stats.mondayRate}%`}
+          label={`Kepatuhan Hari Senin (${stats.mondayCount} tepat waktu)`}
+        />
         <StatCard value={stats.approved} label="Grooming Disetujui" />
         <StatCard value={stats.pending} label="Menunggu Review" />
       </StatRow>
 
-      {/* Toolbar & Filter */}
-      <div className="toolbar" role="search" style={{ flexWrap: 'wrap', gap: '10px' }}>
-        <div className="input-wrap grow" style={{ minWidth: '220px' }}>
+      {/* Toolbar & Filter Bar - Standar MODENA Design System */}
+      <div className={styles.filters} role="search">
+        {/* Input Pencarian */}
+        <div className={`input-wrap ${styles.searchWrap}`}>
           <Search size={16} className="input-icon" />
           <input
             id="grooming-search"
+            name="grooming_search"
             type="search"
             className="input"
-            placeholder="Cari nama, ID teknisi, atau cabang..."
+            placeholder="Cari nama, ID teknisi, atau catatan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Pemilih Minggu ISO */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label htmlFor="period-week" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-            Minggu:
-          </label>
-          <input
-            id="period-week"
-            type="text"
-            className="input"
-            style={{ width: '130px', padding: '6px 10px', fontSize: '13px' }}
-            placeholder="YYYY-Www"
-            value={periodWeek}
-            onChange={(e) => setPeriodWeek(e.target.value.trim().toUpperCase())}
-          />
-        </div>
+        <div className={styles.controls}>
+          {/* Pemilih Cabang */}
+          <div className={styles.branchWrap}>
+            <BranchSelect
+              value={filterBranch}
+              onChange={setFilterBranch}
+              lockedBranch={scopedBranch}
+              scope={''}
+            />
+          </div>
 
-        {/* Filter Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label htmlFor="status-filter" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-            Status:
-          </label>
-          <select
-            id="status-filter"
-            className="select"
-            style={{ width: '160px', padding: '6px 10px', fontSize: '13px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as GroomingStatus | 'all')}
-          >
-            <option value="all">Semua Status</option>
-            <option value="submitted">Menunggu Review</option>
-            <option value="approved">Disetujui</option>
-            <option value="rejected">Ditolak</option>
-          </select>
+          {/* Pemilih Periode Minggu / Kalender (Mudah Tanpa Hitung ISO Week) */}
+          <div className={styles.weekWrap}>
+            <GroomingWeekPicker value={periodWeek} onChange={setPeriodWeek} />
+          </div>
+
+          {/* Filter Status Review */}
+          <div className={`input-wrap ${styles.statusWrap}`}>
+            <Filter size={15} className="input-icon" />
+            <select
+              id="status-filter"
+              name="status_filter"
+              className="select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as GroomingStatus | 'all')}
+            >
+              <option value="all">Semua Status</option>
+              <option value="submitted">Menunggu Review</option>
+              <option value="approved">Disetujui</option>
+              <option value="rejected">Perlu Perbaikan</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Tabel Laporan Grooming */}
-      <div className="table-responsive">
-        <table className="table">
-          <thead>
-            <tr>
-              <th style={{ width: '80px' }}>Foto</th>
-              <th>Teknisi</th>
-              <th>Cabang & Lingkup</th>
-              <th>Waktu Lapor</th>
-              <th>Kepatuhan</th>
-              <th>Status Review</th>
-              <th style={{ textAlign: 'right' }}>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+      {/* Ringkasan Hasil & Reset */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '12px',
+          fontSize: '13px',
+          color: 'var(--ink-3)',
+        }}
+      >
+        <span>
+          {loading ? 'Memuat laporan...' : `${reports.length} laporan ditampilkan`}
+        </span>
+
+        {hasActiveFilter && (
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '12px', padding: '4px 8px', gap: '4px' }}
+          >
+            <RotateCcw size={12} />
+            <span>Reset Filter</span>
+          </button>
+        )}
+      </div>
+
+      {/* Panel Tabel Laporan Grooming */}
+      <div className="table-panel">
+        {!loading && reports.length === 0 ? (
+          <div className="table-empty">
+            <Sparkles size={28} color="var(--ink-3)" style={{ margin: '0 auto 10px' }} />
+            <strong>Belum Ada Laporan Grooming</strong>
+            <span>
+              Tidak ada data laporan grooming untuk periode <strong>{periodWeek}</strong> dengan kriteria filter saat ini.
+            </span>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <Loader2 size={24} className="spin" color="var(--red)" style={{ margin: '0 auto 8px' }} />
-                  <span style={{ fontSize: '13px', color: 'var(--ink-3)' }}>Memuat data laporan grooming...</span>
-                </td>
+                <th scope="col" style={{ width: '90px' }}>Foto Audit</th>
+                <th scope="col">Teknisi</th>
+                <th scope="col">Cabang</th>
+                <th scope="col">Waktu Lapor</th>
+                <th scope="col">Kepatuhan Waktu</th>
+                <th scope="col">Status Review</th>
+                <th scope="col" className="col-actions">Aksi</th>
               </tr>
-            ) : reports.length === 0 ? (
-              <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '48px 0' }}>
-                  <Sparkles size={28} color="var(--ink-3)" style={{ margin: '0 auto 12px' }} />
-                  <strong style={{ display: 'block', fontSize: '14px', color: 'var(--ink)', marginBottom: '4px' }}>
-                    Belum Ada Laporan Grooming
-                  </strong>
-                  <span style={{ fontSize: '12.5px', color: 'var(--ink-3)' }}>
-                    Tidak ada laporan grooming untuk periode {periodWeek} dengan kriteria filter saat ini.
-                  </span>
-                </td>
-              </tr>
-            ) : (
-              reports.map((report) => (
-                <tr key={report.id}>
-                  {/* Thumbnail foto mini */}
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <img
-                        src={report.photo_full_url}
-                        alt="Badan"
-                        style={{ width: '36px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)' }}
-                        title="Foto Badan Penuh"
-                      />
-                      <img
-                        src={report.photo_face_url}
-                        alt="Wajah"
-                        style={{ width: '36px', height: '48px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)' }}
-                        title="Foto Wajah"
-                      />
-                    </div>
-                  </td>
-
-                  <td>
-                    <strong style={{ display: 'block', color: 'var(--ink)' }}>{report.technician_name}</strong>
-                    <span style={{ fontSize: '12px', color: 'var(--ink-3)', fontFamily: 'monospace' }}>
-                      {report.technician_id}
-                    </span>
-                  </td>
-
-                  <td>
-                    <span>{report.branch}</span>
-                    <span className="badge" style={{ marginLeft: '6px', fontSize: '10.5px' }}>
-                      {report.service_type}
-                    </span>
-                  </td>
-
-                  <td>
-                    <span style={{ fontSize: '12.5px', color: 'var(--ink)' }}>
-                      {formatWibTimestamp(new Date(report.submission_time))}
-                    </span>
-                  </td>
-
-                  <td>
-                    {report.is_monday ? (
-                      <span className="badge badge-success" style={{ gap: '4px' }}>
-                        <CheckCircle2 size={11} /> Senin (Tepat Waktu)
-                      </span>
-                    ) : (
-                      <span className="badge badge-warning" style={{ gap: '4px' }}>
-                        <Clock size={11} /> Di Luar Senin
-                      </span>
-                    )}
-                  </td>
-
-                  <td>
-                    <span
-                      className={`badge ${
-                        report.status === 'approved'
-                          ? 'badge-success'
-                          : report.status === 'rejected'
-                            ? 'badge-error'
-                            : 'badge-warning'
-                      }`}
-                    >
-                      {report.status === 'approved'
-                        ? 'Disetujui'
-                        : report.status === 'rejected'
-                          ? 'Ditolak'
-                          : 'Menunggu Review'}
-                    </span>
-                  </td>
-
-                  <td style={{ textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedReport(report)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ gap: '6px' }}
-                    >
-                      <Eye size={14} />
-                      Tinjau
-                    </button>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 0' }}>
+                    <Loader2 size={24} className="spin" color="var(--red)" style={{ margin: '0 auto 8px' }} />
+                    <span style={{ fontSize: '13px', color: 'var(--ink-3)' }}>Memuat data laporan grooming...</span>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                reports.map((report) => (
+                  <tr key={report.id}>
+                    {/* Thumbnail foto mini dengan watermark inspect */}
+                    <td>
+                      <div
+                        style={{ display: 'flex', gap: '4px', cursor: 'pointer' }}
+                        onClick={() => setSelectedReport(report)}
+                        title="Klik untuk membuka detail verifikasi"
+                      >
+                        <div
+                          style={{
+                            width: '38px',
+                            height: '48px',
+                            borderRadius: 'var(--r-sm)',
+                            overflow: 'hidden',
+                            boxShadow: 'inset 0 0 0 1px var(--line)',
+                            background: 'var(--surface-sunk)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <img
+                            src={report.photo_full_url}
+                            alt="Badan"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            title="Foto Badan Penuh"
+                          />
+                        </div>
+                        <div
+                          style={{
+                            width: '38px',
+                            height: '48px',
+                            borderRadius: 'var(--r-sm)',
+                            overflow: 'hidden',
+                            boxShadow: 'inset 0 0 0 1px var(--line)',
+                            background: 'var(--surface-sunk)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <img
+                            src={report.photo_face_url}
+                            alt="Wajah"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            title="Foto Wajah"
+                          />
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Teknisi */}
+                    <td className="cell-primary">
+                      <div className="cell-strong" style={{ color: 'var(--ink)' }}>
+                        {report.technician_name}
+                      </div>
+                      <div className="cell-sub tnum" style={{ fontFamily: 'monospace' }}>
+                        {report.technician_id}
+                      </div>
+                    </td>
+
+                    {/* Cabang & Lingkup */}
+                    <td data-label="Cabang">
+                      <div className="cell-strong">
+                        <span className="badge" style={{ marginRight: '6px' }}>
+                          {report.service_type}
+                        </span>
+                        {report.branch}
+                      </div>
+                    </td>
+
+                    {/* Waktu Lapor */}
+                    <td data-label="Waktu Lapor">
+                      <div className="cell-strong" style={{ fontSize: '13px' }}>
+                        {formatWibTimestamp(new Date(report.submission_time))}
+                      </div>
+                    </td>
+
+                    {/* Kepatuhan Waktu */}
+                    <td data-label="Kepatuhan Waktu">
+                      {report.is_monday ? (
+                        <span className="badge badge-ok">
+                          <CheckCircle2 size={12} />
+                          <span>Senin (Tepat Waktu)</span>
+                        </span>
+                      ) : (
+                        <span className="badge badge-warn">
+                          <Clock size={12} />
+                          <span>Susulan (Di Luar Senin)</span>
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Status Review */}
+                    <td data-label="Status Review">
+                      {report.status === 'approved' ? (
+                        <span className="badge badge-ok">
+                          <CheckCircle2 size={12} />
+                          <span>Disetujui</span>
+                        </span>
+                      ) : report.status === 'rejected' ? (
+                        <span className="badge badge-red">
+                          <XCircle size={12} />
+                          <span>Perlu Perbaikan</span>
+                        </span>
+                      ) : (
+                        <span className="badge badge-warn">
+                          <Clock size={12} />
+                          <span>Menunggu Review</span>
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Aksi Tinjau */}
+                    <td className="col-actions">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReport(report)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ gap: '6px' }}
+                        title="Tinjau foto watermark & checklist SOP"
+                      >
+                        <Eye size={14} />
+                        <span>Tinjau</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Modal Review Detail */}
+      {/* Modal Review Detail Verifikasi */}
       {selectedReport && (
         <GroomingDetailModal
           report={selectedReport}
