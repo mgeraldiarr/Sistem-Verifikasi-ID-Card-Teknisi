@@ -2,55 +2,45 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
-  Award,
-  BarChart3,
-  Calendar,
-  Camera,
-  CheckCircle2,
   Clock,
   Copy,
-  CreditCard,
   Download,
-  ExternalLink,
-  Flame,
-  HelpCircle,
   Loader2,
-  LogOut,
-  Maximize2,
+  Menu,
   QrCode,
   RotateCw,
-  Share2,
-  ShieldAlert,
-  ShieldCheck,
   ShieldX,
   Sparkles,
   Star,
-  UserCheck,
   Wrench,
   X,
 } from 'lucide-react';
 import AuthWrapper from '@/components/AuthWrapper';
 import TechnicianCard3D from '@/components/TechnicianCard3D';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Modal } from '@/components/ui/Modal';
 import { useAuthProfile } from '@/hooks/useAuthProfile';
 import { getIsoWeekString } from '@/lib/grooming/period';
 import { getTechnicianWeekGrooming } from '@/lib/grooming/service';
 import { GroomingReport } from '@/types';
 import { useMyTechnicianCard } from './hooks/useMyTechnicianCard';
 import { GroomingTabContent } from './components/GroomingTabContent';
+import {
+  TECHNICIAN_MENU_ITEMS,
+  TechnicianHamburgerDrawer,
+  TechnicianMenuTab,
+} from './components/TechnicianHamburgerDrawer';
 import styles from './my-card.module.css';
-
-type ActiveTab = 'card' | 'grooming' | 'performance';
 
 function MyCardContent() {
   const router = useRouter();
   const { profile, loading: profileLoading, signOut } = useAuthProfile();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('card');
+  const [activeTab, setActiveTab] = useState<TechnicianMenuTab>('card');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -62,6 +52,20 @@ function MyCardContent() {
       const tabParam = params.get('tab');
       if (tabParam === 'grooming') setActiveTab('grooming');
       else if (tabParam === 'performance') setActiveTab('performance');
+    }
+  }, []);
+
+  /** Ganti halaman aktif & sinkronkan parameter URL tanpa reload */
+  const handleSelectTab = useCallback((nextTab: TechnicianMenuTab) => {
+    setActiveTab(nextTab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (nextTab === 'card') {
+        url.searchParams.delete('tab');
+      } else {
+        url.searchParams.set('tab', nextTab);
+      }
+      window.history.replaceState(null, '', url.pathname + url.search);
     }
   }, []);
 
@@ -119,18 +123,21 @@ function MyCardContent() {
     }
   }, [verifyUrl]);
 
-  const handleLogout = useCallback(async () => {
+  const handleConfirmLogout = useCallback(async () => {
     setSigningOut(true);
     await signOut();
     router.replace('/admin/login');
   }, [router, signOut]);
+
+  const activeMenuLabel =
+    TECHNICIAN_MENU_ITEMS.find((item) => item.id === activeTab)?.label ?? 'Kartu ID Digital';
 
   const busy = profileLoading || loading;
   const latestPerf = technician?.technician_performance?.[0];
 
   return (
     <div className={styles.pageWrapper}>
-      {/* App Sticky Header */}
+      {/* App Sticky Header dengan Tombol Hamburger */}
       <header className={styles.appHeader}>
         <div className={styles.appBrand}>
           <img src="/modena-logo-white.png" alt="MODENA" className={styles.brandLogo} />
@@ -139,59 +146,29 @@ function MyCardContent() {
         </div>
 
         <div className={styles.headerActions}>
+          <span className={styles.headerContext}>{activeMenuLabel}</span>
           <button
             type="button"
-            onClick={handleLogout}
-            disabled={signingOut}
-            className={styles.logoutBtn}
-            title="Keluar dari akun portal"
+            onClick={() => setDrawerOpen(true)}
+            className={styles.hamburgerBtn}
+            aria-label="Buka menu navigasi"
+            aria-expanded={drawerOpen}
           >
-            {signingOut ? <Loader2 size={13} className="spin" /> : <LogOut size={13} />}
-            <span>Keluar</span>
+            <Menu size={22} />
           </button>
         </div>
       </header>
 
+      {/* Drawer Navigasi Hamburger */}
+      <TechnicianHamburgerDrawer
+        isOpen={drawerOpen}
+        activeTab={activeTab}
+        onClose={() => setDrawerOpen(false)}
+        onSelectTab={handleSelectTab}
+        onRequestLogout={() => setShowLogoutModal(true)}
+      />
+
       <div className={styles.mobileContainer}>
-        {/* Tab Navigation Switcher */}
-        <div className={styles.tabNavWrap}>
-          <div className={styles.segmentedControl} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'card'}
-              onClick={() => setActiveTab('card')}
-              className={`${styles.tabBtn} ${activeTab === 'card' ? styles.tabBtnActive : ''}`}
-            >
-              <CreditCard size={15} />
-              <span>Kartu ID</span>
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'grooming'}
-              onClick={() => setActiveTab('grooming')}
-              className={`${styles.tabBtn} ${activeTab === 'grooming' ? styles.tabBtnActive : ''}`}
-            >
-              <Camera size={15} />
-              <span>Grooming</span>
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'performance'}
-              onClick={() => setActiveTab('performance')}
-              className={`${styles.tabBtn} ${activeTab === 'performance' ? styles.tabBtnActive : ''}`}
-            >
-              <BarChart3 size={15} />
-              <span>Performa</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Contents */}
         <div className={styles.tabContent}>
           {busy ? (
             <div style={{ padding: '40px 0', textAlign: 'center' }}>
@@ -210,7 +187,7 @@ function MyCardContent() {
             technician && (
               <>
                 {/* ======================================================== */}
-                {/* TAB 1: KARTU DIGITAL 3D */}
+                {/* MENU 1: KARTU DIGITAL 3D */}
                 {/* ======================================================== */}
                 {activeTab === 'card' && (
                   <div className={styles.cardStage}>
@@ -264,7 +241,7 @@ function MyCardContent() {
                 )}
 
                 {/* ======================================================== */}
-                {/* TAB 2: MONITORING GROOMING LANGSUNG */}
+                {/* MENU 2: MONITORING GROOMING LANGSUNG */}
                 {/* ======================================================== */}
                 {activeTab === 'grooming' && (
                   <GroomingTabContent
@@ -272,12 +249,12 @@ function MyCardContent() {
                     report={groomingReport}
                     loadingReport={loadingGrooming}
                     onReportSubmitted={(newReport) => setGroomingReport(newReport)}
-                    onBackToCard={() => setActiveTab('card')}
+                    onBackToCard={() => handleSelectTab('card')}
                   />
                 )}
 
                 {/* ======================================================== */}
-                {/* TAB 3: PERFORMA & KPI SAYA */}
+                {/* MENU 3: PERFORMA & KPI SAYA */}
                 {/* ======================================================== */}
                 {activeTab === 'performance' && (
                   <div>
@@ -359,6 +336,44 @@ function MyCardContent() {
             )
           )}
         </div>
+
+        {/* Modal Konfirmasi Keluar Akun */}
+        {showLogoutModal && (
+          <Modal
+            width={400}
+            onClose={() => !signingOut && setShowLogoutModal(false)}
+            dismissible={!signingOut}
+            title="Keluar dari portal?"
+            description="Anda perlu masuk kembali dengan ID Teknisi dan kata sandi untuk membuka kartu digital."
+            footer={
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutModal(false)}
+                  disabled={signingOut}
+                  className="btn btn-secondary"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmLogout}
+                  disabled={signingOut}
+                  className="btn btn-primary"
+                >
+                  {signingOut ? (
+                    <>
+                      <Loader2 size={15} className="spin" />
+                      <span>Keluar...</span>
+                    </>
+                  ) : (
+                    <span>Keluar</span>
+                  )}
+                </button>
+              </>
+            }
+          />
+        )}
 
         {/* Modal QR Code Pop-up Ukuran Penuh */}
         {showQrModal && verifyUrl && (

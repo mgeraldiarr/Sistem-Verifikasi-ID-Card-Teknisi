@@ -2,10 +2,9 @@
  *
  * Desain Mobile Portal Teknisi - Mengikuti sistem desain resmi MODENA:
  * - Kanvas abu baja dingin (--canvas: #eef0f1)
- * - Header solid charcoal gelap (--surface-dark: #1c1c1a)
+ * - Header & Drawer solid charcoal gelap (--surface-dark: #1c1c1a)
  * - Kartu permukaan putih bersih (--surface: #ffffff) dengan border rapi (--line: #dde0e3)
  * - Aksen merah resmi MODENA (--red: #da291c)
- * - Indikator level teknisi sesuai tangga resmi (Beginner, Intermediate, Advance)
  */
 
 .pageWrapper {
@@ -16,76 +15,260 @@
   align-items: center;
 }
 
-/* App Header - Identik dengan brand header sidebar admin */
+/* App Header - Identik dengan topbar Portal Admin */
 .appHeader {
   width: 100%;
   background: var(--surface-dark, #1c1c1a);
-  height: 60px;
-  padding: 0 20px;
+  height: 56px;
+  padding: 0 10px 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid var(--line-dark, rgba(255, 255, 255, 0.08));
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 40;
 }
 
 .appBrand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .brandLogo {
-  height: 19px;
+  height: 18px;
   width: auto;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brandDivider {
   height: 16px;
   width: 1px;
   background: var(--line-dark-strong, rgba(255, 255, 255, 0.16));
+  flex-shrink: 0;
 }
 
 .brandName {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.62));
+  color: var(--ink-inverse-3, rgba(244, 243, 238, 0.5));
   letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .brandDivider,
+  .brandName {
+    display: none;
+  }
 }
 
 .headerActions {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  margin-left: auto;
 }
 
-.logoutBtn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.8));
-  padding: 6px 12px;
-  border-radius: var(--r-sm, 6px);
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
+.headerContext {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.72));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hamburgerBtn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md, 8px);
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  color: var(--ink-inverse, #f4f3ee);
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.logoutBtn:hover:not(:disabled) {
+.hamburgerBtn:hover {
   background: var(--surface-dark-3, #30302d);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.logoutBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* ================================================================== */
+/* Hamburger Slide-out Drawer (Gaya Sidebar Gelap MODENA)              */
+/* ================================================================== */
+
+.drawerScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(20, 20, 18, 0.52);
+  animation: scrimFadeIn 0.18s ease-out;
+}
+
+@keyframes scrimFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.drawerPanel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 60;
+  width: min(276px, 84vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-dark, #1c1c1a);
+  color: var(--ink-inverse, #f4f3ee);
+  transform: translateX(-100%);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.drawerPanelOpen {
+  transform: translateX(0);
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.35);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 10px 0 20px;
+  border-bottom: 1px solid var(--line-dark, rgba(255, 255, 255, 0.08));
+  flex-shrink: 0;
+}
+
+.drawerBrandSub {
+  font-size: 12px;
+  color: var(--ink-inverse-3, rgba(244, 243, 238, 0.48));
+  padding-left: 10px;
+  border-left: 1px solid var(--line-dark-strong, rgba(255, 255, 255, 0.16));
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.drawerCloseBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md, 8px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.72));
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.drawerCloseBtn:hover {
+  background: var(--surface-dark-3, #30302d);
+  color: #ffffff;
+}
+
+.drawerNav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawerSectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-inverse-3, rgba(244, 243, 238, 0.42));
+  padding: 0 10px 8px;
+}
+
+.drawerLink {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: var(--r-md, 8px);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.72));
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.drawerLink:hover {
+  background: var(--surface-dark-2, #252522);
+  color: #ffffff;
+}
+
+.drawerLinkActive {
+  background: var(--surface-dark-3, #30302d);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.drawerLinkActive::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--red, #da291c);
+}
+
+.drawerFooter {
+  padding: 10px;
+  border-top: 1px solid var(--line-dark, rgba(255, 255, 255, 0.08));
+  flex-shrink: 0;
+}
+
+.drawerLogoutBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: var(--r-md, 8px);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-inverse-2, rgba(244, 243, 238, 0.75));
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.drawerLogoutBtn:hover {
+  background: rgba(218, 41, 28, 0.16);
+  color: #ff8a80;
 }
 
 /* Mobile Content Container */
@@ -93,53 +276,9 @@
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
-  padding: 16px 16px 64px;
+  padding: 20px 16px 64px;
   display: flex;
   flex-direction: column;
-}
-
-/* Tab Navigation Switcher */
-.tabNavWrap {
-  margin-bottom: 16px;
-}
-
-.segmentedControl {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--line, #dde0e3);
-  border-radius: var(--r-md, 8px);
-  padding: 4px;
-  box-shadow: 0 1px 2px rgba(28, 28, 26, 0.03);
-}
-
-.tabBtn {
-  background: transparent;
-  border: none;
-  padding: 9px 8px;
-  border-radius: var(--r-sm, 6px);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2, #4a4f55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  position: relative;
-}
-
-.tabBtn:hover:not(.tabBtnActive) {
-  color: var(--ink, #1c1c1a);
-  background: var(--surface-sunk, #f6f7f8);
-}
-
-.tabBtnActive {
-  background: var(--surface-dark, #1c1c1a);
-  color: #ffffff;
-  box-shadow: 0 1px 3px rgba(28, 28, 26, 0.15);
 }
 
 /* Tab Content */
